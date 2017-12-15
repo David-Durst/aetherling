@@ -30,7 +30,7 @@ down_t k :: {k,T} -> {1,T}
    time(down_t k) = k
 
 # stencil = shift
-shift k :: {1,T} -> {1,T[k]}
+shift k :: {1,T} -> {1,T[k]} - shift gives k elements, with 1 at a time
    area(shift k) = k
    time(shift k) = k
 
@@ -43,11 +43,25 @@ map_t f :: {1,S} -> {1,T)
    time(map_t f) = time(f)
  
 
-partition k :: {1,T[i*j]} -> {i,T[j]} 
+partition k :: {1,T[i*j]} -> {i,T[j]} - partition splits into disjoint groups of k elements
    area(partition k) = i*j 
    time(partition k) = i
 
 flatten k :: {i,T[j]} -> {1,T[i*j]}
    area(flatten k) = i*j
    time(flatten k) = i
+
+
+convolution in time:
+conv_t n k f id :: int -> int -> ((S,T) -> T) -> {1, S} -> {1, T}
+conv_t n k f = fold_t k f id $ shift k
+area(conv_t n k f id) = area(f)
+time(conv_t n k f id) = n * time(k*f)
+
+conv_x n k f id :: int -> int -> ((S,T) -> T) -> {1, S} -> {1, T}
+conv_x n k f = map_x (n-k) (fold_x k f id) $ stencil_x k n
+area(conv_x n k f id) = n*k*(1+area(f))
+time(conv_f n k f id) = time(f)
+
+
 
