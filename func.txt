@@ -1,0 +1,152 @@
+Here is another take on the functional language IR.
+
+This is almost pure apl/k, but with a type system.
+
+One important point is that operations are polymorphic in the
+types. In this version, I assume that if you know the incoming
+type, you can correctly process the data.
+
+All functions have a single argument (except for constants).
+If they need multiple arguments, we make a tuple.
+
+
+Types
+
+T — basic types
+
+T[n] -- arrays of length n and type T
+array ::  (..., T, ...)  -> T[n] -- array constructor
+index :: i -> T[n] -> T -- array access
+repeat :: n -> T -> T[n]
+concat :: T[i] -> T[j] -> T[i+j]
+take :: i -> T[n] -> T[i]
+drop :: i -> T[n] -> T[n-i]
+
+(T) -- tuples
+tuple :: (R,...,S)
+select :: i -> (..., T, ...) -> T
+
+zip   :: (R[n],..., S[n]) -> (R, ..., S)[n]
+unzip :: (R,...,S)[n]     -> (R[n], ..., S[n])
+
+Partitioning/Flattening/Reshaping arrays
+
+# partition
+partition :: i -> T[n] -> T[n/i][i]
+flatten   :: T[i][j] -> T[i*j]
+   flatten i $ partition i = id
+
+# transpose
+transpose :: T[i][j] -> T[j][i]
+   transpose $ transpose = id
+
+Higher-order functions on arrays
+
+map f :: -> (S -> T) -> S[n] -> T[n] - what is this first arrow with ntohign coming in to it doing?
+   map (f.g) = map f $ map g
+
+fold f :: ((T,S) -> T) -> T -> S[n] -> T
+   associative versions
+
+scan f :: ((T,S) -> T) -> T -> S[n] -> T[n]
+   associative versions
+
+# stencil
+stencil :: k -> T[n] -> T[n][k] - shouldn't this be reversed?, is this converting it so that a stencil operator can be run on it?
+
+# stream
+
+stream : T[n] -> {1,T} - shouldn't this be T[n] -> {T,T'}, where T' is the stream of T
+unstream : {1,T} -> T[n]
+   unstream $ stream = id
+
+
+=====================================================================
+
+Equivalences between fold, map and reduce:
+
+f :: S -> T 
+g :: (T,T) -> T
+let id be identity element for g - what do you mean by identity? is id the T s.t. g (id, id) = id?, because since g doesn't have the same input and output type, g id != id
+
+Make f2 from f and g: f2 :: (T,S) -> T
+f2 t s = g(t, f(s))     
+
+fold f2 id = reduce g $ map f - f2 and id here are operators for fold, right? - f :: T -> T here, right?
+
+fold_seq k f2 id = reduce_seq k g $ map_seq k f - what is map_seq? why does it have a second parameter k? I get that it's amount of parallelism for par (i think), but hwy for seq?
+fold_par k f2 g id = reduce_par k g $ map_par k f
+
+Note: Using the theorems above to transform from a reduce / map pattern to a fold requires identity element id for g to be known. (Although it was not needed in the original code).  In practice, map/reduce pipelines can be converted to serial folds without knowledge of the identity by using of modified definition of fold that takes f and g separately (not f2), executes f on the first two elements, reduces those using g to produce the first T, then proceeds to use f2 serially for the rest of the input list.  I'll call this modified version fold2. Note it takes f and g, but not an identity element:
+
+fold2 f g = reduce g $ map f = fold f2 id
+
+fold2_seq k f g = reduce_seq k g $ map_seq k f
+area(fold2_seq k f g) = area(reduce_seq k g) + area(map_seq k f) = area(f) + area(g)
+time(fold2_seq k f g) = time(reduce_seq k g) + time(map_seq k f) = k * time(f) + k * time(g) 
+
+fold2_par k f g = reduce_par k g $ map_par k f
+area(fold2_par k f g) = area(reduce_par k g) + area(map_par k f) = k * area(f) + k * area(g)
+time(fold2_par k f g) = time(reduce_par k g) + time(map_par k f) = time(f) + lg k * time(g) 
+
+Or here's an alternative definition of fold2 (not curried) built on regular fold instead not map and reduce:
+fold2 f g x = 
+   let id = g(f(select(0,x)), f(select(1,x))
+   return fold f2 id x[2:]
+
+=====================================================================
+
+# "Nesting" theorems for map, reduce, and fold2:
+# Nesting tells me how to move an operation on T[k] to nested one on T[i][k/i] 
+
+map k f = flatten k/i $ map i (map k/i f) $ partition k/i
+
+map_seq k f = flatten_seq k/i $ map_seq i (map_seq k/i f) $ partition_seq k/i
+map_par k f = flatten_par k/i k $ map_par i (map_par k/i f) $ partition_par k/i k $ 
+
+===
+
+reduce k g = reduce i g $ map i (reduce k/i g) $ partition k/i
+
+reduce_seq k g = reduce_seq i g $ map_seq i (reduce_seq k/i g) $ partition_seq k/i
+reduce_par k g = reduce_par i g $ map_par i (reduce_par k/i g) $ partition_par k/i k
+
+===
+
+# note that the top-level fold2 on the rhs operates on a sequence of length i. It uses the same combiner (g) as the lhs.
+fold2 k f g = reduce i g $ map i (fold2 k/i f g) $ partition k/i
+            = fold2 i (fold2 k/i f g) g $ partition k/i
+
+fold2_seq k f g = fold2_seq i (fold2_seq k/i f g) g partition_seq k/i
+fold2_par k f g = fold2_par i (fold2_par k/i f g) g partition_par k/i k
+
+
+Derivation of fold2 nesting theorem.  This derivation uses:
+   - Nesting theorems for map and reduce
+   - fold2 f g = reduce g $ map f
+   - map fusion: map f.g = map g $ map f
+
+fold2_seq k f g = reduce_seq k g $ map_seq k f =
+
+# apply nesting to map and reduce
+    = reduce_seq i g $ map_seq i (reduce_seq k/i g) $ partition k/i $ flatten_seq k/i $ map_seq i (map_seq k/i f) $ partition_seq k/i
+
+# annihilate flatten/partition
+    = reduce_seq i g $ map_seq i (reduce_seq k/i g) $ map_seq i (map_seq k/i f) $ partition_seq k/i
+    
+# apply map fusion theorem: map (f.g) = map f $ map g
+    = reduce_seq i g $ map_seq i ((reduce_seq k/i g) . (map_seq k/i f)) $ partition_seq k/i
+
+# apply fold2 = reduce g $ map f
+    = reduce_seq i g $ map_seq i (fold2_seq k/i f g) $ partition_seq k/i
+
+# apply fold2 = reduce g $ map f
+    = fold2_seq i (fold2_seq k/i f g) g $ partition_seq k/i
+
+
+
+
+
+
+
+

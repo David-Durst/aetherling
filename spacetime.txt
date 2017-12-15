@@ -1,0 +1,53 @@
+SpaceTime Functions
+
+up_x k :: {1,T} -> {1,T[k]} # repeat k
+   area(up_x k) = k
+   time(up_x k) = 1
+
+down_x k :: {1,T[k]} -> {1,T} # select k i
+   area(down_x k) = k
+   time(down_x k) = 1
+
+stencil_x k n :: {1,T[n]} -> {1,T[n-k][k]}
+   area(stencil k) = k*n
+   time(down_x k) = 1
+
+fold_x k f id :: {1,S[k]} -> {1,T}
+   area(fold_x k f) = k*area(f)
+   time(fold_x k f) = time(f)
+
+map_x k f :: {1,S[k]} -> {1,T[k]}
+   area(map_x k f) = k*area(f)
+   time(map_x k f) = time(f)
+
+
+up_t k :: {1,T} -> {k,T}  
+   area(up_t k) = 1
+   time(up_t k) = k
+
+down_t k :: {k,T} -> {1,T} 
+   area(down_t k) = 1
+   time(down_t k) = k
+
+# stencil = shift
+shift k :: {1,T} -> {1,T[k]}
+   area(shift k) = k
+   time(shift k) = k
+
+fold_t k f id :: {k,S} -> {1,T}
+   area(fold_t k f) = area(f)
+   time(fold_t k f) = k * time(f)
+
+map_t f :: {1,S} -> {1,T)
+   area(map_t f) = area(f)
+   time(map_t f) = time(f)
+ 
+
+partition k :: {1,T[i*j]} -> {i,T[j]} 
+   area(partition k) = i*j 
+   time(partition k) = i
+
+flatten k :: {i,T[j]} -> {1,T[i*j]}
+   area(flatten k) = i*j
+   time(flatten k) = i
+
