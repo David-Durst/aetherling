@@ -1,10 +1,10 @@
 SpaceTime Functions
 
-up_x k :: {1,T} -> {1,T[k]} # repeat k
+up_x k :: {1,T} -> {1,T[k]} # also referred to as repeat k or broadcast k
    area(up_x k) = k
    time(up_x k) = 1
 
-down_x k :: {1,T[k]} -> {1,T} # select k i
+down_x k :: {1,T[k]} -> {1,T} # also referred to as select k i 
    area(down_x k) = k
    time(down_x k) = 1
 
@@ -30,10 +30,12 @@ down_t k :: {k,T} -> {1,T}
    time(down_t k) = k
 
 # stencil = shift
-shift k :: {1,T} -> {1,T[k]} - shift gives k elements, with 1 at a time increment in index
+shift k :: {1,T} -> {1,T[k]} 
    area(shift k) = k
    time(shift k) = k
 
+Notes: shift gives k elements, with 1 at a time increment in index
+   
 fold_t k f id :: {k,S} -> {1,T}
    area(fold_t k f) = area(f)
    time(fold_t k f) = k * time(f)
@@ -42,15 +44,21 @@ map_t f :: {1,S} -> {1,T)
    area(map_t f) = area(f)
    time(map_t f) = time(f)
  
+partition i :: {1,T[i*j]} -> {i,T[j]}
+   area(partition i) = i*j 
+   time(partition i) = i
 
-partition k :: {1,T[i*j]} -> {i,T[j]} - partition splits into disjoint groups of k elements - where is the k here? is it replacing i?
-   area(partition k) = i*j 
-   time(partition k) = i
+Notes: partition splits into disjoint groups of i elements that are
+emitted sequentially.  Partition increases rate.
+   
+flatten i :: {i,T[j]} -> {1,T[i*j]}
+   area(flatten i) = i*j
+   time(flatten i) = i
 
-flatten k :: {i,T[j]} -> {1,T[i*j]}
-   area(flatten k) = i*j
-   time(flatten k) = i
-
+Notes: flatten takes a stream of elements and squished them together
+       into a stream of larger elements emitted at a lower
+       rate. (Flatten decreases rate)
+   
 verbal defintion of convolution: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying f to the elements i, i-1, ..., i-k of the input stream.
 convolution in time:
 conv_t n k f id :: int -> int -> ((S,T) -> T) -> {n, S} -> {n, T}
@@ -65,7 +73,6 @@ area(conv_x n k f id) = n*k*(1+area(f))
 time(conv_f n k f id) = time(f)
 
 I gave conv_t and conv_x different type signatures in how they take their input arrays due to their different ways of taking in parallelism. conv_t is parallel in time, so it takes its array in over n ticks. I don't think that conv_t should take the entire array in as input in one tick as that would require O(n) area to store it all while it is processed. Am I wrong?
-
 
 
 a_x is arbitrarily parallel, this one takes in whole array at start
