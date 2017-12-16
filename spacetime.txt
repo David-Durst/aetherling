@@ -30,7 +30,7 @@ down_t k :: {k,T} -> {1,T}
    time(down_t k) = k
 
 # stencil = shift
-shift k :: {1,T} -> {1,T[k]} - shift gives k elements, with 1 at a time
+shift k :: {1,T} -> {1,T[k]} - shift gives k elements, with 1 at a time increment in index
    area(shift k) = k
    time(shift k) = k
 
@@ -43,7 +43,7 @@ map_t f :: {1,S} -> {1,T)
    time(map_t f) = time(f)
  
 
-partition k :: {1,T[i*j]} -> {i,T[j]} - partition splits into disjoint groups of k elements
+partition k :: {1,T[i*j]} -> {i,T[j]} - partition splits into disjoint groups of k elements - where is the k here? is it replacing i?
    area(partition k) = i*j 
    time(partition k) = i
 
@@ -51,17 +51,32 @@ flatten k :: {i,T[j]} -> {1,T[i*j]}
    area(flatten k) = i*j
    time(flatten k) = i
 
-
+verbal defintion of convolution: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying f to the elements i, i-1, ..., i-k of the input stream.
 convolution in time:
-conv_t n k f id :: int -> int -> ((S,T) -> T) -> {1, S} -> {1, T}
+conv_t n k f id :: int -> int -> ((S,T) -> T) -> {n, S} -> {n, T}
 conv_t n k f = fold_t k f id $ shift k
 area(conv_t n k f id) = area(f)
 time(conv_t n k f id) = n * time(k*f)
 
-conv_x n k f id :: int -> int -> ((S,T) -> T) -> {1, S} -> {1, T}
+convolution fully parallel in space:
+conv_x n k f id :: int -> int -> ((S,T) -> T) -> {1, S[n]} -> {1, T[n]}
 conv_x n k f = map_x (n-k) (fold_x k f id) $ stencil_x k n
 area(conv_x n k f id) = n*k*(1+area(f))
 time(conv_f n k f id) = time(f)
+
+I gave conv_t and conv_x different type signatures in how they take their input arrays due to their different ways of taking in parallelism. conv_t is parallel in time, so it takes its array in over n ticks. I don't think that conv_t should take the entire array in as input in one tick as that would require O(n) area to store it all while it is processed. Am I wrong?
+
+
+
+a_x is arbitrarily parallel, this one takes in whole array at start
+conv_a_x n k p f id :: int -> int -> int -> ((S,T) -> T) -> {1, S[n]} -> {p, T[n/p]}
+conv_a_x n k p f id = map_x ((n/p)-k) (fold_x k f id) k $ partition p $ stencil_x k n
+
+conv_a_x n k p f id = partition $ (this is actually not neccesary, the parittion can handle the array of arrays of length n just fine, still split them into p pieces - need somehting here to convert the stencil collection of arrays into one big array, so partition can split up the arrays and feed them out one tick at a time) $ stencil_x k n
+
+why is it important to be able to transform between them if I can just get arbtrary parallelism directly? Should I read the thesis to get that?
+
+
 
 
 
