@@ -9,8 +9,8 @@ down_x k :: {1,T[k]} -> {1,T} # also referred to as select k i
    time(down_x k) = 1
 
 stencil_x k n :: {1,T[n]} -> {1,T[n-k][k]}
-   area(stencil k) = k*n
-   time(down_x k) = 1
+   area(stencil_x k n) = k*n
+   time(stencil_x k n) = 1
 
 fold_x k f id :: {1,S[k]} -> {1,T}
    area(fold_x k f) = k*area(f)
@@ -59,22 +59,20 @@ Notes: flatten takes a stream of elements and squished them together
        into a stream of larger elements emitted at a lower
        rate. (Flatten decreases rate)
    
-verbal defintion of convolution: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying f to the elements i, i-1, ..., i-k of the input stream.
-convolution in time:
-conv_t n k f id :: int -> int -> ((S,T) -> T) -> {n, S} -> {n, T}
-conv_t n k f = fold_t k f id $ shift k
-area(conv_t n k f id) = area(f)
-time(conv_t n k f id) = n * time(k*f)
+verbal defintion of box: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying + to the elements i, i-1, ..., i-k of the input stream.
+box in time:
+box_t n k id :: int -> int -> {1, S} -> {1, T}
+box_t n k f = map_t (fold_t k (+) id) $ stencil_t k
+area(box_t n k f id) = area(f)
+time(box_t n k f id) = n * time(k*f)
 
-convolution fully parallel in space:
-conv_x n k f id :: int -> int -> ((S,T) -> T) -> {1, S[n]} -> {1, T[n]}
-conv_x n k f = map_x (n-k) (fold_x k f id) $ stencil_x k n
-area(conv_x n k f id) = n*k*(1+area(f))
-time(conv_f n k f id) = time(f)
+box fully parallel in space:
+box_x n k id :: int -> int -> {1, S[n]} -> {1, T[n]}
+box_x n k = map_x (n-k) (fold_x k (+) id) $ stencil_x k n
+area(box_x n k f id) = n*k*(1+area(f))
+time(box_f n k f id) = time(f)
 
-I gave conv_t and conv_x different type signatures in how they take their input arrays due to their different ways of taking in parallelism. conv_t is parallel in time, so it takes its array in over n ticks. I don't think that conv_t should take the entire array in as input in one tick as that would require O(n) area to store it all while it is processed. Am I wrong?
-
-
+-- need to think about below still --
 a_x is arbitrarily parallel, this one takes in whole array at start
 conv_a_x n k p f id :: int -> int -> int -> ((S,T) -> T) -> {1, S[n]} -> {p, T[n/p]}
 conv_a_x n k p f id = map_x ((n/p)-k) (fold_x k f id) k $ partition p $ stencil_x k n
