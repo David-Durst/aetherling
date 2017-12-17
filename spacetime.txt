@@ -61,21 +61,31 @@ Notes: flatten takes a stream of elements and squished them together
    
 verbal defintion of box: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying + to the elements i, i-1, ..., i-k of the input stream.
 box in time:
-box_t n k id :: int -> int -> {1, S} -> {1, T}
+box_t n k id :: int -> int -> {1, T} -> {1, T}
 box_t n k f = map_t (fold_t k (+) id) $ stencil_t k
-area(box_t n k f id) = area(f)
-time(box_t n k f id) = n * time(k*f)
+area(box_t n k) = area(+) + k
+time(box_t n k) = n * k
 
 box fully parallel in space:
-box_x n k id :: int -> int -> {1, S[n]} -> {1, T[n]}
-box_x n k = map_x (n-k) (fold_x k (+) id) $ stencil_x k n
-area(box_x n k f id) = n*k*(1+area(f))
-time(box_f n k f id) = time(f)
+box_x n k :: int -> int -> {1, T[n]} -> {1, T[n-k]}
+box_x n k = write (n-k) $ map_x (n-k) (fold_x k (+) 0) $ stencil_x k n $ read n
+area(box_x n k) = n*k*(1+area(+))
+time(box_f n k) = (+)
 
--- need to think about below still --
+Convert Between Different Amounts of Parallelism
+
+read n k = read n pixels, k at a time
+Note: read n k $ read n k == read n p, as can just short circuit the second read
+
 a_x is arbitrarily parallel, this one takes in whole array at start
-conv_a_x n k p f id :: int -> int -> int -> ((S,T) -> T) -> {1, S[n]} -> {p, T[n/p]}
-conv_a_x n k p f id = map_x ((n/p)-k) (fold_x k f id) k $ partition p $ stencil_x k n
+box_a_x n k p :: {1, n, T[n/p]} -> {1, n, T[floor((n-k)/p)]}
+box_a_x n k p = map_x ((n/p) - (is first iteration ? k : 0)) (fold_x k (+) 0) k $ stencil_x k (n/p) $ read n (n/p)
+area(box_a_x) = area(n/p * +) + area(n/p * stencil(k)) = n/p*k*area(+) + k
+time(box_a_x) = p*max(time(map_x (fold_x k)), stencil_x k (n/P))
+	      = p*max((+), stencil) = p*(x)
+ note: this works as long as stencil remembers elements of a prior input from read for the next one.
+
+box_nested_ax :: {1, n, 
 
 conv_a_x n k p f id = partition $ (this is actually not neccesary, the parittion can handle the array of arrays of length n just fine, still split them into p pieces - need somehting here to convert the stencil collection of arrays into one big array, so partition can split up the arrays and feed them out one tick at a time) $ stencil_x k n
 
