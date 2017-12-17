@@ -1,5 +1,9 @@
 SpaceTime Functions
 
+
+Parallel Versions:
+============================================
+
 up_x k :: {1,T} -> {1,T[k]} # also referred to as repeat k or broadcast k
    area(up_x k) = k
    time(up_x k) = 1
@@ -20,6 +24,8 @@ map_x k f :: {1,S[k]} -> {1,T[k]}
    area(map_x k f) = k*area(f)
    time(map_x k f) = time(f)
 
+Sequential Versions:
+============================================
 
 up_t k :: {1,T} -> {k,T}  
    area(up_t k) = 1
@@ -29,12 +35,12 @@ down_t k :: {k,T} -> {1,T}
    area(down_t k) = 1
    time(down_t k) = k
 
-# stencil = shift
+# also referred to as stencil_t
 shift k :: {1,T} -> {1,T[k]} 
    area(shift k) = k
    time(shift k) = k
 
-Notes: shift gives k elements, with 1 at a time increment in index
+FIXME(kayvonf): I'd prefer we call this stencil_t to be symmetric with stencil_x 
    
 fold_t k f id :: {k,S} -> {1,T}
    area(fold_t k f) = area(f)
@@ -43,34 +49,43 @@ fold_t k f id :: {k,S} -> {1,T}
 map_t f :: {1,S} -> {1,T)
    area(map_t f) = area(f)
    time(map_t f) = time(f)
- 
+
+Partition/Flatten Operators: 
+============================================
+
+Notes: notice these operators currently do not have distinct _x and _t
+versions.
+
 partition i :: {1,T[i*j]} -> {i,T[j]}
    area(partition i) = i*j 
    time(partition i) = i
 
-Notes: partition splits into disjoint groups of i elements that are
-emitted sequentially.  Partition increases rate.
+Notes: partition splits the arrays in the input stream into multiple
+       smaller arrays of i elements.  (Partition increases rate.)
    
 flatten i :: {i,T[j]} -> {1,T[i*j]}
    area(flatten i) = i*j
    time(flatten i) = i
 
-Notes: flatten takes a stream of elements and squished them together
-       into a stream of larger elements emitted at a lower
-       rate. (Flatten decreases rate)
-   
+Notes: flatten takes a stream of elements and squishes them together
+       into a stream of larger array elements that are emitted at a
+       lower rate. (Flatten decreases rate.)
+    
+======================================================================
+
+       
 verbal defintion of box: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying + to the elements i, i-1, ..., i-k of the input stream.
 box in time:
-box_t n k id :: int -> int -> {1, T} -> {1, T}
-box_t n k f = map_t (fold_t k (+) id) $ stencil_t k
+box_t n k :: int -> int -> {1, T} -> {1, T}
+box_t n k = map_t (fold_t k (+) id) $ stencil_t k
 area(box_t n k) = area(+) + k
-time(box_t n k) = n * k
+time(box_t n k) = n * k*time(+)
 
 box fully parallel in space:
 box_x n k :: int -> int -> {1, T[n]} -> {1, T[n-k]}
 box_x n k = write (n-k) $ map_x (n-k) (fold_x k (+) 0) $ stencil_x k n $ read n
 area(box_x n k) = n*k*(1+area(+))
-time(box_f n k) = (+)
+time(box_f n k) = time(+)
 
 Convert Between Different Amounts of Parallelism
 
