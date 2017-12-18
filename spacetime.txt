@@ -93,19 +93,6 @@ Notes: flatten takes a stream of elements and packs them into larger
 ======================================================================
 
        
-verbal defintion of box: given a stream of arrays of length n and type S, convert them into arrays of length n of type T, where T is constructed by applying + to the elements i, i-1, ..., i-k of the input stream.
-box in time:
-box_t n k :: int -> int -> {1, T} -> {1, T}
-box_t n k = map_t (fold_t k (+) id) $ stencil_t k
-area(box_t n k) = area(+) + k
-time(box_t n k) = n * k*time(+)
-
-box fully parallel in space:
-box_x n k :: int -> int -> {1, T[n]} -> {1, T[n-k]}
-box_x n k = write (n-k) $ map_x (n-k) (fold_x k (+) 0) $ stencil_x k n $ read n
-area(box_x n k) = n*k*(1+area(+))
-time(box_f n k) = time(+)
-
 Convert Between Different Amounts of Parallelism
 
 read n k = read n pixels, k at a time
