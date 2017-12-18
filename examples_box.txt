@@ -1,0 +1,129 @@
+Implementations of a 1D Box filter with support k:
+
+
+1 px/clock:
+Description: sequential over pixels, but work to perform the box filter per pixel is performed in parallel to sustain 1 px/clock throughput.
+====================================== 
+box_1 n k :: {1,T} -> {1,T}
+
+box_1 n k = map_t (fold_x k (+) 0) $ (stencil_t n k)
+
+area(box_t n k) = area(map_t(fold_x k (+) 0)) + area(stencil_t n k) + 
+                = area(fold_x k (+) 0) + k
+                = k*area(+) + k
+
+# NOTE(kayvonf): need to think about how time cost for a chain of functions should be done, since the modules are operating concurrently in pipeline form. I'm using max below, but that doesn't account for pipeline latencies.
+
+time(box_t n k) = max(time(map_t n (fold_x k (+) 0)), time(stencil_t n k))
+                  max(n * time(fold_t k (+)), n)
+                  max(n, n) 
+                  n
+
+
+N px/clock:
+Description: fully pixel parallel
+======================================
+
+box_N n k :: {1, T[N]} -> {1, T[N-k-1]}
+
+box_N n k = map_x n (fold_x k (+) 0) $ (stencil_x n k)
+
+area(box_N n k) = n * area(fold_x k (+) 0) + nk
+                = nk * area(+) + nk
+
+# NOTE(kayvonf): I added the two terms in the time estimate since processing the array goes through stage 1 then stage 2.  Contrast this with the max() used in box_1 since there I assume the streams are pipelined
+
+time(box_N n k) = time(fold_x k (+) 0) + time(stencil_x n k)
+                = time(+) + 1
+
+
+
+1/K px/clock:
+Both sequential over pixels and sequential in performing the box filter math per pixel, so the result is a pipeline that is less than one pixel per clock.  
+======================================
+
+box_slow n k :: {1,T} -> {1,T}
+
+box_slow n k = map_t (fold_t k (+) 0) $ partition k $ (stencil_t n k)
+
+area(box_slow n k) = area(map_t(fold_t k (+) 0)) + area(partition k) + area(stencil_t n k)
+                   = area(fold_t k (+) 0)) + k + k
+                   = area(+) + k + k
+
+time(box_slow n k) = max(n*k*time(f), n*k, n*k)
+                   = n*k*time(f)
+
+
+Box filter with P pixels/clock:
+Description: Version 1: P adjacent pixels come from memory (uses overlap shift)
+====================================== 
+box_P1 n k :: {1,T[P]} -> {1,T[P]}
+
+process_chunk :: {1,T[P+k-1]} -> {1,T[P]}
+
+process_chunk = (map_x P (fold_x k (+) 0)) . (stencil_x P+k-1 k)
+
+box_P1 n k = map_t process_chunk $ overlap_shift_x P+k-1 P
+
+
+Definition of new operator overlap_shift k s
+
+overlap_shift_t k s :: {s,T} -> {1,T[k]} 
+
+# just like shift k in that first output comes after k inputs.
+# unlike shift k in that subsequent outputs come every s inputs (instead of every 1)
+
+area(overlap_shift_t k s) = k
+time(overlap_shift_t k s) = s
+
+Example: overlap_shift_t 5 3 outputs:
+
+[0 1 2 3 4]
+[3 4 5 6 7]
+[6 7 8 9 10]
+...
+
+overlap_shift_x k s :: {1,T[s]} -> {1,T[k]}
+
+# delay to first output is ceil(k/s)
+# then emits every cycle
+
+area(overlap_shift k s) = k
+time(overlap_shift k s) = ceil(k/s) 
+
+Example: overlap_shift_x 5 3 receives:
+
+[0 1 2 3 4]
+[5 6 7 8 9]
+[10 11 12 13 14]
+..
+and outputs:
+
+[0 1 2 3 4]
+[3 4 5 6 7]
+[6 7 8 9 10]
+...
+
+Relationship between overlap_shift_x and overlap shift_t:
+
+overlap_shift_x k s = flatten s $ overlap_shift_t k s $ partition k
+
+
+Box filter with P pixels/clock:
+Description: Version 2: P streams from different "slices" of the image 
+====================================== 
+box_P2 n k :: {1,T[P]} -> {1,T[P]}
+
+box_P2 n k = map_X P ((fold_x k (+) 0) . shift k)
+
+Notes: 
+
+Need to comment how to provide the input in swizzled form and how to reswizzle the output.
+
+
+
+
+
+
+
+

@@ -1,18 +1,35 @@
 SpaceTime Functions
 
+Notation and definitions:
+
+f :: {a, S} -> {b, T}
+
+The above signature declares that an invocation of the hardware module
+f requires a input tokens of type S to produce b tokens of type T.
+
+area: area of the hardware module
+
+Time: It would be simplest to state that time() is the time between
+the first token arriving for an output and the output going
+out. However rate increasing operators like up() and partition() have
+time proportional to waiting on generating outputs, not time
+proportional to waiting on inputs to arrive.
+
 
 Parallel Versions:
 ============================================
 
-up_x k :: {1,T} -> {1,T[k]} # also referred to as repeat k or broadcast k
+# also referred to as repeat k or broadcast k
+up_x k :: {1,T} -> {1,T[k]} 
    area(up_x k) = k
    time(up_x k) = 1
 
-down_x k :: {1,T[k]} -> {1,T} # also referred to as select k i 
+# also referred to as select k i (down is a special case where i is 0)
+down_x k :: {1,T[k]} -> {1,T} 
    area(down_x k) = k
    time(down_x k) = 1
 
-stencil_x k n :: {1,T[n]} -> {1,T[n-k][k]}
+stencil_x k n :: {1,T[n]} -> {1,T[n-k-1][k]}
    area(stencil_x k n) = k*n
    time(stencil_x k n) = 1
 
@@ -24,6 +41,7 @@ map_x k f :: {1,S[k]} -> {1,T[k]}
    area(map_x k f) = k*area(f)
    time(map_x k f) = time(f)
 
+   
 Sequential Versions:
 ============================================
 
@@ -40,8 +58,6 @@ shift k :: {1,T} -> {1,T[k]}
    area(shift k) = k
    time(shift k) = k
 
-FIXME(kayvonf): I'd prefer we call this stencil_t to be symmetric with stencil_x 
-   
 fold_t k f id :: {k,S} -> {1,T}
    area(fold_t k f) = area(f)
    time(fold_t k f) = k * time(f)
@@ -50,27 +66,30 @@ map_t f :: {1,S} -> {1,T)
    area(map_t f) = area(f)
    time(map_t f) = time(f)
 
+   
 Partition/Flatten Operators: 
 ============================================
 
-Notes: notice these operators currently do not have distinct _x and _t
-versions.
+Notes: these operators do not have distinct _x and _t versions since
+they convert between the stream and array forms.
 
 partition i :: {1,T[i*j]} -> {i,T[j]}
    area(partition i) = i*j 
    time(partition i) = i
 
-Notes: partition splits the arrays in the input stream into multiple
-       smaller arrays of i elements.  (Partition increases rate.)
+Notes: partition splits arrays in the input stream into multiple
+       smaller arrays of i elements.  (Partition increases token
+       rate.)
    
 flatten i :: {i,T[j]} -> {1,T[i*j]}
    area(flatten i) = i*j
    time(flatten i) = i
 
-Notes: flatten takes a stream of elements and squishes them together
-       into a stream of larger array elements that are emitted at a
-       lower rate. (Flatten decreases rate.)
-    
+Notes: flatten takes a stream of elements and packs them into larger
+       arrays that are emitted at a lower rate. (Flatten decreases
+       rate.)
+
+       
 ======================================================================
 
        
