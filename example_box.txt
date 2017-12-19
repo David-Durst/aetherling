@@ -1,8 +1,10 @@
 Implementations of a 1D Box filter on an image of size n with support k:
 
 
+By convention, the pipelines I define describe how to process a vector token representing an whole image, or a stream of tokens that together represent an image.
+
 1 px/clock:
-Description: sequential over pixels. The work to perform the box filter computation per output pixel is performed in parallel to sustain 1 px/clock throughput.
+Description: sequential over a stream of input pixels. The work to perform the box filter computation per output pixel is performed in parallel to sustain 1 px/clock throughput.
 ====================================== 
 box_1 n k :: {1,T} -> {1,T}
 
@@ -37,7 +39,7 @@ time(box_n n k) = time(fold_x k (+) 0) + time(stencil_x n k)
 
                 
 1/K px/clock:
-Both sequential over pixels and sequential in performing the box filter math per pixel, so the result is a pipeline that is less than one pixel per clock.  
+Both sequential over a stream of input pixels and sequential in performing the box filter math per pixel, so the result is a pipeline that is less than one pixel per clock.  
 ======================================
 
 box_slow n k :: {1,T} -> {1,T}
@@ -53,7 +55,7 @@ time(box_slow n k) = max(n*k*time(f), n*k, n*k)
 
 
 P pixels/clock:
-Description: P adjacent pixels come from memory (uses full generality of shift_x k s)
+Description: Tokens are P adjacent pixels from memory. (Input is a stream of pixel blocks.) Implementation (uses full generality of shift_x k s)
 ====================================== 
 box_p n k :: {1,T[p]} -> {1,T[p]}
 

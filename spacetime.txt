@@ -127,7 +127,6 @@ Useful theorems:
 =============================================
 
 
-
 Relationship between up and down, up_t/up_x, and down_t/down_x
 =============================================
 
