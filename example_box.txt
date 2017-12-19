@@ -1,0 +1,64 @@
+Implementations of a 1D Box filter on an image of size n with support k:
+
+
+1 px/clock:
+Description: sequential over pixels. The work to perform the box filter computation per output pixel is performed in parallel to sustain 1 px/clock throughput.
+====================================== 
+box_1 n k :: {1,T} -> {1,T}
+
+box_1 n k = map_t n (fold_x k (+) 0) $ (shift_x k 1)
+
+area(box_t n k) = area(map_t n (fold_x k (+) 0)) + area(shift_x k 1) + 
+                = area(fold_x k (+) 0) + k
+                = k*area(+) + k
+
+# NOTE(kayvonf): need to think about how time cost for a chain of functions should be done, since the modules are operating concurrently in pipeline form. I'm using max below, but that doesn't account for pipeline latencies.
+
+time(box_t n k) = max(time(map_t n (fold_x k (+) 0)), time(shift_x k 1))
+                  max(n * time(fold_t k (+)), n)
+                  max(n, n) 
+                  n
+
+N px/clock:
+Description: fully pixel parallel
+======================================
+
+box_n n k :: {1, T[n]} -> {1, T[n-k-1]}
+
+box_n n k = map_x n (fold_x k (+) 0) $ (stencil_x n k)
+
+area(box_n n k) = n * area(fold_x k (+) 0) + nk
+                = nk * area(+) + nk
+
+# NOTE(kayvonf): I added the two terms in the time estimate since processing the array goes through stage 1 then stage 2.  Contrast this with the max() used in box_1 since there I assume the streams are pipelined
+
+time(box_n n k) = time(fold_x k (+) 0) + time(stencil_x n k)
+                = time(+) + 1
+
+                
+1/K px/clock:
+Both sequential over pixels and sequential in performing the box filter math per pixel, so the result is a pipeline that is less than one pixel per clock.  
+======================================
+
+box_slow n k :: {1,T} -> {1,T}
+
+box_slow n k = map_t n (fold_t k (+) 0) $ partition k $ (shift_x k 1)
+
+area(box_slow n k) = area(map_t(fold_t k (+) 0)) + area(partition k) + area(shift_x k 1)
+                   = area(fold_t k (+) 0)) + k + k
+                   = area(+) + k + k
+
+time(box_slow n k) = max(n*k*time(f), n*k, n*k)
+                   = n*k*time(f)
+
+
+P pixels/clock:
+Description: P adjacent pixels come from memory (uses full generality of shift_x k s)
+====================================== 
+box_p n k :: {1,T[p]} -> {1,T[p]}
+
+Assume helper function process_chunk_p :: {1,T[p+k-1]} -> {1,T[p]}
+process_chunk_p = (map_x p (fold_x k (+) 0)) . (stencil_x p+k-1 k)
+
+box_p n k = map_t n/p process_chunk_p $ shift_x p+k-1 p
+

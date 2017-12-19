@@ -1,0 +1,30 @@
+Equivalences between fold, map and reduce:
+
+f :: S -> T 
+g :: (T,T) -> T
+let id be identity element for g
+
+Make f2 from f and g: f2 :: (S,T) -> T
+f2 t s = g(f(s),t)     
+
+fold f2 id = reduce g $ map f
+
+fold_seq k f2 id = reduce_seq k g $ map_seq k f
+fold_par k f2 g id = reduce_par k g $ map_par k f
+
+Note: Using the theorems above to transform from a reduce / map pattern to a fold requires identity element id for g to be known. (Although it was not needed in the original code).  In practice, map/reduce pipelines can be converted to serial folds without knowledge of the identity by using of modified definition of fold that takes f and g separately (not f2), executes f on the first two elements, reduces those using g to produce the first T, then proceeds to use f2 serially for the rest of the input list.  I'll call this modified version fold2. Note it takes f and g, but not an identity element:
+
+fold2 f g = reduce g $ map f = fold f2 id
+
+fold2_seq k f g = reduce_seq k g $ map_seq k f
+area(fold2_seq k f g) = area(reduce_seq k g) + area(map_seq k f) = area(f) + area(g)
+time(fold2_seq k f g) = time(reduce_seq k g) + time(map_seq k f) = k * time(f) + k * time(g) 
+
+fold2_par k f g = reduce_par k g $ map_par k f
+area(fold2_par k f g) = area(reduce_par k g) + area(map_par k f) = k * area(f) + k * area(g)
+time(fold2_par k f g) = time(reduce_par k g) + time(map_par k f) = time(f) + lg k * time(g) 
+
+Or here's an alternative definition of fold2 (not curried) built on regular fold instead not map and reduce:
+fold2 f g x = 
+   let id = g(f(select(0,x)), f(select(1,x))
+   return fold f2 id x[2:]

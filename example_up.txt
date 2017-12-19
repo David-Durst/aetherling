@@ -1,0 +1,32 @@
+Implementations of upsampling an image of size N by k:
+
+1/k source px/clock:
+======================================
+
+upsample_slow n k :: {1,T} -> {k,T}
+
+upsample_slow n k = map_t n (up_t k)  
+
+1 px/clock: 
+======================================
+
+upsample_1 n k :: {1,T} -> {1,T[K]}
+
+upsample_1 n k = map_t n (up_x k)  
+
+N/k source px/clock: 
+======================================
+
+upsample_nk n k :: {1,T[n]} -> {k, T[n]}
+
+upsample_nk n k = map_x n (up_t k)
+
+N source px/clock
+======================================
+
+upsample_nk n k :: {1,T[n]} -> {1,T[n*k]}
+
+upsample_nk n k = arr_flatten n k $ map_x n (up_x k)
+
+NOTE(kayvonf): leaving off the arr_flatten yields same throughput, but output type is T[n][k]
+

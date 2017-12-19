@@ -5,7 +5,7 @@ Notation and definitions:
 f :: {a, S} -> {b, T}
 
 The above signature declares that an invocation of the hardware module
-f requires a input tokens of type S to produce b tokens of type T.
+f requires 'a' input tokens of type S to produce 'b' tokens of type T.
 
 area: area of the hardware module
 
@@ -15,7 +15,6 @@ out. However rate increasing operators like up() and partition() have
 time proportional to waiting on generating outputs, not time
 proportional to waiting on inputs to arrive.
 
-
 Parallel Versions:
 ============================================
 
@@ -24,15 +23,31 @@ up_x k :: {1,T} -> {1,T[k]}
    area(up_x k) = k
    time(up_x k) = 1
 
-# also referred to as select k i (down is a special case where i is 0)
+# also referred to as select k i (down_x is a special case where i is 0)
 down_x k :: {1,T[k]} -> {1,T} 
    area(down_x k) = k
    time(down_x k) = 1
 
-stencil_x k n :: {1,T[n]} -> {1,T[n-k-1][k]}
+# generalized shift
+shift_x k s :: {1,T[s]} -> {1,T[k]} 
+   area(shift k s) = k
+   time(shift k s) = s
+
+Example: shift_x 5 3 receives:
+[0 1 2 3 4]
+[5 6 7 8 9]
+[10 11 12 13 14]... 
+and outputs:
+[0 1 2 3 4]
+[3 4 5 6 7]
+[6 7 8 9 10]
+
+For syntactic sugar, I'll write: shift_x k = shift_x k 1
+
+stencil_x k n :: {1,T[n]} -> {1,T[n-k+1][k]}
    area(stencil_x k n) = k*n
    time(stencil_x k n) = 1
-
+   
 fold_x k f id :: {1,S[k]} -> {1,T}
    area(fold_x k f) = k*area(f)
    time(fold_x k f) = time(f)
@@ -40,6 +55,18 @@ fold_x k f id :: {1,S[k]} -> {1,T}
 map_x k f :: {1,S[k]} -> {1,T[k]}
    area(map_x k f) = k*area(f)
    time(map_x k f) = time(f)
+
+# reinterpret 1D array as 2D array
+# zero cost since it's just a type reinterpretation
+arr_partition k i :: {1,T[k]} -> {1,T[k/i][i]}
+   area(arr_partition k i) = 0
+   time(arr_partition k i) = 0
+
+# reinterpret 2D array as 1D array
+# zero cost since it's just a type reinterpretation
+arr_flatten k i :: {1,T[k][i]} -> {1,T[k*i]}
+   area(arr_flatten k i) = 0
+   time(arr_flatten k i) = 0
 
    
 Sequential Versions:
@@ -53,10 +80,15 @@ down_t k :: {k,T} -> {1,T}
    area(down_t k) = 1
    time(down_t k) = k
 
-# also referred to as stencil_t
-shift k :: {1,T} -> {1,T[k]} 
-   area(shift k) = k
-   time(shift k) = k
+shift_t k s :: {s,T} -> {k,T} 
+   area(shift k s) = k
+   time(shift k s) = s
+
+Example: 
+Given input stream of 0 1 2 3 4 5 6 7 8 9 10...
+shift_t 5 3 outputs: 0 1 2 3 4   3 4 5 6 7   6 7 8 9 10 ...
+
+For syntactic sugar, I'll write shift_t k = shift_t k 1 
 
 fold_t k f id :: {k,S} -> {1,T}
    area(fold_t k f) = area(f)
@@ -70,49 +102,89 @@ map_t f :: {1,S} -> {1,T)
 Partition/Flatten Operators: 
 ============================================
 
-Notes: these operators do not have distinct _x and _t versions since
-they convert between the stream and array forms.
+Notes: these operators do not have distinct _x and _t versions since they convert between the stream and array forms (convert data in space into data in time and vice versa).
 
 partition i :: {1,T[i*j]} -> {i,T[j]}
    area(partition i) = i*j 
    time(partition i) = i
 
-Notes: partition splits arrays in the input stream into multiple
-       smaller arrays of i elements.  (Partition increases token
-       rate.)
+Notes: partition splits arrays in the input stream into multiple smaller arrays of i elements.  (Partition increases token rate.)
    
 flatten i :: {i,T[j]} -> {1,T[i*j]}
    area(flatten i) = i*j
    time(flatten i) = i
 
-Notes: flatten takes a stream of elements and packs them into larger
-       arrays that are emitted at a lower rate. (Flatten decreases
-       rate.)
+Notes: flatten takes a stream of elements and packs them into larger arrays that are emitted at a lower rate. (Flatten decreases rate.)
 
-       
-======================================================================
+=============================================
+Useful theorems:
+=============================================
 
-       
-Convert Between Different Amounts of Parallelism
+Relationship between up and down, up_t/up_x, and down_t/down_x
+=============================================
 
-read n k = read n pixels, k at a time
-Note: read n k $ read n k == read n p, as can just short circuit the second read
+up_t k $ down_t k = id
+down_t k $ up_t k = id
 
-a_x is arbitrarily parallel, this one takes in whole array at start
-box_a_x n k p :: {1, n, T[n/p]} -> {1, n, T[floor((n-k)/p)]}
-box_a_x n k p = map_x ((n/p) - (is first iteration ? k : 0)) (fold_x k (+) 0) k $ stencil_x k (n/p) $ read n (n/p)
-area(box_a_x) = area(n/p * +) + area(n/p * stencil(k)) = n/p*k*area(+) + k
-time(box_a_x) = p*max(time(map_x (fold_x k)), stencil_x k (n/P))
-	      = p*max((+), stencil) = p*(x)
- note: this works as long as stencil remembers elements of a prior input from read for the next one.
+up_t k = partition k $ up_x k
+up_x k = flatten k $ up_t k
 
-box_nested_ax :: {1, n, 
+down_t k = down_x k $ partition k 
+down_x k = down_t k $ flatten k 
 
-conv_a_x n k p f id = partition $ (this is actually not neccesary, the parittion can handle the array of arrays of length n just fine, still split them into p pieces - need somehting here to convert the stencil collection of arrays into one big array, so partition can split up the arrays and feed them out one tick at a time) $ stencil_x k n
+Relationship between shift_x and shift_t:
+=============================================
+(note asymmetry of flatten and partition arguments)
 
-why is it important to be able to transform between them if I can just get arbtrary parallelism directly? Should I read the thesis to get that?
+shift_x k s = flatten k $ shift_t k s $ partition s
+shift_t k s = partition k $ shift_x k s $ flatten s
+
+Map fusion theorem:
+=============================================
+(true for _t and _x versions of map)
+
+# can use consecutive maps
+map (f.g) = map f $ map g
+
+Map/fold fusion theorem:
+=============================================
+(true for _t and _x versions of map)
+
+f :: (S,T) -> T
+g :: U -> S 
+
+f2 x y = f g(x) y :: (U, T) -> T 
+
+# Can fuse a map followed by a fold into a single fold
+fold f id $ map g = fold f2 id
+
+Map throughput-changing theorem:
+=============================================
+
+# fully parallel map to a partially parallel map with parallelism p
+map_x k f = flatten k/p $ map_t k/p (map_x p f) $ partition k/p 
+
+In the special case where p=1, then it's a fully serial map
+map_x k f = partition k $ map_t k f $ flatten k
+
+# fully sequential map to a partially parallel map with parallelism p 
+map_t k f = partition p $ map_t k/p (map_x p f) $ flatten p
+
+In the special case where p=k, then it's a fully parallel map
+map_t k f = partition k $ map_x k f $ flatten k  
+
+Fold throughput-change theorem:
+=============================================
+
+TBD
 
 
+
+Partition/flatten identity theorem:
+=============================================
+
+partition k $ flatten k = id
+flatten k $ partition k = id
 
 
 
