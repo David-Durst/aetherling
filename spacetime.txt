@@ -61,6 +61,8 @@ map_x k f :: {1,S[k]} -> {1,T[k]}
    area(map_x k f) = k*area(f)
    time(map_x k f) = time(f)
 
+# NOTE(kayvonf): the above definition assumes f :: {1,S} -> {1,T}.  I do not yet know how to handle a multi-rate f in a parallel map. It feels like the answer is a module with the signature: f :: {1,S} -> {k,T}.
+
 # reinterpret 1D array as 2D array
 # zero cost since it's just a type reinterpretation
 arr_partition k i :: {1,T[k]} -> {1,T[k/i][i]}
@@ -103,6 +105,7 @@ map_t n f :: {1,S} -> {1,T)
    area(map_t n f) = area(f)
    time(map_t n f) = time(f)
 
+# NOTE(kayvonf): The above definition assumes f :: {1,S} - > {1,T}.  It's not 100% clear to me what the semantics of a multi-rate f should be.  I believe, the resulting stream is a concatenation of the streamed outputs of f?
    
 Partition/Flatten Operators: 
 ============================================

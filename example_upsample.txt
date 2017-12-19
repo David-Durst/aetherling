@@ -1,4 +1,4 @@
-Implementations of upsampling an image of size N by a factor of k:
+Implementations of upsampling an image of size n by a factor of k:
 
 
 1/k source px/clock:
@@ -8,6 +8,7 @@ upsample_slow n k :: {1,T} -> {k,T}
 
 upsample_slow n k = map_t n (up_t k)  
 
+# FIXME(kayvonf): is the above correct? does this create a stream of streams or a stream of element type T and length n * k?
 
 1 px/clock: 
 ======================================
@@ -22,6 +23,12 @@ N/k source px/clock:
 
 upsample_nk n k :: {1,T[n]} -> {1,T[n][k]}
 
+# same as above, but uses up_x t = flatten k $ up_t k
+# note this version flattens inside the map.
+upsample_nk n k = map_x n (flatten k . up_t k)
+
+# if we allow a multi-rate operator f in a map, then could also write:
+# this version has to materialize k vectors then flatten then into T[n][k]
 upsample_nk n k = flatten k $ map_x n (up_t k)
 
 
