@@ -1,10 +1,14 @@
+=============================================
+=============================================
 SpaceTime Functions
+=============================================
+=============================================
 
 Notation and definitions:
 
 f :: {a, S} -> {b, T}
 
-The above signature declares that an invocation of the hardware module
+The above signature declares that a firing of the hardware module
 f requires 'a' input tokens of type S to produce 'b' tokens of type T.
 
 area: area of the hardware module
@@ -14,6 +18,7 @@ the first token arriving for an output and the output going
 out. However rate increasing operators like up() and partition() have
 time proportional to waiting on generating outputs, not time
 proportional to waiting on inputs to arrive.
+
 
 Parallel Versions:
 ============================================
@@ -142,13 +147,13 @@ Relationship between shift_x and shift_t:
 shift_x n k s = flatten k $ shift_t n k s $ partition s
 shift_t n k s = partition k $ shift_x n k s $ flatten s
 
-Stencil identities 
+Stencil identities: 
 =============================================
 
 # when the stencil is the entire array, nothing happens
 stencil_x k k = id
 
-Stencil / Shift Throughput changing Theorems:
+Stencil / Shift throughput changing theorems:
 =============================================
 
 # fully parallel stencil to p-parallel stencil
@@ -169,7 +174,7 @@ In the special case where p=N, then it's just a fully parallel stencil
 shift_x k 1 = partition n-k+1 $ stencil_x n k $ flatten n 
 
 
-Map Identity theorem:
+Map identity theorem:
 =============================================
 
 # mapping the identity function onto an array or stream leaves the input unchanged
@@ -191,7 +196,8 @@ Map/up/down reorder theorem:
 (true for _t and _x versions of map)
 =============================================
 
-Non resource oriented:
+# (these are not specific to _t or _x versions)
+
 map (down k) $ map f = map f $ map (down k)
 map f $ map (up k) = map (up k) $ map f 
 
@@ -224,7 +230,7 @@ In the special case where p=k, then it's a fully parallel map
 map_t k f = partition k $ map_x k f $ flatten k  
 
 
-Fold throughput-change theorem:
+Fold throughput-changing theorem:
 =============================================
 
 TBD
