@@ -48,7 +48,7 @@ stencil_x k n :: {1,T[n]} -> {1,T[n-k+1][k]}
    area(stencil_x k n) = k*n
    time(stencil_x k n) = 1
    
-fold_x k f id :: {1,S[k]} -> {1,T}
+fold_x k f u :: {1,S[k]} -> {1,T}
    area(fold_x k f) = k*area(f)
    time(fold_x k f) = time(f)
 
@@ -72,15 +72,15 @@ arr_flatten k i :: {1,T[k][i]} -> {1,T[k*i]}
 Sequential Versions:
 ============================================
 
-up_t k :: {1,T} -> {k,T}  
+up_t n k :: {1,T} -> {k,T}  
    area(up_t k) = 1
    time(up_t k) = k
 
-down_t k :: {k,T} -> {1,T} 
+down_t n k :: {k,T} -> {1,T} 
    area(down_t k) = 1
    time(down_t k) = k
 
-shift_t k s :: {s,T} -> {k,T} 
+shift_t n k s :: {s,T} -> {k,T} 
    area(shift k s) = k
    time(shift k s) = s
 
@@ -90,13 +90,13 @@ shift_t 5 3 outputs: 0 1 2 3 4   3 4 5 6 7   6 7 8 9 10 ...
 
 For syntactic sugar, I'll write shift_t k = shift_t k 1 
 
-fold_t k f id :: {k,S} -> {1,T}
-   area(fold_t k f) = area(f)
-   time(fold_t k f) = k * time(f)
+fold_t n f id :: {k,S} -> {1,T}
+   area(fold_t n f) = area(f)
+   time(fold_t n f) = k * time(f)
 
-map_t f :: {1,S} -> {1,T)
-   area(map_t f) = area(f)
-   time(map_t f) = time(f)
+map_t n f :: {1,S} -> {1,T)
+   area(map_t n f) = area(f)
+   time(map_t n f) = time(f)
 
    
 Partition/Flatten Operators: 
@@ -104,21 +104,24 @@ Partition/Flatten Operators:
 
 Notes: these operators do not have distinct _x and _t versions since they convert between the stream and array forms (convert data in space into data in time and vice versa).
 
+# partition large array token into i smaller array tokens. Partition increases rate.
 partition i :: {1,T[i*j]} -> {i,T[j]}
    area(partition i) = i*j 
    time(partition i) = i
-
-Notes: partition splits arrays in the input stream into multiple smaller arrays of i elements.  (Partition increases token rate.)
    
+# aggregate i tokens into a single large token. Flatten decreased rate.
 flatten i :: {i,T[j]} -> {1,T[i*j]}
    area(flatten i) = i*j
    time(flatten i) = i
 
-Notes: flatten takes a stream of elements and packs them into larger arrays that are emitted at a lower rate. (Flatten decreases rate.)
 
+=============================================
 =============================================
 Useful theorems:
 =============================================
+=============================================
+
+
 
 Relationship between up and down, up_t/up_x, and down_t/down_x
 =============================================
@@ -136,19 +139,65 @@ Relationship between shift_x and shift_t:
 =============================================
 (note asymmetry of flatten and partition arguments)
 
-shift_x k s = flatten k $ shift_t k s $ partition s
-shift_t k s = partition k $ shift_x k s $ flatten s
+shift_x n k s = flatten k $ shift_t n k s $ partition s
+shift_t n k s = partition k $ shift_x n k s $ flatten s
+
+Stencil identities 
+=============================================
+
+# when the stencil is the entire array, nothing happens
+stencil_x k k = id
+
+Stencil / Shift Throughput changing Theorems:
+=============================================
+
+# fully parallel stencil to p-parallel stencil
+# aka: how to "slow down" a fully parallel stencil to a partially parallel one
+# FIXME(kayvonf): as defined below, this emits a output T[n] not T[n-k+1]. In practice the last p+k-1-pixel tile emitted by shift_x is not completely full. (This would also be true is p does not evenly divide n) 
+stencil_x n k = flatten n/p $ map_t n/p (stencil_x p+k-1 k) $ (shift_x n/p p+k-1 p) $ partition n/p
+
+In the special case where p=1, after invoking the map_t and stencil_x identity theorems, then
+it's just a fully sequential shift
+# NOTE(kayvonf): careful handling of boundary conditions is needed to get this result from the general case
+stencil_x n k = flatten n-k+1 $ shift_x n k 1 $ partition n
+
+# fully sequential shift to p-parallel stencil
+shift_x k 1 = partition p $ map_t n/p (stencil_x p+k-1 k) $ (shift_x n/p p+k-1 p) $ flatten p 
+
+In the special case where p=N, then it's just a fully parallel stencil
+# NOTE(kayvonf): careful handling of boundary conditions is needed to get this result from the general case
+shift_x k 1 = partition n-k+1 $ stencil_x n k $ flatten n 
+
+
+Map Identity theorem:
+=============================================
+
+# mapping the identity function onto an array or stream leaves the input unchanged
+map_x n id = id
+map_t n id = id 
+
+# mapping onto a array or stream size of 1 is just operating on a singleton
+map_x 1 f  = f
+map_t 1 f  = f
 
 Map fusion theorem:
 =============================================
 (true for _t and _x versions of map)
 
-# can use consecutive maps
+# can use consecutive maps into a single map
 map (f.g) = map f $ map g
+
+Map/up/down reorder theorem:
+(true for _t and _x versions of map)
+=============================================
+
+Non resource oriented:
+map (down k) $ map f = map f $ map (down k)
+map f $ map (up k) = map (up k) $ map f 
 
 Map/fold fusion theorem:
 =============================================
-(true for _t and _x versions of map)
+(true for _t and _x versions of map/fold)
 
 f :: (S,T) -> T
 g :: U -> S 
@@ -162,6 +211,7 @@ Map throughput-changing theorem:
 =============================================
 
 # fully parallel map to a partially parallel map with parallelism p
+# aka: how to "slow down" a fully parallel map to a partially parallel one
 map_x k f = flatten k/p $ map_t k/p (map_x p f) $ partition k/p 
 
 In the special case where p=1, then it's a fully serial map
@@ -173,11 +223,11 @@ map_t k f = partition p $ map_t k/p (map_x p f) $ flatten p
 In the special case where p=k, then it's a fully parallel map
 map_t k f = partition k $ map_x k f $ flatten k  
 
+
 Fold throughput-change theorem:
 =============================================
 
 TBD
-
 
 
 Partition/flatten identity theorem:

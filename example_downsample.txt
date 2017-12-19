@@ -1,0 +1,33 @@
+Implementations of downsampling an image of size N by a factor of k:
+
+
+1 source px/clock: 
+======================================
+
+downsample_1 n k :: {k,T} -> {1,T}
+
+downsample_1 n k = map_t n/k (down_x k) $ flatten k   
+
+
+N source px/clock
+======================================
+
+downsample_n n k :: {1,T[n]} -> {1,T[n/k]}
+
+downsample_n n k = $ map_x n/k (down_x k) $ arr_partition n k
+
+
+P source px/clock
+======================================
+
+# assume k divides p
+downsample_p n k :: {1,T[p]} -> {1,T[p/k]}
+
+downsample_p n k = map_t n/p (map_x p/k (down_x k)) $ arr_partition p k
+
+
+
+TODO(kayvonf): I don't know how to use down_t in these examples.  
+
+TODO(kayvonf): show mechanical transformation to "slow down the N pixel/clk version to the P pixel per clock version.
+
