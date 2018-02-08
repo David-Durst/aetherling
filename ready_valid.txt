@@ -1,0 +1,70 @@
+//Warning, I may be abusing or misusing Haskell notation
+//Also warning, This is slightly different from Rigel notation.
+
+//Terminology
+//us == Upstream
+//ds == Downstream
+//R = ready
+//V = valid
+//RV = ready valid
+
+T, T0, T1 — These represent Types
+
+R(T) This is a new type which represents T with a ready signal
+R :: T -> R(T)
+
+V(T) This is a new type which represents T with a valid signal
+V :: T -> V(T)
+
+RV(T) has both a ready and valid associated with T
+RV :: T -> RV(T)
+
+Identities:
+R (R T) == R T == R(T)
+V (V T) == V T == V(T)
+R (V T) == RV T == RV(T)
+V (R T) == RV T == RV(T)
+
+Higher order operations to "lift" interfaces
+lift_R :: (T0 -> T1) -> ( R(T0) -> R(T1) )
+lift_V :: (T0 -> T1) -> ( V(T0) -> V(T1) )
+lift_RV :: (T0 -> T1) -> ( RV(T0) -> RV(T1) )
+
+Claim: All dataflow module interfaces can be represented by the following (assuming T0 and T1 are "basic")
+
+Interface = T0 -> T1
+          | R(T0) -> T1
+          | T0 -> V(T1)
+          | R(T0) -> V(T1)
+          | lift_R Interface
+          | lift_V Interface
+          | lift_RV Interface
+
+
+Example functions
+add :: T0 -> T1  //T0 will likely have T0 == (T2,T2)
+downsample :: T0 -> V(T1)
+upsample :: R(T0) -> T1
+
+
+//Which cases are doable in hardware?
+f :: T0 ->T1
+fR :: R(T0) ->T1
+fV :: T0 -> V(T1)
+fRV :: R(T0) -> V(T1)
+
+lift_R f   //Set us_R = ds_R, stall all state with ds_R
+lift_R fV  //Set us_R = ds_R, stall all state with ds_R
+lift_R fR  //Set us_R = ds_R || f.us_R, Stall all state with ds_R
+lift_R fRV //Set us_R = ds_R || f.us_R, Stall all state with ds_R
+
+lift_V f   //Need latency L. Create register chain of size L driven by us_V and drives ds_V
+lift_V fV  //Need Latency L. Create register chain of size L driven by us_V. "and" the output with f.ds_V
+lift_V fR  //TODO Not sure if this is doable for a generic fR. Kayvon, what we discussed does not work for a weird upsample like "pad". 
+lift_R fRV //TODO Not sure if this is doable for a generic fR
+
+//TODO are these composable from above?
+lift_RV f
+lift_RV fV
+lift_RV fR
+lift_RV fRV
