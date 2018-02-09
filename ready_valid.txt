@@ -8,7 +8,7 @@
 //V = valid
 //RV = ready valid
 
-T, T0, T1 — These represent Types
+T, A, B — These represent Types
 
 R(T) This is a new type which represents T with a ready signal
 R :: T -> R(T)
@@ -26,32 +26,33 @@ R (V T) == RV T == RV(T)
 V (R T) == RV T == RV(T)
 
 Higher order operations to "lift" interfaces
-lift_R :: (T0 -> T1) -> ( R(T0) -> R(T1) )
-lift_V :: (T0 -> T1) -> ( V(T0) -> V(T1) )
-lift_RV :: (T0 -> T1) -> ( RV(T0) -> RV(T1) )
+lift_R :: (A -> B) -> ( R(A) -> R(B) )
+lift_V :: (A -> B) -> ( V(A) -> V(B) )
+lift_RV :: (A -> B) -> ( RV(A) -> RV(B) )
 
-Claim: All dataflow module interfaces can be represented by the following (assuming T0 and T1 are "basic")
+Claim: All dataflow module interfaces can be represented by the following (assuming A and B are "basic")
 
-Interface = T0 -> T1
-          | R(T0) -> T1
-          | T0 -> V(T1)
-          | R(T0) -> V(T1)
+Interface = A -> B
+          | R(A) -> B
+          | A -> V(B)
+          | R(A) -> V(B)
           | lift_R Interface
           | lift_V Interface
           | lift_RV Interface
 
 
 Example functions
-add :: T0 -> T1  //T0 will likely have T0 == (T2,T2)
-downsample :: T0 -> V(T1)
-upsample :: R(T0) -> T1
+add :: A -> B  // will likely have A == (T,T)
+downsample :: A -> V(B)
+upsample1 :: R(A) -> B
+upsample2 :: R(A) -> V(B)
 
 
 //Which cases are doable in hardware?
-f :: T0 ->T1
-fR :: R(T0) ->T1
-fV :: T0 -> V(T1)
-fRV :: R(T0) -> V(T1)
+f :: A ->B
+fR :: R(A) ->B
+fV :: A -> V(B)
+fRV :: R(A) -> V(B)
 
 lift_R f   //Set us_R = ds_R, stall all state with ds_R
 lift_R fV  //Set us_R = ds_R, stall all state with ds_R
@@ -68,3 +69,18 @@ lift_RV f
 lift_RV fV
 lift_RV fR
 lift_RV fRV
+
+
+
+//Supported Rigel lift functions in Rigel Readme
+//His notation A -> RV(B) == My notation R(A) -> V(A)
+//Note I am converting his notation to my notation. His notation puts the R on the other side.
+//One minor issue which I am unsure of is he has Handshake(A) -> Handshake(B) which I assume means RV(A) -> RV(B)
+//But he also has RV(A) -> RV(B) for RPassthrough. Unsure of what the difference between these are
+
+liftBasic :: (A -> B) -> (A -> V(B) ) //I do not understand the semantics of this...
+liftDecimate :: (A -> V(B)) -> (RV(A) -> V(B)) //Also do not understand semantics of this one...
+liftHandshake :: (RV(A) -> V(B) ) -> (RV(A) -> RV(B) ) //Equivelent to applying lift_R
+makeHandshake :: (A -> B) -> (RV(A) -> RV(B) ) // Equivelent to lift_RV
+RPassthrough :: (RV(A) -> V(B) ) -> (RV(A) -> RV(B) ) // How is this different than liftHandshake ??
+waitOnInput :: (R(A) -> V(B) ) -> (RV(A) -> V(B)) // same as my lift_V
