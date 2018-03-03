@@ -1,0 +1,89 @@
+=============================================
+=============================================
+SpaceTime Functions
+=============================================
+=============================================
+
+Notation and definitions:
+
+f :: {a, S} -> {b, T}
+
+The above signature declares that a firing of the hardware module
+f requires 'a' input tokens of type S to produce 'b' tokens of type T.
+
+area: area of the hardware module
+
+Time: It would be simplest to state that time() is the time between
+the first token arriving for an output and the output going
+out. However rate increasing operators like up() and partition() have
+time proportional to waiting on generating outputs, not time
+proportional to waiting on inputs to arrive.
+
+NOTE: unlike in theory, I will be stating time in terms of the number
+of clock cycles, not the wallclock time for a function to complete
+
+MAP:
+===========================================
+
+mapParallel k f :: {1,S[k]} -> {1,T[k]}
+   area(mapParallel k f) = k*area(f)
+   time(mapParallel k f) = 1
+   minClockCycleTime(mapParallel k f) = time(f)
+
+mapSequential k f :: {1,S[k]} -> {1,T[k]}
+   area(mapSequential k f) = area(f) + elementsPer(S)*area(streamify k) + elementsPer(T)*area(arrayify k)
+   time(mapSequential k f) = k
+   minClockCycleTime(mapSequential k f) = time(f)
+
+NOTE: the following is not implemented becuase it is just applying f inside of a stream, which should not be a module
+mapSequentialStreaming k f :: {k, S} -> {k, T}
+   area(mapSequentialStreaming f) = area(f)
+   time(mapSequentialStreaming f) = k
+   minClockCycleTime(mapSequentialStreaming k f) = time(f)
+
+
+REDUCE:
+===========================================
+
+reduceParallel k f :: {1,S[k]} -> {1,T}
+   area(mapParallel k f) = 2*k*area(f)
+   time(mapParallel k f) = 1 
+   minClockCycleTime(mapParallel k f) = log_2(k)*time(f)
+
+reduceSequential k f :: {k,S} -> {1,T}
+   area(reduceSequential k f) = area(f) + 2*k*area(reg(width(k)))
+   time(reduceSequential k f) = k
+   minClockCycleTime(reduceSequential k f) = time(f)
+
+LINEBUFFER:
+===========================================
+linebuffer imgSize inputsPerClock outputSize :: {imgSize / inputsPerClock, S[inputsPerClock]} -> {imgSize / inputsPerClock, S[outputSize + inputsPerClock - 1]} // not totaly sure about the lengths of the streams
+   area(linebuffer imgSize inputsPerClock outputSize) = 2*(outputSize - inputSize)*area(reg(width(S))) // pass through inputSize values, rest are passed along in registers over time. Need an enable register for each data register
+   time(linebuffer imgSize inputsPerClock outputSize) = imgSize / inputsPerClock
+   minClockCycleTime(linebuffer imgSize inputsPerClock outputSize) = reg write time
+
+overlapPartition k i :: {1, S[k + i - 1]} -> {1, S[k][i]}
+   area(overlapPartition k i) = 0 (just wiring, no nodes required)
+   time(overlapPartition k i) = 1
+   minClockCycleTime(overlapPartition k i) = wire propagation time
+
+CONVOLUTION:
+===========================================
+conv dataSize inputsPerClock kernelWidth :: {dataSize / inputsPerClock, S[inputsPerClock]} -> {dataSize / inputsPerClock, S[inputsPerClock]}
+   area(conv dataSize inputsPerClock kernelWidth) = area(linebuffer dataSize inputsPerclock kernelWidth) + inputsPerClock * area(mapParallel kernelWidth multiply) + inputsPerClock * area(reduceParallel kernelWidth add)
+   time(conv dataSize inputsPerClock kernelWidth) = 1
+   minClockCycleTime(conv dataSize inputsPerClock kernelWidth) = reg write time + time(multiplty) + log_2(kernelWidth) * time(add)
+
+HELPERS:
+===========================================
+streamify k :: {1, S[k]} -> {k, S}
+   area(streamify k) = k*area(reg(width(S))) + counter(width = width(S))
+   time(streamify k) = k
+   minClockCycleTime(streamify) = reg write time
+
+arrayify k :: {k, S} -> {1, S[k]}
+   area(arrayify k) = 2*k*area(reg(width(S)))
+   time(arrayify k) = k
+   minClockCycleTime(arrayify k) = reg write time
+
+
