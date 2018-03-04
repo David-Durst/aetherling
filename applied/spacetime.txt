@@ -13,6 +13,7 @@ f requires 'a' input tokens of type S to produce 'b' tokens of type T.
 
 area: area of the hardware module
 
+time: the latency of processing a single token
 Time: It would be simplest to state that time() is the time between
 the first token arriving for an output and the output going
 out. However rate increasing operators like up() and partition() have
@@ -38,7 +39,7 @@ mapSequential k f :: {1,S[k]} -> {1,T[k]}
 NOTE: the following is not implemented becuase it is just applying f inside of a stream, which should not be a module
 mapSequentialStreaming k f :: {k, S} -> {k, T}
    area(mapSequentialStreaming f) = area(f)
-   time(mapSequentialStreaming f) = k
+   time(mapSequentialStreaming f) = 1
    minClockCycleTime(mapSequentialStreaming k f) = time(f)
 
 
@@ -77,12 +78,12 @@ conv dataSize inputsPerClock kernelWidth :: {dataSize / inputsPerClock, S[inputs
 HELPERS:
 ===========================================
 streamify k :: {1, S[k]} -> {k, S}
-   area(streamify k) = k*area(reg(width(S))) + counter(width = width(S))
+   area(streamify k) = (k-1)*area(reg(width(S))) + counter(width = width(S))
    time(streamify k) = k
    minClockCycleTime(streamify) = reg write time
 
 arrayify k :: {k, S} -> {1, S[k]}
-   area(arrayify k) = 2*k*area(reg(width(S)))
+   area(arrayify k) = (k-1)*(area(reg(width(S))))+k*area(reg(width(S)))
    time(arrayify k) = k
    minClockCycleTime(arrayify k) = reg write time
 
