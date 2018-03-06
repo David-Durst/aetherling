@@ -47,6 +47,19 @@ and outputs:
 [3 4 5 6 7]
 [6 7 8 9 10]
 
+
+
+shouldn't this be?
+Example: shift_x 5 3 receives:
+[0 1 2]
+[4 5 6]
+[7 8 9]
+[10 11 12 13 14]... 
+and outputs:
+[0 1 2 3 4]
+[3 4 5 6 7]
+[6 7 8 9 10]
+
 For syntactic sugar, I'll write: shift_x k = shift_x k 1
 
 stencil_x k n :: {1,T[n]} -> {1,T[n-k+1][k]}

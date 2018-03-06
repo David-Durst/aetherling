@@ -27,9 +27,12 @@ P source px/clock
 # assume k divides p
 downsample_p n k :: {1,T[p]} -> {1,T[p/k]}
 
-downsample_p n k = map_t n/p (map_x p/k (down_x k)) $ arr_partition p k
-
-
+downsample_p n k = map_x p/k (down_x k) $ arr_partition p k
 
 TODO(kayvonf): show mechanical transformation to "slow down the N pixel/clk version to the P pixel per clock version.
 
+No need to do mechanical transofmration, its the same formula as downsample at a different rate. It just gets a different amount of pixels
+
+mapping from p parallelism to  q parallelism, where p >= q >= 1
+
+downsample_p n k = buffer out * do thing * buffer in  -- map_t n/
