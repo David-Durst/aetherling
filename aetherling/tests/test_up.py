@@ -83,6 +83,8 @@ def test_up_parallel():
     #sim.set_value(testcircuit.I, int2seq(testVal, width))
     #sim.evaluate()
     #sim_testcircuit.execute()
+    sim.advance()
+    sim.evaluate()
     x = sim.get_value(testcircuit.O, scope)
     for i in range(numElements):
         print(sim)
@@ -90,3 +92,6 @@ def test_up_parallel():
         #assert seq2int(sim.get_value(testcircuit.O)) == testVal
 
     assert False
+
+if __name__ == "__main__":
+    test_up_parallel()
