@@ -2,11 +2,14 @@ from aetherling.modules.up import UpSequential, UpParallel
 from magma.simulator import PythonSimulator
 from magma import *
 from magma.backend import coreir_compile
+from magma.clock import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
 import bit_vector.bit_vector
 from coreir.context import *
+from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
+from magma.scope import Scope
 
 def test_binary_primitive():
 
@@ -45,11 +48,13 @@ def test_up_parallel():
     width = 5
     numElements = 1
     testVal = 3
+    c = coreir.Context()
+    scope = Scope()
     inType = Array(width, In(BitIn))
     #outType = Array(width, Out(BitIn)) #uncomment this line
     #outType = Array(numElements, Out(inType))
     outType = Array(numElements, Out(Array(width, Bit))) #comment this line
-    args = ['I', inType, 'O', outType]
+    args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test', *args)
 
@@ -62,18 +67,26 @@ def test_up_parallel():
 
     EndCircuit()
 
-    coreir_testcircuit = coreir_compile(testcircuit)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
-    sim_testcircuit = coreir.SimulatorState(coreir_testcircuit)
+    #coreir_testcircuit = coreir_compile(testcircuit, context=c)
+
+    #c.run_passes(["rungenerators", "verifyconnectivity-onlyinputs-noclkrst",
+                        #"wireclocks-coreir", "flatten", "flattentypes", "verifyconnectivity",
+                        #"deletedeadinstances"])
+
+    #sim_testcircuit = coreir.SimulatorState(coreir_testcircuit)
 
 
-    sim_testcircuit.set_value(["self.I"], bit_vector.BitVector(width, testVal).as_bool_list())
+    #sim_testcircuit.set_value(["self.I"], bit_vector.BitVector(width, testVal).as_bool_list())
     #sim = PythonSimulator(testcircuit)
     #sim.set_value(testcircuit.I, int2seq(testVal, width))
     #sim.evaluate()
-    sim_testcircuit.execute()
+    #sim_testcircuit.execute()
+    x = sim.get_value(testcircuit.O, scope)
     for i in range(numElements):
-        assert BitVector(sim_testcircuit.get_value(["self"], ["O"], [str(i)])) == testVal
+        print(sim)
+        #assert BitVector(sim_testcircuit.get_value(["self"], ["O"], [str(i)])) == testVal
         #assert seq2int(sim.get_value(testcircuit.O)) == testVal
 
     assert False
