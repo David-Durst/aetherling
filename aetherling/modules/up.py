@@ -23,7 +23,7 @@ def DefineUpParallel(n, T):
     return UpParallel
 
 def UpParallel(n, T):
-    return DefineUpParallel(n, T)
+    return DefineUpParallel(n, T)()
 
 @cache_definition
 def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
@@ -55,4 +55,4 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
     return UpSequential
 
 def UpSequential(n, T, has_ce=False, has_reset=False):
-    return DefineUpParallel(n, T, has_ce, has_reset)
+    return DefineUpParallel(n, T, has_ce, has_reset)()
