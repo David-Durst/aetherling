@@ -52,9 +52,7 @@ def test_up_parallel():
     c = coreir.Context()
     scope = Scope()
     inType = Array(width, In(BitIn))
-    #outType = Array(width, Out(BitIn)) #uncomment this line
-    #outType = Array(numElements, Out(inType))
-    outType = Array(numElements, Out(Array(width, Bit))) #comment this line
+    outType = Array(numElements, Out(inType))
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test', *args)
@@ -65,34 +63,15 @@ def test_up_parallel():
     #wire(testcircuit.O, testcircuit.I) # uncomment this line
     wire(testcircuit.O[0], testcircuit.I) # comment this line
 
-
     EndCircuit()
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
-    #coreir_testcircuit = coreir_compile(testcircuit, file_name="basic_pycoreir_arrofarr.json", context=c)
-
-    #c.run_passes(["rungenerators", "verifyconnectivity-onlyinputs-noclkrst",
-                        #"wireclocks-coreir", "flatten", "flattentypes", "verifyconnectivity",
-                        #"deletedeadinstances"])
-
-    #sim_testcircuit = coreir.SimulatorState(coreir_testcircuit)
-
-
-    #sim_testcircuit.set_value(["self.I"], bit_vector.BitVector(width, testVal).as_bool_list())
-    #sim = PythonSimulator(testcircuit)
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-    #sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
     sim.evaluate()
-    #sim_testcircuit.execute()
-    #sim.evaluate()
     sim.advance()
     sim.evaluate()
-    x = sim.get_value(testcircuit.O, scope)
-    #sim_testcircuit.step()
     for i in range(numElements):
-        #print(sim)
-        #assert BitVector(sim_testcircuit.get_value(["self", "O"], [str(i)])) == testVal
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
 
     #assert False
