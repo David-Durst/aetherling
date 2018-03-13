@@ -57,11 +57,11 @@ def test_up_parallel():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    #upParallel = UpParallel(numElements, inType)
-    #wire(upParallel.I, testcircuit.I)
-    #wire(testcircuit.O, upParallel.O)
+    upParallel = UpParallel(numElements, inType)
+    wire(upParallel.I, testcircuit.I)
+    wire(testcircuit.O, upParallel.O)
     #wire(testcircuit.O, testcircuit.I) # uncomment this line
-    wire(testcircuit.O[0], testcircuit.I) # comment this line
+    #wire(testcircuit.O[0], testcircuit.I) # comment this line
 
     EndCircuit()
 
