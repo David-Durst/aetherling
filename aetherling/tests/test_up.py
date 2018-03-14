@@ -60,8 +60,6 @@ def test_up_parallel():
     upParallel = UpParallel(numElements, inType)
     wire(upParallel.I, testcircuit.I)
     wire(testcircuit.O, upParallel.O)
-    #wire(testcircuit.O, testcircuit.I) # uncomment this line
-    #wire(testcircuit.O[0], testcircuit.I) # comment this line
 
     EndCircuit()
 
