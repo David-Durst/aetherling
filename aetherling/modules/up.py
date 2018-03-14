@@ -53,12 +53,15 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
             #               coreir_name="aeDehydrate", coreir_lib="aetherlinglib",
             #               coreir_genargs={"hydratedType": },
             #               simulate=simulate_coreir_add)
+            cirType = cirb.get_type(T, True)
             dehydrate = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate",
-                                           {"hydratedType": cirb.get_type(T)})
+                                                   ["commonlib", "mantle", "coreir", "global"],
+                                                   {"hydratedType": cirType})
             hydrate = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate",
-                                                   {"hydratedType": cirb.get_type(T)})
-            valueStoreReg = Register(T.size, has_ce=True)
-            mux = Mux(width=T.size)
+                                                   ["commonlib", "mantle", "coreir", "global"],
+                                                   {"hydratedType": cirType})
+            valueStoreReg = Register(cirType.size, has_ce=True)
+            mux = Mux(width=cirType.size)
             counter = CounterModM(n, math.ceil(math.log(n, 2)))
             eq0 = Decode(0, n)(counter.O)
             wire(upSequential.I, dehydrate.I)
