@@ -72,7 +72,33 @@ def test_up_parallel():
     for i in range(numElements):
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
 
-    #assert False
+def test_up_sequential():
+    width = 5
+    numElements = 1
+    testVal = 3
+    c = coreir.Context()
+    scope = Scope()
+    inType = Array(width, In(BitIn))
+    outType = Array(numElements, Out(inType))
+    args = ['I', inType, 'O', outType] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('TestUpSequential', *args)
+
+    upSequential = UpSequential(CoreIRBackend(c), numElements, inType)
+    wire(upSequential.I, testcircuit.I)
+    wire(testcircuit.O, upSequential.O)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+
+    sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
+    sim.evaluate()
+    sim.advance()
+    sim.evaluate()
+    for i in range(numElements):
+        assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
+
 
 if __name__ == "__main__":
     test_up_parallel()
