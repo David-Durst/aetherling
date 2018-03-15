@@ -11,6 +11,8 @@ from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
 from magma.simulator.mdb import simulate
+from mantle import CounterModM
+
 
 def test_binary_primitive():
 
@@ -72,14 +74,30 @@ def test_up_parallel():
     for i in range(numElements):
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
 
-def test_up_sequential():
+def test_modm_counter():
+    width = 5
+    scope = Scope()
+    args = ['O', Out(Bit)] + ClockInterface(False, False)
+    testcircuit = DefineCircuit('TestModM', *args)
+    counter = CounterModM(2, 5)
+    wire(testcircuit.O, counter.COUT)
+    EndCircuit()
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+
+    sim.evaluate()
+    sim.advance()
+    sim.evaluate()
+    assert seq2int(sim.get_value(testcircuit.O, scope)) == 0
+
+
+def disabled_test_up_sequential():
     width = 5
     numElements = 1
     testVal = 3
     c = coreir.Context()
     scope = Scope()
     inType = Array(width, In(BitIn))
-    outType = Array(numElements, Out(inType))
+    outType = Out(inType)
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('TestUpSequential', *args)
@@ -102,6 +120,7 @@ def test_up_sequential():
 
 if __name__ == "__main__":
     test_up_parallel()
+    test_modm_counter()
 
 """
 
