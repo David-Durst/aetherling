@@ -1,9 +1,11 @@
+import math
+
+from mantle import Register, CounterModM, Decode
+from mantle.common.operator import *
+
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from mantle import Register, CounterModM, Mux, Decode
-from mantle.common.operator import *
-from magma.coreirModuleWrapper import ModuleFromGeneratorWrapper
-import math
+from magma.frontend.coreir_ import ModuleFromGeneratorWrapper
 
 __all__ = ['DefineUpParallel', 'UpParallel']
 
