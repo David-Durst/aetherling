@@ -6,6 +6,7 @@ from mantle.common.operator import *
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import ModuleFromGeneratorWrapper
+from .hydrate import Hydrate, Dehydrate
 
 __all__ = ['DefineUpsampleParallel', 'UpsampleParallel', 'DefineUpsampleSequential', 'UpsampleSequential']
 
@@ -46,15 +47,10 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
         IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upSequential):
-            cirType = cirb.get_type(T, True)
-            dehydrate = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate",
-                                                   ["commonlib", "mantle", "coreir", "global"],
-                                                   {"hydratedType": cirType})
-            hydrate = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate",
-                                                 ["commonlib", "mantle", "coreir", "global"],
-                                                 {"hydratedType": cirType})
-            valueStoreReg = Register(cirType.size, has_ce=has_ce, has_reset=has_reset)
-            mux = Mux(width=cirType.size)
+            dehydrate = Dehydrate(cirb, T)
+            hydrate = Hydrate(cirb, T)
+            valueStoreReg = Register(dehydrate.size, has_ce=has_ce, has_reset=has_reset)
+            mux = Mux(width=dehydrate.size)
             counter = CounterModM(n, math.ceil(math.log(n, 2)) + 1)
             eq0 = Decode(0, n)(counter.O)
             wire(upSequential.I, dehydrate.I)

@@ -7,20 +7,21 @@ from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import ModuleFromGeneratorWrapper
 
-__all__ = ['DefineUpParallel', 'UpParallel']
+__all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
+           'DefineDownsampleSequential', 'DownsampleSequential']
 
 @cache_definition
-def DefineUpParallel(n, T):
+def DefineDownsampleParallel(n, T):
     """
-    Upsample a single T to an array of T's in one clock cycle.
-    Aetherling Type: {1, T} -> {1, T[n]}
+    Downsample an array of T's to a single T in one clock cycle.
+    Aetherling Type: {1, T[n]} -> {1, T}
 
-    I : In(T)
-    O : Out(Array(n, T))
+    I : In(Array(n, T))
+    O : Out(T)
     """
     class UpParallel(Circuit):
         name = "UpParallel"
-        IO = ['I', In(T), 'O', Out(Array(n, T))]
+        IO = ['I', In(Array(n, T)), 'O', Out(T)]
         @classmethod
         def definition(upParallel):
             for i in range(n):
