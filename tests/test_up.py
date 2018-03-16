@@ -123,8 +123,8 @@ def test_up_sequential():
     sim.evaluate()
 
     for i in range(numElements):
-        assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
-        assert sim.get_value(testcircuit.READY) == True
+        assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
+        assert sim.get_value(testcircuit.READY, scope) == True
 
 
 if __name__ == "__main__":
