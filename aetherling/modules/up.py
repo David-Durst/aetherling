@@ -41,7 +41,7 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
     """
     class UpSequential(Circuit):
         name = "UpSequential"
-        IO = ['I', In(T), 'O', Out(T), 'ready', Out(Bit)] + ClockInterface(has_ce, has_reset)
+        IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upSequential):
             cirType = cirb.get_type(T, True)
@@ -63,6 +63,7 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
             wire(upSequential.I, mux.I1)
             wire(mux.O, hydrate.I)
             wire(hydrate.out, upSequential.O)
+            wire(eq0, upSequential.READY)
 
             # reset counter on clock enable or reset, setup both reset and CE for reg
             if has_ce and has_reset:

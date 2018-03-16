@@ -69,7 +69,7 @@ def test_up_parallel():
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
     sim.evaluate()
-    sim.advance()
+    sim.advance_cycle()
     sim.evaluate()
     for i in range(numElements):
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
@@ -90,7 +90,7 @@ def test_modm_counter():
 
     for i in range(maxCounter * numCycles):
         sim.evaluate()
-        sim.advance(2)
+        sim.advance_cycle()
 
     assert sim.get_value(testcircuit.O, scope) == True
 
@@ -103,25 +103,28 @@ def test_up_sequential():
     scope = Scope()
     inType = Array(width, In(BitIn))
     outType = Out(inType)
-    args = ['I', inType, 'O', outType] + ClockInterface(False, False)
+    args = ['I', inType, 'O', outType, 'READY', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('TestUpSequential', *args)
 
-    upSequential = UpSequential(CoreIRBackend(c), numElements, inType)
+    coreir_backend = CoreIRBackend(c)
+    upSequential = UpSequential(coreir_backend, numElements, inType)
     wire(upSequential.I, testcircuit.I)
     wire(testcircuit.O, upSequential.O)
+    wire(testcircuit.READY, upSequential.READY)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
     sim.evaluate()
-    sim.advance(2)
+    sim.advance_cycle()
     sim.evaluate()
 
     for i in range(numElements):
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
+        assert sim.get_value(testcircuit.READY) == True
 
 
 if __name__ == "__main__":
