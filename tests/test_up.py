@@ -95,7 +95,7 @@ def test_modm_counter():
     assert sim.get_value(testcircuit.O, scope) == True
 
 
-def disabled_test_up_sequential():
+def test_up_sequential():
     width = 5
     numElements = 1
     testVal = 3
@@ -117,8 +117,9 @@ def disabled_test_up_sequential():
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
     sim.evaluate()
-    sim.advance()
+    sim.advance(2)
     sim.evaluate()
+
     for i in range(numElements):
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
 
@@ -126,6 +127,7 @@ def disabled_test_up_sequential():
 if __name__ == "__main__":
     test_up_parallel()
     test_modm_counter()
+    test_up_sequential()
 
 """
 

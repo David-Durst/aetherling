@@ -44,23 +44,14 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
         IO = ['I', In(T), 'O', Out(T), 'ready', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upSequential):
-            #CoreIRBackend.get_type
-            #dehydrate = cirb.context.import_generator("aetherlinglib", "dehydrate")\
-            #    (hydratedType = cirb.get_type(T))
-            #hydrate = cirb.context.import_generator("aetherlinglib", "hydrate")\
-            #    (hydratedType = cirb.get_type(T))
-            #DeclareCircuit(f"coreir_add{width}", *coreir_io,
-            #               coreir_name="aeDehydrate", coreir_lib="aetherlinglib",
-            #               coreir_genargs={"hydratedType": },
-            #               simulate=simulate_coreir_add)
             cirType = cirb.get_type(T, True)
             dehydrate = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate",
                                                    ["commonlib", "mantle", "coreir", "global"],
                                                    {"hydratedType": cirType})
             hydrate = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate",
-                                                   ["commonlib", "mantle", "coreir", "global"],
-                                                   {"hydratedType": cirType})
-            valueStoreReg = Register(cirType.size, has_ce=True)
+                                                 ["commonlib", "mantle", "coreir", "global"],
+                                                 {"hydratedType": cirType})
+            valueStoreReg = Register(cirType.size, has_ce=has_ce, has_reset=has_reset)
             mux = Mux(width=cirType.size)
             counter = CounterModM(n, math.ceil(math.log(n, 2)) + 1)
             eq0 = Decode(0, n)(counter.O)
@@ -72,8 +63,19 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
             wire(upSequential.I, mux.I1)
             wire(mux.O, hydrate.I)
             wire(hydrate.out, upSequential.O)
-            # only store on the first clock cycle
-            wire(eq0, valueStoreReg.CE)
+
+            # reset counter on clock enable or reset, setup both reset and CE for reg
+            if has_ce and has_reset:
+                wire(counter.CE, And(2)(upSequential.RESET, upSequential.CE))
+            if has_ce:
+                wire(valueStoreReg.CE, upSequential.CE)
+                if not has_reset:
+                    wire(counter.CE, upSequential.CE)
+            if has_reset:
+                wire(valueStoreReg.RESET, upSequential.RESET)
+                if not has_ce:
+                    wire(counter.RESET, upSequential.RESET)
+
     return UpSequential
 
 def UpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
