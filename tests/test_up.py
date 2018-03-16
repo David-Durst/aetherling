@@ -1,4 +1,4 @@
-from aetherling.modules.up import UpSequential, UpParallel
+from aetherling.modules.upsample import UpsampleSequential, UpsampleParallel
 from magma.simulator import PythonSimulator
 from magma import *
 from magma.backend import coreir_compile
@@ -49,17 +49,17 @@ def test_binary_primitive():
 
 def test_up_parallel():
     width = 5
-    numElements = 1
+    numOut = 2
     testVal = 3
     c = coreir.Context()
     scope = Scope()
     inType = Array(width, In(BitIn))
-    outType = Array(numElements, Out(inType))
+    outType = Array(numOut, Out(inType))
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test', *args)
 
-    upParallel = UpParallel(numElements, inType)
+    upParallel = UpsampleParallel(numOut, inType)
     wire(upParallel.I, testcircuit.I)
     wire(testcircuit.O, upParallel.O)
 
@@ -71,7 +71,7 @@ def test_up_parallel():
     sim.evaluate()
     sim.advance_cycle()
     sim.evaluate()
-    for i in range(numElements):
+    for i in range(numOut):
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
 
 def test_modm_counter():
@@ -97,7 +97,7 @@ def test_modm_counter():
 
 def test_up_sequential():
     width = 5
-    numElements = 1
+    numOut = 2
     testVal = 3
     c = coreir.Context()
     scope = Scope()
@@ -108,7 +108,7 @@ def test_up_sequential():
     testcircuit = DefineCircuit('TestUpSequential', *args)
 
     coreir_backend = CoreIRBackend(c)
-    upSequential = UpSequential(coreir_backend, numElements, inType)
+    upSequential = UpsampleSequential(coreir_backend, numOut, inType)
     wire(upSequential.I, testcircuit.I)
     wire(testcircuit.O, upSequential.O)
     wire(testcircuit.READY, upSequential.READY)
@@ -119,12 +119,12 @@ def test_up_sequential():
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
     sim.evaluate()
-    sim.advance_cycle()
-    sim.evaluate()
 
-    for i in range(numElements):
+    for i in range(numOut):
         assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
-        assert sim.get_value(testcircuit.READY, scope) == True
+        sim.advance_cycle()
+        sim.evaluate()
+        assert sim.get_value(testcircuit.READY, scope) == (i == numOut - 1)
 
 
 if __name__ == "__main__":
