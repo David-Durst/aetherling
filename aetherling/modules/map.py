@@ -1,10 +1,10 @@
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import ModuleFromGeneratorWrapper
-from coreir.module import Module
+from magma.frontend.coreir_ import ModuleFromGeneratorWrapper, GetCoreIRModule
+from magma.circuit import Circuit
 
 __all__ = ["MapParallel", "MapSequential"]
 
-def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Module):
+def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit):
     """
     Map an operation over numInputs inputs in one clock cycle
     Aetherling Type: {1, T[numInputs]} -> {1, S[numInputs]}
@@ -19,10 +19,11 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Module):
     """
     moduleToReturn = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
                                                 ["commonlib", "mantle", "coreir", "global"],
-                                                {"numInputs": numInputs, "operator": op})
+                                                {"numInputs": numInputs,
+                                                 "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
-def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Module):
+def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit):
     """
     Map an operation over numInputs inputs over numInputs cycles.
     Note: the entire inputs must be delivered on the first cycle.
@@ -40,5 +41,6 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Module):
     """
     moduleToReturn = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
                                                 ["commonlib", "mantle", "coreir", "global"],
-                                                {"numInputs": numInputs, "operator": op})
+                                                {"numInputs": numInputs,
+                                                 "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
