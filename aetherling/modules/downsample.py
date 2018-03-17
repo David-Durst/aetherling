@@ -2,16 +2,19 @@ import math
 
 from mantle import Register, CounterModM, Decode
 from mantle.common.operator import *
+from mantle.coreir.type_helpers import Term
 
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import ModuleFromGeneratorWrapper
+from magma.frontend.coreir_ import ModuleFromGeneratorWrapper, GetCoreIRModule
+from .hydrate import Dehydrate
+from .map import MapParallel
 
 __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
            'DefineDownsampleSequential', 'DownsampleSequential']
 
 @cache_definition
-def DefineDownsampleParallel(n, T):
+def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
     """
     Downsample an array of T's to a single T in one clock cycle.
     Aetherling Type: {1, T[n]} -> {1, T}
@@ -19,20 +22,30 @@ def DefineDownsampleParallel(n, T):
     I : In(Array(n, T))
     O : Out(T)
     """
-    class UpParallel(Circuit):
-        name = "UpParallel"
+    class DownsampleParallel(Circuit):
+        name = "DownsampleParallel"
         IO = ['I', In(Array(n, T)), 'O', Out(T)]
         @classmethod
-        def definition(upParallel):
-            for i in range(n):
-                wire(upParallel.I, upParallel.O[i])
-    return UpParallel
+        def definition(downsampleParallel):
+            one_input_dehydrate = Dehydrate(cirb, T)
+            # dehydrate all but the first, that one is passed through
+            inputs_dehydrate = MapParallel(cirb, n - 1,
+                                           GetCoreIRModule(cirb, one_input_dehydrate))
+            term = Term(cirb, one_input_dehydrate.size)
+            inputs_term = MapParallel(cirb, n - 1, GetCoreIRModule(cirb, term))
+            wire(downsampleParallel.I[0], downsampleParallel.O)
+            wire(downsampleParallel.I[1:], inputs_dehydrate.I)
+            wire(inputs_dehydrate.out, inputs_term.I)
+            # have to do this wiring so excess modules that were passed as input to map
+            # are ignored
+            #wire(one_input_dehydrate.O, term.I)
+    return DownsampleParallel
 
-def UpParallel(n, T):
-    return DefineUpParallel(n, T)()
-# dehydrate = cirb.context.import_generator("aetherlinglib", "dehydrate")(hydratedType = cirb.get_type(Array(3, Array(5, BitIn)), True))
+def DownsampleParallel(cirb: CoreIRBackend, n, T):
+    return DefineDownsampleParallel(cirb, n, T)()
+
 @cache_definition
-def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
+def DefineDownsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
     """
     Upsample a single T to a stream of T's over n clock cycles.
     Ready is asserted on the clock cycle when a new input is accepted
@@ -42,8 +55,8 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
     O : Out(T)
     Ready : In(Bit)
     """
-    class UpSequential(Circuit):
-        name = "UpSequential"
+    class DownsampleSequential(Circuit):
+        name = "DownsampleSequential"
         IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upSequential):
@@ -80,10 +93,10 @@ def DefineUpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False)
                 if not has_ce:
                     wire(counter.RESET, upSequential.RESET)
 
-    return UpSequential
+    return DownsampleSequential
 
-def UpSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
-    return DefineUpSequential(cirb, n, T, has_ce, has_reset)()
+def DownsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
+    return DefineDownsampleSequential(cirb, n, T, has_ce, has_reset)()
 
 """
 from coreir.context import *
