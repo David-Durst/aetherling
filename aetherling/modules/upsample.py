@@ -23,9 +23,9 @@ def DefineUpsampleParallel(n, T):
         name = "UpParallel"
         IO = ['I', In(T), 'O', Out(Array(n, T))]
         @classmethod
-        def definition(upParallel):
+        def definition(upsampleParallel):
             for i in range(n):
-                wire(upParallel.I, upParallel.O[i])
+                wire(upsampleParallel.I, upsampleParallel.O[i])
     return UpParallel
 
 def UpsampleParallel(n, T):
@@ -40,40 +40,40 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
 
     I : In(T)
     O : Out(T)
-    Ready : In(Bit)
+    READY : In(Bit)
     """
     class UpSequential(Circuit):
         name = "UpSequential"
         IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
-        def definition(upSequential):
+        def definition(upsampleSequential):
             dehydrate = Dehydrate(cirb, T)
             hydrate = Hydrate(cirb, T)
             valueStoreReg = Register(dehydrate.size, has_ce=has_ce, has_reset=has_reset)
             mux = Mux(width=dehydrate.size)
-            counter = CounterModM(n, math.ceil(math.log(n, 2)) + 1)
+            counter = CounterModM(n, math.ceil(math.log(n, 2)) + 1, has_ce=has_ce or has_reset)
             eq0 = Decode(0, n)(counter.O)
-            wire(upSequential.I, dehydrate.I)
+            wire(upsampleSequential.I, dehydrate.I)
             wire(dehydrate.out, valueStoreReg.I)
             # on first clock cycle, send the input directly out. otherwise, use the register
             wire(eq0, mux.S)
             wire(valueStoreReg.O, mux.I0)
-            wire(upSequential.I, mux.I1)
+            wire(upsampleSequential.I, mux.I1)
             wire(mux.O, hydrate.I)
-            wire(hydrate.out, upSequential.O)
-            wire(eq0, upSequential.READY)
+            wire(hydrate.out, upsampleSequential.O)
+            wire(eq0, upsampleSequential.READY)
 
             # reset counter on clock enable or reset, setup both reset and CE for reg
             if has_ce and has_reset:
-                wire(counter.CE, And(2)(upSequential.RESET, upSequential.CE))
+                wire(counter.CE, And(2)(upsampleSequential.RESET, upsampleSequential.CE))
             if has_ce:
-                wire(valueStoreReg.CE, upSequential.CE)
+                wire(valueStoreReg.CE, upsampleSequential.CE)
                 if not has_reset:
-                    wire(counter.CE, upSequential.CE)
+                    wire(counter.CE, upsampleSequential.CE)
             if has_reset:
-                wire(valueStoreReg.RESET, upSequential.RESET)
+                wire(valueStoreReg.RESET, upsampleSequential.RESET)
                 if not has_ce:
-                    wire(counter.RESET, upSequential.RESET)
+                    wire(counter.RESET, upsampleSequential.RESET)
 
     return UpSequential
 
