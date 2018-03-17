@@ -41,24 +41,23 @@ def test_downsample_parallel():
     assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
 
 
-def disable_test_up_sequential():
+def test_downsample_sequential():
     width = 5
     numOut = 2
     testVal = 3
     c = coreir.Context()
     scope = Scope()
-    inType = Array(width, In(BitIn))
-    outType = Out(inType)
-    args = ['I', inType, 'O', outType, 'READY', Out(Bit)] + ClockInterface(False, False)
+    outType = Array(width, Out(BitIn))
+    inType = In(outType)
+    args = ['I', inType, 'O', outType, 'VALID', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
 
     coreir_backend = CoreIRBackend(c)
-    upSequential = UpsampleSequential(coreir_backend, numOut, inType)
+    upSequential = DownsampleSequential(numOut, inType)
     wire(upSequential.I, testcircuit.I)
     wire(testcircuit.O, upSequential.O)
-    wire(testcircuit.READY, upSequential.READY)
-
+    wire(testcircuit.VALID, upSequential.VALID)
     EndCircuit()
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
@@ -68,54 +67,12 @@ def disable_test_up_sequential():
 
     for i in range(numOut):
         assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
+        assert sim.get_value(testcircuit.VALID, scope) == (i == 0)
         sim.advance_cycle()
         sim.evaluate()
-        assert sim.get_value(testcircuit.READY, scope) == (i == numOut - 1)
+
 
 
 if __name__ == "__main__":
-    test_up_parallel()
-    test_modm_counter()
-    test_up_sequential()
-
-"""
-
-width = 5
-numElements = 1
-testVal = 3
-c = coreir.Context()
-scope = Scope()
-inType = Array(width, In(BitIn))
-#outType = Array(width, Out(BitIn)) #uncomment this line
-#outType = Array(numElements, Out(inType))
-outType = Array(numElements, Out(Array(width, Bit))) #comment this line
-args = ['I', inType, 'O', outType] + ClockInterface(False, False)
-
-testcircuit = DefineCircuit('Test', *args)
-
-#upParallel = UpParallel(numElements, inType)
-#wire(upParallel.I, testcircuit.I)
-#wire(testcircuit.O, upParallel.O)
-#wire(testcircuit.O, testcircuit.I) # uncomment this line
-wire(testcircuit.O[0], testcircuit.I) # comment this line
-
-
-EndCircuit()
-
-sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-#coreir_testcircuit = coreir_compile(testcircuit, context=c)
-
-#c.run_passes(["rungenerators", "verifyconnectivity-onlyinputs-noclkrst",
-                    #"wireclocks-coreir", "flatten", "flattentypes", "verifyconnectivity",
-                    #"deletedeadinstances"])
-
-#sim_testcircuit = coreir.SimulatorState(coreir_testcircuit)
-
-
-#sim_testcircuit.set_value(["self.I"], bit_vector.BitVector(width, testVal).as_bool_list())
-#sim = PythonSimulator(testcircuit)
-sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-simulate(testcircuit, CoreIRSimulator)
-"""
+    test_downsample_parallel()
+    test_downsample_sequential()
