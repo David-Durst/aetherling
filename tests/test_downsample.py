@@ -13,6 +13,7 @@ from magma.scope import Scope
 from magma.simulator.mdb import simulate
 from mantle import CounterModM, Decode
 
+
 def test_downsample_parallel():
     width = 5
     numIn = 2
@@ -20,15 +21,15 @@ def test_downsample_parallel():
     c = coreir.Context()
     coreir_backend = CoreIRBackend(c)
     scope = Scope()
-    outType = Array(width, In(BitIn))
-    inType = Array(numIn, Out(outType))
+    outType = Array(width, Out(BitIn))
+    inType = Array(numIn, In(outType))
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
-    testcircuit = DefineCircuit('Test', *args)
+    testcircuit = DefineCircuit('Test_Downsample_Parallel', *args)
 
-    upParallel = DownsampleParallel(coreir_backend, numIn, inType)
-    wire(upParallel.I, testcircuit.I)
-    wire(testcircuit.O, upParallel.O)
+    downsampleParallel = DownsampleParallel(coreir_backend, numIn, inType.T)
+    wire(downsampleParallel.I, testcircuit.I)
+    wire(testcircuit.O, downsampleParallel.O)
 
     EndCircuit()
 
@@ -38,6 +39,7 @@ def test_downsample_parallel():
         sim.set_value(testcircuit.I[i], int2seq(testVal, width), scope)
     sim.evaluate()
     assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
+
 
 def disable_test_up_sequential():
     width = 5
@@ -49,7 +51,7 @@ def disable_test_up_sequential():
     outType = Out(inType)
     args = ['I', inType, 'O', outType, 'READY', Out(Bit)] + ClockInterface(False, False)
 
-    testcircuit = DefineCircuit('TestUpSequential', *args)
+    testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
 
     coreir_backend = CoreIRBackend(c)
     upSequential = UpsampleSequential(coreir_backend, numOut, inType)

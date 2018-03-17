@@ -4,7 +4,8 @@ from magma.circuit import Circuit
 
 __all__ = ["MapParallel", "MapSequential"]
 
-def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit):
+
+def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     Map an operation over numInputs inputs in one clock cycle
     Aetherling Type: {1, T[numInputs]} -> {1, S[numInputs]}
@@ -23,7 +24,8 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit):
                                                  "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
-def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit):
+
+def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     Map an operation over numInputs inputs over numInputs cycles.
     Note: the entire inputs must be delivered on the first cycle.
