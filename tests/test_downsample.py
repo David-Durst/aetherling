@@ -33,7 +33,7 @@ def test_downsample_parallel():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
 
     for i in range(numIn):
         sim.set_value(testcircuit.I[i], int2seq(testVal, width), scope)
