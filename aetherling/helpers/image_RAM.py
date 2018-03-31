@@ -6,12 +6,12 @@ from mantle import SizedCounterModM
 from functools import lru_cache
 import math
 
-__all__ = ['RAMInterface', 'InputImageRAM', 'OutputImageRAM', 'LoadImageRAMForSimulation']
+BITS_PER_PIXEL_BAND = 8
 
 class IMGData:
     def __init__(self, img, imgAsBits, pxPerClock):
         self.imgAsBits = imgAsBits
-        self.bitsPerPixel = len(img.getbands())*8
+        self.bitsPerPixel = len(img.getbands())*BITS_PER_PIXEL_BAND
         self.bitsPerRow = self.bitsPerPixel*pxPerClock
         self.numRows = len(imgAsBits) / self.bitsPerRow
         assert len(imgAsBits) % self.bitsPerRow == 0, \
@@ -29,7 +29,6 @@ def loadImage(imgSrc, pxPerClock):
 def RAMInterface(imgSrc, memoryInput, memoryOutput):
     imgData = loadImage(imgSrc)
     returnedInterface = []
-    addrWidth = getRAMAddrWidth(imgData.numRows)
     if memoryInput:
         returnedInterface += ["input_wdata", In(Bits(imgData.bitsPerRow)),
                               "input_wen", In(Bit), "input_ren", In(Bit)]
