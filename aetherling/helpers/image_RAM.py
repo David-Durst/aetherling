@@ -1,10 +1,12 @@
 from PIL import Image
 from bitarray import bitarray
-from mantle.coreir.memory import DefineCoreirMem, getRAMAddrWidth
+from mantle.coreir.memory import CoreirMem, getRAMAddrWidth
 from magma import *
+from mantle import SizedCounterModM
 from functools import lru_cache
+import math
 
-__all__ = ['RAMInterface', 'ImageRAM', 'LoadImageRAMForSimulation']
+__all__ = ['RAMInterface', 'InputImageRAM', 'OutputImageRAM', 'LoadImageRAMForSimulation']
 
 class IMGData:
     def __init__(self, img, imgAsBits, pxPerClock):
@@ -29,26 +31,71 @@ def RAMInterface(imgSrc, memoryInput, memoryOutput):
     returnedInterface = []
     addrWidth = getRAMAddrWidth(imgData.numRows)
     if memoryInput:
-        returnedInterface += ["Input_WADDR", In(Bits(addrWidth)),
-            "Input_WDATA", In(Bits(imgData.bitsPerRow)), "Input_WEN", In(Bit)]
+        returnedInterface += ["input_wdata", In(Bits(imgData.bitsPerRow)),
+                              "input_wen", In(Bit), "input_ren", In(Bit)]
     if memoryOutput:
-        returnedInterface += ["Output_RADDR", Out(Bits(addrWidth)),
-            "Output_RDATA", Out(Bits(imgData.bitsPerRow))]
+        returnedInterface += ["output_rdata", Out(Bits(imgData.bitsPerRow)),
+                              "output_ren", Out(Bit)]
     return returnedInterface
 
-def ImageRAM(circuit, nextNode, imgSrc, pxPerClock):
+def InputImageRAM(circuit, nextNodeInput, imgSrc):
     imgData = loadImage(imgSrc)
-    imgRAM = DefineCoreirMem(imgData.numRows, imgData.bitsPerRow)()
-    wire(circuit.WADDR, imgRAM.WADDR)
-    wire(circuit.WDATA, imgRAM.WDATA)
-    wire(imgRAM.RDATA, )
-    wire(circuit.RE, imgRAM.RE)
-    wire(circuit.WE, imgRAM.WE)
+    imgRAM = CoreirMem(imgData.numRows, imgData.bitsPerRow)
+
+    # this counter ensures writing to correct address always
+    writeCounter = SizedCounterModM(imgData.numRows, has_ce=True)
+    # this counter ensures reading from the right address
+    readCounter = SizedCounterModM(imgData.numRows, has_ce=True)
+
+    wire(writeCounter.O, imgRAM.waddr)
+    wire(circuit.input_wdata, imgRAM.wdata)
+    wire(readCounter.O, imgRAM.raddr)
+    wire(imgRAM.rdata, nextNodeInput)
+    wire(circuit.input_ren, readCounter.CE)
+    wire(circuit.input_wen, imgRAM.wen)
+    wire(circuit.input_wen, writeCounter.CE)
     return imgRAM
 
-def LoadImageRAMForSimulation(sim, scope, imgSrc):
+
+def OutputImageRAM(circuit, prevNodeOutput, writeValidSignal, imgSrc):
     imgData = loadImage(imgSrc)
+    imgRAM = CoreirMem(imgData.numRows, imgData.bitsPerRow)
+
+    # this counter ensures writing to correct address always
+    writeCounter = SizedCounterModM(imgData.numRows, has_ce=True)
+    # this counter ensures reading from the right address
+    readCounter = SizedCounterModM(imgData.numRows, has_ce=True)
+
+    wire(writeCounter.O, imgRAM.waddr)
+    wire(prevNodeOutput, imgRAM.wdata)
+    wire(readCounter.O, imgRAM.raddr)
+    wire(imgRAM.rdata, circuit.output_rdata)
+    wire(circuit.output_ren, readCounter.CE)
+    wire(writeValidSignal, imgRAM.wen)
+    wire(writeValidSignal, writeCounter.CE)
+    return imgRAM
+
+def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc):
+    imgData = loadImage(imgSrc)
+    sim.set_value(testcircuit.input_wen, bits(True), scope)
+    sim.set_value(testcircuit.input_ren, bits(False), scope)
     for i in range(imgData.numRows):
-        sim.set_value(sim.W, , scope)
+        bitsStartIndex = i*imgData.bitsPerRow
+        bitsEndIndex = (i+1)*imgData.bitsPerRow-1
+        sim.set_value(testcircuit.input_wdata,
+                      imgData.imgAsBits[bitsStartIndex:bitsEndIndex], scope)
+        sim.evaluate()
+        sim.advance_cycle()
+    sim.set_value(testcircuit.input_wen, bits(False), scope)
+    sim.set_value(testcircuit.input_ren, bits(True), scope)
+
+def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc):
+    imgData = loadImage(imgSrc)
+    sim.set_value(testcircuit.output_ren, bits(True), scope)
+    sim.evaluate()
+    sim.advance_cycle()
+    for i in range(imgData.numRows):
+        bitsVals = sim.get_value(testcircuit.input_wdata, scope)
+        assert False, "NEED TO LOOK AT bitsVals and figure out how to convert to bits"
         sim.evaluate()
         sim.advance_cycle()
