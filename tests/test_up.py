@@ -47,7 +47,7 @@ def test_modm_counter():
     scope = Scope()
     args = ['O', Out(Bit)] + ClockInterface(False, False)
     testcircuit = DefineCircuit('TestModM', *args)
-    counter = CounterModM(maxCounter, width)
+    counter = CounterModM(maxCounter, width, cout=False)
     decode = Decode(0, width)
     wire(decode.I, counter.O)
     wire(testcircuit.O, decode.O)

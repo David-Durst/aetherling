@@ -1,6 +1,6 @@
 import math
 
-from mantle import Register, CounterModM, Decode
+from mantle import Register, SizedCounterModM, Decode
 from mantle.common.operator import *
 
 from magma import *
@@ -51,8 +51,8 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
             hydrate = Hydrate(cirb, T)
             valueStoreReg = Register(dehydrate.size, has_ce=has_ce, has_reset=has_reset)
             mux = Mux(width=dehydrate.size)
-            counter = CounterModM(n, math.ceil(math.log(n, 2)) + 1, has_ce=has_ce or has_reset)
-            eq0 = Decode(0, n)(counter.O)
+            counter = SizedCounterModM(n, has_ce=has_ce or has_reset)
+            eq0 = Decode(0, counter.O.N)(counter.O)
             wire(upsampleSequential.I, dehydrate.I)
             wire(dehydrate.out, valueStoreReg.I)
             # on first clock cycle, send the input directly out. otherwise, use the register
