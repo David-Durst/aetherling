@@ -49,7 +49,8 @@ def test_updown_1pxPerClock():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
     DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)

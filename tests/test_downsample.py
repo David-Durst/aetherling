@@ -33,7 +33,8 @@ def test_downsample_parallel():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):
         sim.set_value(testcircuit.I[i], int2seq(testVal, width), scope)
@@ -60,7 +61,8 @@ def test_downsample_sequential():
     wire(testcircuit.VALID, upSequential.VALID)
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
     sim.evaluate()

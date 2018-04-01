@@ -1,6 +1,6 @@
 import math
 
-from mantle import Register, CounterModM, Decode
+from mantle import Register, SizedCounterModM, Decode
 from mantle.common.operator import *
 from mantle.coreir.type_helpers import Term
 
@@ -60,8 +60,8 @@ def DefineDownsampleSequential(n, T, has_ce=False, has_reset=False):
 
         @classmethod
         def definition(downsampleSequential):
-            counter = CounterModM(n, math.ceil(math.log(n, 2)) + 1, has_ce=has_ce or has_reset)
-            eq0 = Decode(0, n)(counter.O)
+            counter = SizedCounterModM(n, has_ce=has_ce or has_reset)
+            eq0 = Decode(0, counter.O.N)(counter.O)
             wire(downsampleSequential.I, downsampleSequential.O)
             # on first clock cycle, send the input directly out. otherwise, use the register
             wire(eq0, downsampleSequential.VALID)
