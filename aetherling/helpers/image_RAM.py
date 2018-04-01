@@ -2,7 +2,7 @@ from PIL import Image
 from bitarray import bitarray
 from mantle.coreir.memory import CoreirMem, getRAMAddrWidth
 from magma import *
-from mantle import SizedCounterModM
+from mantle.common.countermod import SizedCounterModM
 from functools import lru_cache
 import math
 
@@ -11,9 +11,9 @@ BITS_PER_PIXEL_BAND = 8
 class IMGData:
     def __init__(self, img, imgAsBits, pxPerClock):
         self.imgAsBits = imgAsBits
-        self.bitsPerPixel = len(img.getbands())*BITS_PER_PIXEL_BAND
-        self.bitsPerRow = self.bitsPerPixel*pxPerClock
-        self.numRows = len(imgAsBits) / self.bitsPerRow
+        self.bitsPerPixel = int(len(img.getbands())*BITS_PER_PIXEL_BAND)
+        self.bitsPerRow = int(self.bitsPerPixel*pxPerClock)
+        self.numRows = int(len(imgAsBits) / self.bitsPerRow)
         assert len(imgAsBits) % self.bitsPerRow == 0, \
             "Can't evenly divide the image into rows of " \
             "bits using the pxPerClock %i" % pxPerClock
@@ -26,20 +26,20 @@ def loadImage(imgSrc, pxPerClock):
     imgAsBits.frombytes(img.tobytes())
     return IMGData(img, imgAsBits, pxPerClock)
 
-def RAMInterface(imgSrc, memoryInput, memoryOutput):
-    imgData = loadImage(imgSrc)
+def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock):
+    imgData = loadImage(imgSrc, pxPerClock)
     returnedInterface = []
     if memoryInput:
         returnedInterface += ["input_wdata", In(Bits(imgData.bitsPerRow)),
                               "input_wen", In(Bit), "input_ren", In(Bit)]
     if memoryOutput:
         returnedInterface += ["output_rdata", Out(Bits(imgData.bitsPerRow)),
-                              "output_ren", Out(Bit)]
+                              "output_ren", In(Bit)]
     return returnedInterface
 
-def InputImageRAM(circuit, nextNodeInput, imgSrc):
-    imgData = loadImage(imgSrc)
-    imgRAM = CoreirMem(imgData.numRows, imgData.bitsPerRow)
+def InputImageRAM(cirb, circuit, nextNodeInput, imgSrc, pxPerClock):
+    imgData = loadImage(imgSrc, pxPerClock)
+    imgRAM = CoreirMem(cirb, imgData.numRows, imgData.bitsPerRow)
 
     # this counter ensures writing to correct address always
     writeCounter = SizedCounterModM(imgData.numRows, has_ce=True)
@@ -56,9 +56,9 @@ def InputImageRAM(circuit, nextNodeInput, imgSrc):
     return imgRAM
 
 
-def OutputImageRAM(circuit, prevNodeOutput, writeValidSignal, imgSrc):
-    imgData = loadImage(imgSrc)
-    imgRAM = CoreirMem(imgData.numRows, imgData.bitsPerRow)
+def OutputImageRAM(cirb, circuit, prevNodeOutput, writeValidSignal, imgSrc, pxPerClock):
+    imgData = loadImage(imgSrc, pxPerClock)
+    imgRAM = CoreirMem(cirb, imgData.numRows, imgData.bitsPerRow)
 
     # this counter ensures writing to correct address always
     writeCounter = SizedCounterModM(imgData.numRows, has_ce=True)
@@ -74,8 +74,8 @@ def OutputImageRAM(circuit, prevNodeOutput, writeValidSignal, imgSrc):
     wire(writeValidSignal, writeCounter.CE)
     return imgRAM
 
-def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc):
-    imgData = loadImage(imgSrc)
+def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
+    imgData = loadImage(imgSrc, pxPerClock)
     sim.set_value(testcircuit.input_wen, bits(True), scope)
     sim.set_value(testcircuit.input_ren, bits(False), scope)
     for i in range(imgData.numRows):
@@ -88,8 +88,8 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc):
     sim.set_value(testcircuit.input_wen, bits(False), scope)
     sim.set_value(testcircuit.input_ren, bits(True), scope)
 
-def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc):
-    imgData = loadImage(imgSrc)
+def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
+    imgData = loadImage(imgSrc, pxPerClock)
     sim.set_value(testcircuit.output_ren, bits(True), scope)
     sim.evaluate()
     sim.advance_cycle()

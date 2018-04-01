@@ -16,38 +16,40 @@ from aetherling.modules.upsample import UpsampleParallel
 from aetherling.modules.downsample import DownsampleParallel
 from magma.simulator.mdb import simulate
 from mantle import CounterModM, Decode
+from os.path import dirname, join
 
-imgSrc = "tests/pillow.jpg"
+imgSrc = join(dirname(__file__), "pillow.jpg")
 
 def test_updown_1pxPerClock():
     upsampleAmount = 7
+    pxPerClock = 1
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True)
+    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock)
 
     testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
 
-    imgData = loadImage(imgSrc, 1)
+    imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array(imgData.bitsPerPixel, Bit)
     bitsToPixelHydrate = Hydrate(cirb, pixelType)
     upParallel = UpsampleParallel(upsampleAmount, pixelType)
-    downParallel = DownsampleParallel(upsampleAmount, pixelType)
+    downParallel = DownsampleParallel(cirb, upsampleAmount, pixelType)
     bitsToPixelDehydrate = Dehydrate(cirb, pixelType)
 
     # Note: input image RAM will send data to hydrate,
     # which converts it to form upsample and downsample can use
     # note that these do wiriring to connect the RAMs to edge of test circuit and
     # adjacent node inside circuit
-    InputImageRAM(testcircuit, bitsToPixelHydrate.I, imgSrc)
-    OutputImageRAM(testcircuit, bitsToPixelDehydrate.O, imgSrc)
-    wire(upParallel.I, bitsToPixelHydrate.O)
+    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
+    OutputImageRAM(cirb, testcircuit, bitsToPixelDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
+    wire(upParallel.I, bitsToPixelHydrate.out)
     wire(upParallel.O, downParallel.I)
-    wire(downParallel.O, bitsToPixelHydrate.I)
+    wire(downParallel.O, bitsToPixelDehydrate.I)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, cirb.context)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context)
 
-    LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc)
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc)
+    LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
