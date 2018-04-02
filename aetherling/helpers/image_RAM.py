@@ -77,8 +77,9 @@ def OutputImageRAM(cirb, circuit, prevNodeOutput, writeValidSignal, imgSrc, pxPe
 
 def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
     imgData = loadImage(imgSrc, pxPerClock)
-    sim.set_value(testcircuit.input_wen, bits(True), scope)
-    sim.set_value(testcircuit.input_ren, bits(False), scope)
+    sim.set_value(testcircuit.input_wen, [1], scope)
+    sim.set_value(testcircuit.input_ren, [0], scope)
+    sim.set_value(testcircuit.output_ren, [0], scope)
     for i in range(imgData.numRows):
         bitsStartIndex = i*imgData.bitsPerRow
         bitsEndIndex = (i+1)*imgData.bitsPerRow
@@ -86,18 +87,17 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
                       imgData.imgAsBits[bitsStartIndex:bitsEndIndex], scope)
         sim.evaluate()
         sim.advance_cycle()
-    sim.set_value(testcircuit.input_wen, bits(False), scope)
-    sim.set_value(testcircuit.input_ren, bits(True), scope)
+    sim.set_value(testcircuit.input_wen, [0], scope)
+    sim.set_value(testcircuit.input_ren, [1], scope)
 
 def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, dstPath):
     imgData = loadImage(imgSrc, pxPerClock)
-    sim.set_value(testcircuit.output_ren, bits(True), scope)
+    sim.set_value(testcircuit.input_ren, [0], scope)
+    sim.set_value(testcircuit.output_ren, [1], scope)
     sim.evaluate()
-    sim.advance_cycle()
     imgResult = bitarray(endian='little')
     for i in range(imgData.numRows):
-        sim.evaluate()
-        imgResult.extend(sim.get_value(testcircuit.input_wdata, scope))
+        imgResult.extend(sim.get_value(testcircuit.output_rdata, scope))
         bitsStartIndex = i * imgData.bitsPerRow
         bitsEndIndex = (i + 1) * imgData.bitsPerRow
         assert imgResult[bitsStartIndex:bitsEndIndex] == \
