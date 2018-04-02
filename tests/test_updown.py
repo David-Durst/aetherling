@@ -60,4 +60,11 @@ def test_updown_1pxPerClock():
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
+    # run the simulation for all the rows
+    for i in range(imgData.numRows):
+        sim.evaluate()
+        sim.advance_cycle()
+        sim.evaluate()
+    # and one last cycle to write the last row
+    # sim.advance_cycle()
     DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, imgDst)

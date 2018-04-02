@@ -87,6 +87,7 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
                       imgData.imgAsBits[bitsStartIndex:bitsEndIndex], scope)
         sim.evaluate()
         sim.advance_cycle()
+        sim.evaluate()
     sim.set_value(testcircuit.input_wen, [0], scope)
     sim.set_value(testcircuit.input_ren, [1], scope)
 
@@ -104,5 +105,6 @@ def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, dstPa
                imgData.imgAsBits[bitsStartIndex:bitsEndIndex]
         sim.evaluate()
         sim.advance_cycle()
+        sim.evaluate()
     image = Image.frombytes(mode="RGB", size=(10,10), data=imgResult.tobytes())
     image.save(dstPath)
