@@ -4,6 +4,7 @@ from mantle.coreir.memory import CoreirMem, getRAMAddrWidth
 from magma import *
 from mantle.common.countermod import SizedCounterModM
 from functools import lru_cache
+from io import BytesIO
 import math
 
 BITS_PER_PIXEL_BAND = 8
@@ -80,7 +81,7 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
     sim.set_value(testcircuit.input_ren, bits(False), scope)
     for i in range(imgData.numRows):
         bitsStartIndex = i*imgData.bitsPerRow
-        bitsEndIndex = (i+1)*imgData.bitsPerRow-1
+        bitsEndIndex = (i+1)*imgData.bitsPerRow
         sim.set_value(testcircuit.input_wdata,
                       imgData.imgAsBits[bitsStartIndex:bitsEndIndex], scope)
         sim.evaluate()
@@ -88,13 +89,20 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
     sim.set_value(testcircuit.input_wen, bits(False), scope)
     sim.set_value(testcircuit.input_ren, bits(True), scope)
 
-def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
+def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, dstPath):
     imgData = loadImage(imgSrc, pxPerClock)
     sim.set_value(testcircuit.output_ren, bits(True), scope)
     sim.evaluate()
     sim.advance_cycle()
+    imgResult = bitarray(endian='little')
     for i in range(imgData.numRows):
-        bitsVals = sim.get_value(testcircuit.input_wdata, scope)
-        assert False, "NEED TO LOOK AT bitsVals and figure out how to convert to bits"
+        sim.evaluate()
+        imgResult.extend(sim.get_value(testcircuit.input_wdata, scope))
+        bitsStartIndex = i * imgData.bitsPerRow
+        bitsEndIndex = (i + 1) * imgData.bitsPerRow
+        assert imgResult[bitsStartIndex:bitsEndIndex] == \
+               imgData.imgAsBits[bitsStartIndex:bitsEndIndex]
         sim.evaluate()
         sim.advance_cycle()
+    image = Image.frombytes(mode="RGB", size=(10,10), data=imgResult.tobytes())
+    image.save(dstPath)

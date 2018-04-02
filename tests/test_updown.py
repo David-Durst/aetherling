@@ -19,7 +19,8 @@ from magma.simulator.mdb import simulate
 from mantle import CounterModM, Decode
 from os.path import dirname, join
 
-imgSrc = join(dirname(__file__), "pillow.jpg")
+imgSrc = join(dirname(__file__), "custom.png")
+imgDst = join(dirname(__file__), "custom_out.png")
 
 def test_updown_1pxPerClock():
     upsampleAmount = 7
@@ -59,4 +60,4 @@ def test_updown_1pxPerClock():
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, imgDst)
