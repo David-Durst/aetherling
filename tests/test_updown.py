@@ -67,4 +67,4 @@ def test_updown_1pxPerClock():
         sim.evaluate()
     # and one last cycle to write the last row
     # sim.advance_cycle()
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, imgDst)
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfEqual)

@@ -4,6 +4,7 @@ from mantle.coreir.memory import CoreirMem, getRAMAddrWidth
 from magma import *
 from mantle.common.countermod import SizedCounterModM
 from functools import lru_cache
+from typing import Callable
 from io import BytesIO
 import math
 
@@ -91,7 +92,23 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
     sim.set_value(testcircuit.input_wen, [0], scope)
     sim.set_value(testcircuit.input_ren, [1], scope)
 
-def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, dstPath):
+def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock,
+                              validityChecker, dstPath = None):
+    """
+    Get the data out of an Image RAM, run it through a function to check if it's
+    valid, and write it to an output file if dstPath is set
+    :param sim:
+    :param testcircuit:
+    :param scope:
+    :param imgSrc:
+    :param pxPerClock:
+    :param validityChecker: A function of form (imgData, RAMRowIndex, resultData) -> Bool.
+    The function should return true if valid, false if otherwise. The resultData
+    is a bitarray, imgData is an IMGData object
+    :param dstPath: Where to write the resulting image. If default value of None, no
+    writing is done
+    :return:
+    """
     imgData = loadImage(imgSrc, pxPerClock)
     sim.set_value(testcircuit.input_ren, [0], scope)
     sim.set_value(testcircuit.output_ren, [1], scope)
@@ -101,10 +118,15 @@ def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, dstPa
         imgResult.extend(sim.get_value(testcircuit.output_rdata, scope))
         bitsStartIndex = i * imgData.bitsPerRow
         bitsEndIndex = (i + 1) * imgData.bitsPerRow
-        assert imgResult[bitsStartIndex:bitsEndIndex] == \
-               imgData.imgAsBits[bitsStartIndex:bitsEndIndex]
+        assert validityChecker(imgData, i, imgResult[bitsStartIndex:bitsEndIndex])
         sim.evaluate()
         sim.advance_cycle()
         sim.evaluate()
-    image = Image.frombytes(mode="RGB", size=(10,10), data=imgResult.tobytes())
-    image.save(dstPath)
+    if dstPath is not None:
+        image = Image.frombytes(mode="RGB", size=(10,10), data=imgResult.tobytes())
+        image.save(dstPath)
+
+def validIfEqual(imgData, rowIndex, resultData):
+    bitsStartIndex = rowIndex * imgData.bitsPerRow
+    bitsEndIndex = (rowIndex + 1) * imgData.bitsPerRow
+    return imgData.imgAsBits[bitsStartIndex:bitsEndIndex] == resultData
