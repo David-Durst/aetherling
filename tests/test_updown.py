@@ -50,9 +50,6 @@ def test_updown_1pxPerClock():
     wire(downParallel.O, bitsToPixelDehydrate.I)
 
     EndCircuit()
-    #c.run_passes(["rungenerators", "flattentypes", "flatten",
-    #                     "verifyconnectivity-noclkrst", "deletedeadinstances"],
-    #             namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     #GetCoreIRModule(cirb, testcircuit).save_to_file("updown_out.json")
 
@@ -65,6 +62,44 @@ def test_updown_1pxPerClock():
         sim.evaluate()
         sim.advance_cycle()
         sim.evaluate()
-    # and one last cycle to write the last row
-    # sim.advance_cycle()
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfEqual)
+
+def test_updown_5pxPerClock():
+    upsampleAmount = 7
+    pxPerClock = 5
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock)
+
+    testcircuit = DefineCircuit('Test_UpsampleDownsample_5PxPerClock', *args)
+
+    imgData = loadImage(imgSrc, pxPerClock)
+    pixelType = Array(pxPerClock, Array(imgData.bitsPerPixel, Bit))
+    bitsToPixelHydrate = Hydrate(cirb, pixelType)
+    upParallel = UpsampleParallel(upsampleAmount, pixelType)
+    downParallel = DownsampleParallel(cirb, upsampleAmount, pixelType)
+    bitsToPixelDehydrate = Dehydrate(cirb, pixelType)
+
+    # Note: input image RAM will send data to hydrate,
+    # which converts it to form upsample and downsample can use
+    # note that these do wiriring to connect the RAMs to edge of test circuit and
+    # adjacent node inside circuit
+    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
+    OutputImageRAM(cirb, testcircuit, bitsToPixelDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
+    wire(upParallel.I, bitsToPixelHydrate.out)
+    wire(upParallel.O, downParallel.I)
+    wire(downParallel.O, bitsToPixelDehydrate.I)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
+    # run the simulation for all the rows
+    for i in range(imgData.numRows):
+        sim.evaluate()
+        sim.advance_cycle()
+        sim.evaluate()
     DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfEqual)
