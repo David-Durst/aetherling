@@ -6,7 +6,7 @@ from mantle.coreir.type_helpers import Term
 
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitFromGeneratorWrapper
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
 from .hydrate import Dehydrate, Hydrate
 from .map import MapParallel
 

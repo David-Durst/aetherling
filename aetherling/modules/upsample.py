@@ -5,7 +5,7 @@ from mantle.common.operator import *
 
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitFromGeneratorWrapper
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
 from .hydrate import Hydrate, Dehydrate
 
 __all__ = ['DefineUpsampleParallel', 'UpsampleParallel', 'DefineUpsampleSequential', 'UpsampleSequential']

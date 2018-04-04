@@ -1,5 +1,5 @@
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitFromGeneratorWrapper, GetCoreIRModule
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule
 from magma.circuit import Circuit, CircuitType
 
 
@@ -18,9 +18,9 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer: C
     """
     if opContainer.instances.__contains__(op):
         opContainer.instances.remove(op)
-    moduleToReturn = CircuitFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
-                                                 ["commonlib", "mantle", "coreir", "global"],
-                                                 {"numInputs": numInputs,
+    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
+                                                         ["commonlib", "mantle", "coreir", "global"],
+                                                         {"numInputs": numInputs,
                                                  "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
@@ -43,9 +43,9 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer:
     """
     if opContainer.instances.__contains__(op):
         opContainer.instances.remove(op)
-    moduleToReturn = CircuitFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
-                                                 ["commonlib", "mantle", "coreir", "global"],
-                                                 {"numInputs": numInputs,
+    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
+                                                         ["commonlib", "mantle", "coreir", "global"],
+                                                         {"numInputs": numInputs,
                                                  "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
