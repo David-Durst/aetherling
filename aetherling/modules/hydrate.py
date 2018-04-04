@@ -1,5 +1,5 @@
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import ModuleFromGeneratorWrapper
+from magma.frontend.coreir_ import CircuitFromGeneratorWrapper
 
 __all__ = ["Dehydrate", "Hydrate"]
 
@@ -21,9 +21,9 @@ def Dehydrate(cirb: CoreIRBackend, T):
         size: width(T)
     """
     cirType = cirb.get_type(T, True)
-    moduleToReturn = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate",
-                                                ["commonlib", "mantle", "coreir", "global"],
-                                                {"hydratedType": cirType})
+    moduleToReturn = CircuitFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate",
+                                                 ["commonlib", "mantle", "coreir", "global"],
+                                                 {"hydratedType": cirType})
     moduleToReturn.size = cirType.size
     return moduleToReturn
 
@@ -44,8 +44,8 @@ def Hydrate(cirb: CoreIRBackend, T):
         size: width(T)
     """
     cirType = cirb.get_type(T, True)
-    moduleToReturn = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate",
-                                                ["commonlib", "mantle", "coreir", "global"],
-                                                {"hydratedType": cirType})
+    moduleToReturn = CircuitFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate",
+                                                 ["commonlib", "mantle", "coreir", "global"],
+                                                 {"hydratedType": cirType})
     moduleToReturn.size = cirType.size
     return moduleToReturn

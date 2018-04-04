@@ -1,8 +1,6 @@
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import ModuleFromGeneratorWrapper, GetCoreIRModule
+from magma.frontend.coreir_ import CircuitFromGeneratorWrapper, GetCoreIRModule
 from magma.circuit import Circuit, CircuitType
-
-__all__ = ["MapParallel", "MapSequential"]
 
 
 def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer: Circuit) -> Circuit:
@@ -20,9 +18,9 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer: C
     """
     if opContainer.instances.__contains__(op):
         opContainer.instances.remove(op)
-    moduleToReturn = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
-                                                ["commonlib", "mantle", "coreir", "global"],
-                                                {"numInputs": numInputs,
+    moduleToReturn = CircuitFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
+                                                 ["commonlib", "mantle", "coreir", "global"],
+                                                 {"numInputs": numInputs,
                                                  "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
@@ -45,8 +43,23 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer:
     """
     if opContainer.instances.__contains__(op):
         opContainer.instances.remove(op)
-    moduleToReturn = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
-                                                ["commonlib", "mantle", "coreir", "global"],
-                                                {"numInputs": numInputs,
+    moduleToReturn = CircuitFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
+                                                 ["commonlib", "mantle", "coreir", "global"],
+                                                 {"numInputs": numInputs,
                                                  "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
+
+def MapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: Int,
+                         op: Circuit, opContainer: Circuit) -> Circuit:
+    """
+    Map an operation over numInputs inputs in numInputs/parallelism clock cycles
+    Aetherling Type: {numInputs/parallelism, T[numInputs]} -> {numInputs/parallelism, S[numInputs]}
+
+    :param cirb: The CoreIR backend currently be used
+    :param numInputs: The number of input elements
+    :param op: The operator (the magma circuit) to map over the elements. It should have type T -> S
+    :param opContainer: The magma circuit that contains op, needed for instance management
+    :return: A module with the following ports:
+    I : In(Array(numInputs, T))
+    O : Out(Array(numInputs, S))
+    """
