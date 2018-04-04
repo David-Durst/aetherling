@@ -22,9 +22,9 @@ from os.path import dirname, join
 imgSrc = join(dirname(__file__), "custom.png")
 imgDst = join(dirname(__file__), "custom_out.png")
 
-def test_updown_1pxPerClock():
+#NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
+def run_test_updown_npxPerClock(pxPerClock):
     upsampleAmount = 7
-    pxPerClock = 1
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
@@ -33,7 +33,7 @@ def test_updown_1pxPerClock():
     testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
 
     imgData = loadImage(imgSrc, pxPerClock)
-    pixelType = Array(imgData.bitsPerPixel, Bit)
+    pixelType = Array(pxPerClock, Array(imgData.bitsPerPixel, Bit))
     bitsToPixelHydrate = Hydrate(cirb, pixelType)
     upParallel = UpsampleParallel(upsampleAmount, pixelType)
     downParallel = DownsampleParallel(cirb, upsampleAmount, pixelType)
@@ -64,42 +64,8 @@ def test_updown_1pxPerClock():
         sim.evaluate()
     DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfEqual)
 
+def test_updown_1pxPerClock():
+    run_test_updown_npxPerClock(1)
+
 def test_updown_5pxPerClock():
-    upsampleAmount = 7
-    pxPerClock = 5
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
-    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock)
-
-    testcircuit = DefineCircuit('Test_UpsampleDownsample_5PxPerClock', *args)
-
-    imgData = loadImage(imgSrc, pxPerClock)
-    pixelType = Array(pxPerClock, Array(imgData.bitsPerPixel, Bit))
-    bitsToPixelHydrate = Hydrate(cirb, pixelType)
-    upParallel = UpsampleParallel(upsampleAmount, pixelType)
-    downParallel = DownsampleParallel(cirb, upsampleAmount, pixelType)
-    bitsToPixelDehydrate = Dehydrate(cirb, pixelType)
-
-    # Note: input image RAM will send data to hydrate,
-    # which converts it to form upsample and downsample can use
-    # note that these do wiriring to connect the RAMs to edge of test circuit and
-    # adjacent node inside circuit
-    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
-    OutputImageRAM(cirb, testcircuit, bitsToPixelDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
-    wire(upParallel.I, bitsToPixelHydrate.out)
-    wire(upParallel.O, downParallel.I)
-    wire(downParallel.O, bitsToPixelDehydrate.I)
-
-    EndCircuit()
-
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
-                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-
-    LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
-    # run the simulation for all the rows
-    for i in range(imgData.numRows):
-        sim.evaluate()
-        sim.advance_cycle()
-        sim.evaluate()
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfEqual)
+    run_test_updown_npxPerClock(5)
