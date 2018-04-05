@@ -34,22 +34,20 @@ def run_test_updown_npxPerClock(pxPerClock):
 
     imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array(imgData.bitsPerPixel, Bit)
-    bitsToPixelHydrate = Hydrate(cirb, pixelType)
-    mulitplePixelsHydrate = MapParallel(cirb, pxPerClock, bitsToPixelHydrate, testcircuit)
-    x = UpsampleParallel(upsampleAmount, pixelType)
-    y = DefineUpsampleParallel(upsampleAmount, pixelType)
-    upParallel = MapParallel(cirb, pxPerClock, UpsampleParallel(upsampleAmount, pixelType), testcircuit)
-    downParallel = MapParallel(cirb, pxPerClock, DownsampleParallel(cirb, upsampleAmount, pixelType), testcircuit)
-    pixelToBitsDehydrate = Dehydrate(cirb, pixelType)
-    mulitplePixelsDehydrate = MapParallel(cirb, pxPerClock, pixelToBitsDehydrate, testcircuit)
+    bitsToPixelHydrate = MapParallel(cirb, pxPerClock, Hydrate(cirb, pixelType))
+    #x = UpsampleParallel(upsampleAmount, pixelType)
+    #y = DefineUpsampleParallel(upsampleAmount, pixelType)
+    upParallel = MapParallel(cirb, pxPerClock, UpsampleParallel(upsampleAmount, pixelType))
+    downParallel = MapParallel(cirb, pxPerClock, DownsampleParallel(cirb, upsampleAmount, pixelType))
+    pixelToBitsDehydrate = MapParallel(cirb, pxPerClock, Dehydrate(cirb, pixelType))
 
 
     # Note: input image RAM will send data to hydrate,
     # which converts it to form upsample and downsample can use
     # note that these do wiriring to connect the RAMs to edge of test circuit and
     # adjacent node inside circuit
-    InputImageRAM(cirb, testcircuit, mulitplePixelsHydrate.I, imgSrc, pxPerClock)
-    OutputImageRAM(cirb, testcircuit, mulitplePixelsDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
+    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
+    OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
     wire(upParallel.I, bitsToPixelHydrate.out)
     wire(upParallel.O, downParallel.I)
     wire(downParallel.O, pixelToBitsDehydrate.I)

@@ -3,7 +3,7 @@ from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreI
 from magma.circuit import Circuit, CircuitType
 
 
-def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer: Circuit) -> Circuit:
+def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     Map an operation over numInputs inputs in one clock cycle
     Aetherling Type: {1, T[numInputs]} -> {1, S[numInputs]}
@@ -11,13 +11,12 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer: C
     :param cirb: The CoreIR backend currently be used
     :param numInputs: The number of input elements
     :param op: The operator (the magma circuit) to map over the elements. It should have type T -> S
-    :param opContainer: The magma circuit that contains op, needed for instance management
     :return: A module with the following ports:
     I : In(Array(numInputs, T))
     O : Out(Array(numInputs, S))
     """
-    if opContainer.instances.__contains__(op):
-        opContainer.instances.remove(op)
+    if op.defn.instances.__contains__(op):
+        op.defn.instances.remove(op)
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
                                                          ["commonlib", "mantle", "coreir", "global"],
                                                          {"numInputs": numInputs,

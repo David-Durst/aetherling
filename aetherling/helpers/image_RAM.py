@@ -39,6 +39,23 @@ def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock):
                               "output_ren", In(Bit)]
     return returnedInterface
 
+def connectArraysAndArraysofArrays(RAMData, OtherNodeData, pxPerClock, bitsPerPixel):
+    """
+    RAMNode will always be a flat array. OtherNode may sometimes be an array of arrays
+    (if separate array for each pixel
+    :param RAMData: The input/output of the RAM to connect to the other node
+    :param OtherNodeData: The sometimes nested other node to connect
+    :param pxPerClock: pixels per clock being processed
+    :param bitsPerPixel: how many bits are used for each pixel
+    :return: Nothing
+    """
+    if Out(RAMData.T) == Out(OtherNodeData.T):
+        wire(RAMData, OtherNodeData)
+    else:
+        for i in range(pxPerClock):
+            wire(RAMData[i*bitsPerPixel: (i+1)*bitsPerPixel], OtherNodeData[i])
+
+
 def InputImageRAM(cirb, circuit, nextNodeInput, imgSrc, pxPerClock):
     imgData = loadImage(imgSrc, pxPerClock)
     imgRAM = CoreirMem(cirb, imgData.numRows, imgData.bitsPerRow)
@@ -51,7 +68,8 @@ def InputImageRAM(cirb, circuit, nextNodeInput, imgSrc, pxPerClock):
     wire(writeCounter.O, imgRAM.waddr)
     wire(circuit.input_wdata, imgRAM.wdata)
     wire(readCounter.O, imgRAM.raddr)
-    wire(imgRAM.rdata, nextNodeInput)
+    connectArraysAndArraysofArrays(imgRAM.rdata, nextNodeInput,
+                                   pxPerClock, imgData.bitsPerPixel)
     wire(circuit.input_ren, readCounter.CE)
     wire(circuit.input_wen, imgRAM.wen)
     wire(circuit.input_wen, writeCounter.CE)
@@ -68,7 +86,8 @@ def OutputImageRAM(cirb, circuit, prevNodeOutput, writeValidSignal, imgSrc, pxPe
     readCounter = SizedCounterModM(imgData.numRows, has_ce=True)
 
     wire(writeCounter.O, imgRAM.waddr)
-    wire(prevNodeOutput, imgRAM.wdata)
+    connectArraysAndArraysofArrays(imgRAM.wdata, prevNodeOutput,
+                                   pxPerClock, imgData.bitsPerPixel)
     wire(readCounter.O, imgRAM.raddr)
     wire(imgRAM.rdata, circuit.output_rdata)
     wire(circuit.output_ren, readCounter.CE)

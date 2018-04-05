@@ -29,9 +29,9 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
         def definition(downsampleParallel):
             one_input_dehydrate = Dehydrate(cirb, T)
             # dehydrate all but the first, that one is passed through
-            inputs_dehydrate = MapParallel(cirb, n - 1, one_input_dehydrate, downsampleParallel)
+            inputs_dehydrate = MapParallel(cirb, n - 1, one_input_dehydrate)
             term = Term(cirb, one_input_dehydrate.size)
-            inputs_term = MapParallel(cirb, n - 1, term, downsampleParallel)
+            inputs_term = MapParallel(cirb, n - 1, term)
             wire(downsampleParallel.I[0], downsampleParallel.O)
             wire(downsampleParallel.I[1:], inputs_dehydrate.I)
             wire(inputs_dehydrate.out, inputs_term.I)
