@@ -49,7 +49,7 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer:
                                                  "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
-def MapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: Int,
+def MapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
                          op: Circuit, opContainer: Circuit) -> Circuit:
     """
     Map an operation over numInputs inputs in numInputs/parallelism clock cycles

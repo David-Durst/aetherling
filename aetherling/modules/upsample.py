@@ -29,7 +29,9 @@ def DefineUpsampleParallel(n, T):
     return UpParallel
 
 def UpsampleParallel(n, T):
-    return DefineUpsampleParallel(n, T)()
+    x = DefineUpsampleParallel(n, T)
+    y = x()
+    return y
 
 @cache_definition
 def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):

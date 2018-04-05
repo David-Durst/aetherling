@@ -1,5 +1,7 @@
 from magma.backend.coreir_ import CoreIRBackend
 from magma import *
+from .hydrate import Hydrate, Dehydrate
+from .map import MapParallel
 from mantle import Mux
 
 def Partition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int):
@@ -16,6 +18,9 @@ def Partition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int):
     """
     class Partition(Circuit):
         name = "Partition" + str(arrayType) + "_" + str(subsetSize)
-        IO = ['I', In(arrayType), 'O', Out(Array(subsetSize, arrayType.T))]
+        elementType = arrayType.T
+        IO = ['I', In(arrayType), 'O', Out(Array(subsetSize, elementType))]
         @classmethod
         def definition(partition):
+            dehydrate = Dehydrate(cirb, partition.elementType)
+            dehydrateAllInputs =
