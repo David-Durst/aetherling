@@ -8,8 +8,6 @@ from mantle import SizedCounterModM
 @cache_definition
 def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
               has_ce=False):
-    assert arrayType.N >= 1, "Must partition array of at least length 1"
-    assert arrayType.N % subsetSize == 0, "At this time, must partition into evenly sized arrays"
     """
     Split an array of elements in arrayLength/subsetSize elements of size subsetSize each.
     Aetherling Type: {1, T[k]} -> {k/s, T[s]}
@@ -23,6 +21,9 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
     CE : In(Enable)
     O : O(T[s])
     """
+    assert arrayType.N >= 1, "Must partition array of at least length 1"
+    assert arrayType.N % subsetSize == 0, "At this time, must partition into evenly sized arrays"
+
     class Partition(Circuit):
         name = "Partition" + str(arrayType) + "_" + str(subsetSize)
         elementType = arrayType.T
