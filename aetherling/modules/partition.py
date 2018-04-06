@@ -34,7 +34,7 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
             # each mux emits 1 element of the subset that is emitted every clock
             # each mux needs to handle k/s inputs, so it can output one element every clock
             muxes = MapParallel(cirb, subsetSize,
-                                CommonlibMuxN(cirb, arrayType.N/subsetSize, len(dehydrate.O[0])))
+                                CommonlibMuxN(cirb, arrayType.N/subsetSize, len(dehydrate.out[0])))
             hydrate = MapParallel(cirb, subsetSize, Hydrate(cirb, partition.elementType))
             counter = SizedCounterModM(arrayType.N/subsetSize, has_ce=has_ce)
 
@@ -45,7 +45,7 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
                 # repeat for each mux so ith mux outputs ith element of subset each clock
                 wire(dehydrate.O[i::subsetSize], muxes.I[0].data)
                 wire(counter.O, muxes.I[0].sel)
-            wire(muxes.O, hydrate.I)
+            wire(muxes.out, hydrate.I)
             wire(hydrate.I, partition.O)
             if has_ce:
                 wire(partition.CE, counter.CE)
