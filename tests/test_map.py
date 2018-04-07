@@ -7,7 +7,7 @@ from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
 from aetherling.helpers.image_RAM import *
-from mantle.primitives.arith import *
+from mantle.coreir.arith import *
 from mantle.coreir import DefineCoreirConst
 from os.path import dirname, join
 import bit_vector
@@ -30,11 +30,11 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     bitsToPixelHydrate = MapParallel(cirb, pxPerClock, Hydrate(cirb, pixelType))
     # do an add constant for each band, for each pixel
     addConstants = MapParallel(cirb, pxPerClock,
-                               MapParallel(cirb, imgData.bandsPerPixel(
-                                   DefineCoreirConst(imgData.bitsPerBand, addAmount))))
+                               MapParallel(cirb, imgData.bandsPerPixel,
+                                           DefineCoreirConst(imgData.bitsPerBand, addAmount)()))
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
-                                       MapParallel(cirb, imgData.bandsPerPixel(
-                                           DeclareAdd(imgData.bitsPerBand)(), pixelType)))
+                                       MapParallel(cirb, imgData.bandsPerPixel,
+                                                   DefineAdd(imgData.bitsPerBand)()))
     pixelToBitsDehydrate = MapParallel(cirb, pxPerClock, Dehydrate(cirb, pixelType))
 
 
