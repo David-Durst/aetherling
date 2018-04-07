@@ -1,5 +1,6 @@
 from aetherling.modules.hydrate import Hydrate, Dehydrate
-from aetherling.modules.map import MapParallel, MapPartiallyParallel
+from aetherling.modules.mapFullyParallelSequential import MapParallel
+from aetherling.modules.mapPartiallyParallel import MapPartiallyParallel
 from magma.backend.coreir_ import CoreIRBackend
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
@@ -61,9 +62,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
         sim.advance_cycle()
         sim.evaluate()
 
-    def validIfBandIncreasedByAddAmount(imgData, rowIndex, resultData):
-        bitsStartIndex = rowIndex * imgData.bitsPerRow
-        bitsEndIndex = (rowIndex + 1) * imgData.bitsPerRow
+    def validIfBandIncreasedByAddAmount(imgData, _, resultData):
         for bandIndex in range(imgData.bandsPerPixel*pxPerClock):
             bandStartIndex = bandIndex * imgData.bitsPerBand
             bandEndIndex = (bandIndex + 1) * imgData.bitsPerBand

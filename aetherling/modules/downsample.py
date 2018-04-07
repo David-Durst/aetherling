@@ -8,7 +8,7 @@ from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
 from .hydrate import Dehydrate, Hydrate
-from .map import MapParallel
+from .mapFullyParallelSequential import MapParallel
 
 __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
            'DefineDownsampleSequential', 'DownsampleSequential']

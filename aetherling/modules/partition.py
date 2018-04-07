@@ -1,7 +1,7 @@
 from magma.backend.coreir_ import CoreIRBackend
 from magma import *
 from .hydrate import Hydrate, Dehydrate
-from .map import MapParallel
+from .mapFullyParallelSequential import MapParallel
 from mantle.coreir.MUX import CommonlibMuxN
 from mantle import SizedCounterModM
 
