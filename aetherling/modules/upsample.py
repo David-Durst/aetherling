@@ -25,7 +25,8 @@ def DefineUpsampleParallel(n, T):
         @classmethod
         def definition(upsampleParallel):
             for i in range(n):
-                wire(upsampleParallel.I, upsampleParallel.O[i])
+                upsampleParallel.wire = wire(upsampleParallel.I, upsampleParallel.O[i])
+
     return UpParallel
 
 def UpsampleParallel(n, T):

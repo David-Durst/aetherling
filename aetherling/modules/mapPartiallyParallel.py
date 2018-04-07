@@ -20,17 +20,19 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
       I : In(Array(numInputs, T)
       O : Out(Array(parallelism, S))
     """
-    class MapPartiallyParallel(Circuit):
+    class _MapPartiallyParallel(Circuit):
         name = "Map" + str(numInputs) + "_" + str(parallelism)
         # extend each input to length of numInputs, each output to parallelism length
-        inputs = [[name, Array(numInputs, port)] for [name, port] in op.inputargs()]
-        outputs = [[name, Array(parallelism, port)] for [name, port] in op.outputargs()]
-        IO = flatten(inputs + outputs)
+        inputs = [nameOrPort if type(nameOrPort) == str else Array(parallelism, type(nameOrPort)) for nameOrPort in
+                  op.inputargs()]
+        outputs = [nameOrPort if type(nameOrPort) == str else Array(parallelism, type(nameOrPort)) for nameOrPort in
+                   op.outputargs()]
+        IO = inputs + outputs
 
         @classmethod
         def definition(mapPartiallyParallel):
-            inputNames = [name for [name, _] in mapPartiallyParallel.inputs]
-            outputNames = [name for [name, _] in mapPartiallyParallel.outputs]
+            inputNames = [name for name in mapPartiallyParallel.inputs[::2]]
+            outputNames = [name for name in mapPartiallyParallel.outputs[::2]]
             ops = MapParallel(cirb, parallelism, op)
             # wire each input (which has been partitioned into subsets) into each operation
             for inputName in inputNames:
@@ -42,7 +44,7 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
             # wire each each op (for one subset) to an output
             for outputName in outputNames:
                 wire(getattr(ops, outputName), getattr(mapPartiallyParallel, outputName))
-    return MapPartiallyParallel
+    return _MapPartiallyParallel
 
 
 def MapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
