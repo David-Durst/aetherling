@@ -1,4 +1,4 @@
-from aetherling.modules.mapFullyParallelSequential import MapParallel
+from .mapFullyParallelSequential import MapParallel
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from .partition import Partition
