@@ -14,6 +14,8 @@ class IMGData:
     def __init__(self, img, imgAsBits, pxPerClock):
         self.imgAsBits = imgAsBits
         self.bitsPerPixel = int(len(img.getbands())*BITS_PER_PIXEL_BAND)
+        self.bandsPerPixel = int(len(img.getbands()))
+        self.bitsPerBand = BITS_PER_PIXEL_BAND
         self.bitsPerRow = int(self.bitsPerPixel*pxPerClock)
         self.numRows = int(len(imgAsBits) / self.bitsPerRow)
         assert len(imgAsBits) % self.bitsPerRow == 0, \

@@ -92,6 +92,6 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
                 wire(getattr(ops, outputName), getattr(mapPartiallyParallel, outputName))
     return MapPartiallyParallel
 
-def MapPartiallyParallelcirb(cirb: CoreIRBackend, numInputs: int, parallelism: int,
+def MapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
                          op: Circuit, has_ce=False):
     return DefineMapPartiallyParallel(cirb, numInputs, parallelism, op, has_ce)()

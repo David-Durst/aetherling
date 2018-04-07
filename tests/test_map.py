@@ -1,21 +1,22 @@
 from aetherling.modules.hydrate import Hydrate, Dehydrate
-from aetherling.modules.map import MapParallel
+from aetherling.modules.map import MapParallel, MapPartiallyParallel
 from magma.backend.coreir_ import CoreIRBackend
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
 from aetherling.helpers.image_RAM import *
-from aetherling.modules.upsample import UpsampleParallel
-from aetherling.modules.downsample import DownsampleParallel
+from mantle.primitives.arith import *
+from mantle.coreir import DefineCoreirConst
 from os.path import dirname, join
+import bit_vector
 
 imgSrc = join(dirname(__file__), "custom.png")
 imgDst = join(dirname(__file__), "custom_out.png")
 
 #NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
-def run_test_updown_npxPerClock(pxPerClock):
-    upsampleAmount = 7
+def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
+    addAmount = 5
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
@@ -24,10 +25,15 @@ def run_test_updown_npxPerClock(pxPerClock):
     testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
 
     imgData = loadImage(imgSrc, pxPerClock)
-    pixelType = Array(imgData.bitsPerPixel, Bit)
+    pixelType = Array(imgData.bandsPerPixel, Array(imgData.bitsPerBand, Bit))
     bitsToPixelHydrate = MapParallel(cirb, pxPerClock, Hydrate(cirb, pixelType))
-    upParallel = MapParallel(cirb, pxPerClock, UpsampleParallel(upsampleAmount, pixelType))
-    downParallel = MapParallel(cirb, pxPerClock, DownsampleParallel(cirb, upsampleAmount, pixelType))
+    # do an add constant for each band, for each pixel
+    addConstants = MapParallel(cirb, pxPerClock,
+                               MapParallel(cirb, imgData.bandsPerPixel(
+                                   DefineCoreirConst(imgData.bitsPerBand, addAmount))))
+    addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
+                                       MapParallel(cirb, imgData.bandsPerPixel(
+                                           DeclareAdd(imgData.bitsPerBand)(), pixelType)))
     pixelToBitsDehydrate = MapParallel(cirb, pxPerClock, Dehydrate(cirb, pixelType))
 
 
@@ -37,9 +43,9 @@ def run_test_updown_npxPerClock(pxPerClock):
     # adjacent node inside circuit
     InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
     OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
-    wire(upParallel.I, bitsToPixelHydrate.out)
-    wire(upParallel.O, downParallel.I)
-    wire(downParallel.O, pixelToBitsDehydrate.I)
+    wire(addParallel.I0, bitsToPixelHydrate.out)
+    wire(addParallel.I1, addConstants.out)
+    wire(addParallel.O, pixelToBitsDehydrate.I)
 
     EndCircuit()
 
@@ -54,10 +60,19 @@ def run_test_updown_npxPerClock(pxPerClock):
         sim.evaluate()
         sim.advance_cycle()
         sim.evaluate()
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfEqual)
 
-def test_updown_1pxPerClock():
-    run_test_updown_npxPerClock(1)
+    def validIfBandIncreasedByAddAmount(imgData, rowIndex, resultData):
+        bitsStartIndex = rowIndex * imgData.bitsPerRow
+        bitsEndIndex = (rowIndex + 1) * imgData.bitsPerRow
+        for bandIndex in range(imgData.bandsPerPixel*pxPerClock):
+            bandStartIndex = bandIndex * imgData.bitsPerBand
+            bandEndIndex = (bandIndex + 1) * imgData.bitsPerBand
+            if bit_vector.seq2int(imgData.imgAsBits[bandStartIndex:bandEndIndex]) + \
+                addAmount != bit_vector.seq2int(resultData):
+                return False
+        return True
 
-def test_updown_5pxPerClock():
-    run_test_updown_npxPerClock(5)
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfBandIncreasedByAddAmount)
+
+def test_map_4pxPerClock_2PpxParallel():
+    run_test_map_npxPerClock_mparallelism(4,2)
