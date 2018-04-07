@@ -1,9 +1,9 @@
 from aetherling.modules.mapFullyParallelSequential import MapParallel
-from magma import Circuit, Array, flatten, wire
+from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from .partition import Partition
 
-
+@cache_definition
 def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
                          op: Circuit, has_ce=False) -> Circuit:
     """
@@ -24,7 +24,7 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
         name = "Map" + str(numInputs) + "_" + str(parallelism)
         # extend each input to length of numInputs, each output to parallelism length
         inputs = [[name, Array(numInputs, port)] for [name, port] in op.inputargs()]
-        outputs = [[name, Array(parallelism, port)] for [name, port] in op.outputsargs()]
+        outputs = [[name, Array(parallelism, port)] for [name, port] in op.outputargs()]
         IO = flatten(inputs + outputs)
 
         @classmethod
@@ -35,7 +35,7 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
             # wire each input (which has been partitioned into subsets) into each operation
             for inputName in inputNames:
                 inputPartition = MapParallel(cirb, parallelism,
-                                    aePartition.Partition(cirb, getattr(mapPartiallyParallel, inputName).T,
+                                    Partition(cirb, getattr(mapPartiallyParallel, inputName).T,
                                                   parallelism, has_ce=has_ce))
                 wire(getattr(mapPartiallyParallel, inputName), inputPartition.I)
                 wire(inputPartition.O, getattr(ops, inputName))
