@@ -6,7 +6,7 @@ from mantle.coreir.MUX import CommonlibMuxN
 from mantle import SizedCounterModM
 
 @cache_definition
-def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
+def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
               has_ce=False):
     """
     Split an array of elements in arrayLength/subsetSize elements of size subsetSize each.
@@ -25,7 +25,9 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
     assert arrayType.N % subsetSize == 0, "At this time, must partition into evenly sized arrays"
 
     class Partition(Circuit):
-        name = "Partition" + str(arrayType) + "_" + str(subsetSize)
+        # https://stackoverflow.com/questions/12985456/replace-all-non-alphanumeric-characters-in-a-string
+        name = "Partition" + "".join([ c if c.isalnum() else "_" for c in str(arrayType)]) + \
+               "_" + str(subsetSize)
         elementType = arrayType.T
         IO = ['I', In(arrayType), 'O', Out(Array(subsetSize, elementType))] + \
             ClockInterface(has_ce=has_ce)
@@ -45,10 +47,10 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int,
                 # to the first mux wire 0, subsetSize, 2*subsetSize,...
                 # so that each clock it emits the first element of the next subset
                 # repeat for each mux so ith mux outputs ith element of subset each clock
-                wire(dehydrate.O[i::subsetSize], muxes.I[0].data)
+                wire(dehydrate.out[i::subsetSize], muxes.I[0].data)
                 wire(counter.O, muxes.I[0].sel)
             wire(muxes.out, hydrate.I)
-            wire(hydrate.I, partition.O)
+            wire(hydrate.out, partition.O)
             if has_ce:
                 wire(partition.CE, counter.CE)
     return Partition
