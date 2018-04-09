@@ -47,8 +47,8 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
                 # to the first mux wire 0, subsetSize, 2*subsetSize,...
                 # so that each clock it emits the first element of the next subset
                 # repeat for each mux so ith mux outputs ith element of subset each clock
-                wire(dehydrate.out[i::subsetSize], muxes.I[0].data)
-                wire(counter.O, muxes.I[0].sel)
+                wire(dehydrate.out[i::subsetSize], muxes.I[i].data)
+                wire(counter.O, muxes.I[i].sel)
             wire(muxes.out, hydrate.I)
             wire(hydrate.out, partition.O)
             if has_ce:
