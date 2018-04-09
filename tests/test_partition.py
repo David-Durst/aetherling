@@ -35,7 +35,8 @@ def test_partition():
 
     GetCoreIRModule(cirb, testcircuit).save_to_file("partition_out.json")
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.I, int2seq(testValInt, width), scope)
     sim.evaluate()
