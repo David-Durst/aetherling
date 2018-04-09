@@ -4,6 +4,7 @@ from magma import *
 from magma.backend import coreir_compile
 from magma.clock import *
 from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRModule
 from magma.bitutils import *
 import bit_vector.bit_vector
 from coreir.context import *
@@ -30,6 +31,9 @@ def test_partition():
     wire(testcircuit.O, part.O)
 
     EndCircuit()
+
+
+    GetCoreIRModule(cirb, testcircuit).save_to_file("partition_out.json")
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
