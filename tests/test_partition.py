@@ -32,16 +32,13 @@ def test_partition():
 
     EndCircuit()
 
-
-    GetCoreIRModule(cirb, testcircuit).save_to_file("partition_out.json")
-
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.I, int2seq(testValInt, width), scope)
     sim.evaluate()
-    sim.advance_cycle()
-    sim.evaluate()
     for i in range(2):
-        assert seq2int(sim.get_value(testcircuit.O[i], scope)) == \
-               testValBits[i*parallelism:(i+1)*parallelism]
+        assert seq2int(sim.get_value(testcircuit.O, scope)) == \
+               seq2int(testValBits[i*parallelism:(i+1)*parallelism])
+        sim.advance_cycle()
+        sim.evaluate()
