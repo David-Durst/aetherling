@@ -21,7 +21,8 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock)
+    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock,
+                                                       parallelism)
 
     testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
 
@@ -37,8 +38,8 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
                                        addOne)
-    assert False
-    pixelToBitsDehydrate = MapParallel(cirb, pxPerClock, Dehydrate(cirb, pixelType))
+    pixelToBitsDehydrate = MapParallel(cirb, int(pxPerClock*parallelism),
+                                       Dehydrate(cirb, pixelType))
 
 
     # Note: input image RAM will send data to hydrate,
@@ -46,7 +47,8 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     # note that these do wiriring to connect the RAMs to edge of test circuit and
     # adjacent node inside circuit
     InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
-    OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
+    OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
+                   imgSrc, int(parallelism*pxPerClock))
     wire(addParallel.I0, bitsToPixelHydrate.out)
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
@@ -77,4 +79,4 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfBandIncreasedByAddAmount)
 
 def test_map_4pxPerClock_2PpxParallel():
-    run_test_map_npxPerClock_mparallelism(4,2)
+    run_test_map_npxPerClock_mparallelism(4,0.5)
