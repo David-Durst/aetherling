@@ -37,7 +37,7 @@ def test_partition():
 
     sim.set_value(testcircuit.I, int2seq(testValInt, width), scope)
     sim.evaluate()
-    for i in range(width / parallelism):
+    for i in range(int(width / parallelism)):
         assert seq2int(sim.get_value(testcircuit.O, scope)) == \
                seq2int(testValBits[i*parallelism:(i+1)*parallelism])
         sim.advance_cycle()
