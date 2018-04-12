@@ -42,6 +42,10 @@ cd aetherling
 pip install -r requirements.txt
 pip install -e .
 ```
+1. Set the following environment variable (if you didn't already do so in the Mantle installation):
+```
+export MANTLE=coreir
+```
 1. Run the unit tests:
 ```
 pytest -s tests
