@@ -1,4 +1,3 @@
--e git+git@github.com:David-Durst/aetherling.git@7fd3ae85bfefdc88bd19eaf29d89ee419de98457#egg=aetherling
 alabaster==0.7.10
 astor==0.6.2
 attrs==17.4.0
