@@ -1,12 +1,20 @@
 # Aetherling
 
-## What is this?
+## Overview
 Aetherling is a library for creating data-parallel pipelines in hardware. Aetherling will eventually offer two APIs:
 1. Auto-scheduled - The user declares high-level operations like map and reduce. Aetherling optimally maps these to parallel or sequential implementations in hardware compiler transformations that are proven to be optimal.
 1. Manually-scheduled  - The user creates pipelines using Aetherlings low-level primitives for a hand-crafted, artisanal data pipeline that is parallelized exactly the desired amount.
 
-## How do I install it?
+## Documentation
+1. The following document provides a description of how much space on hardware and how much time in clock cycles each operation takes: https://github.com/David-Durst/aetherling/blob/master/applied/spacetime.txt
+1. aetherling/modules contains the currently implemented modules
+1. tests contains a list of unit tests that show how to create Aetherling pipelines.
+    1. Run the tests with the following command:
+    ```
+    pytest -s tests
+    ```
 
+## Installation
 1. Install the following components in the proscribed order:
     1. [CoreIR](https://github.com/rdaly525/coreir/tree/master) - use the dev branch
         1. This is the IR used to represent the components.
@@ -34,6 +42,8 @@ cd aetherling
 pip install -r requirements.txt
 pip install -e .
 ```
-
-
+1. Run the unit tests:
+```
+pytest -s tests
+```
 
