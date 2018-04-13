@@ -36,11 +36,16 @@ mapSequential k f :: {1,S[k]} -> {1,T[k]}
    time(mapSequential k f) = k
    minClockCycleTime(mapSequential k f) = time(f)
 
-NOTE: the following is not implemented becuase it is just applying f inside of a stream, which should not be a module
+NOTE: mapSequentialStreaming is not implemented because it is just applying f inside of a stream, which should not be a module
 mapSequentialStreaming k f :: {k, S} -> {k, T}
-   area(mapSequentialStreaming f) = area(f)
-   time(mapSequentialStreaming f) = 1
+   area(mapSequentialStreaming k f) = area(f)
+   time(mapSequentialStreaming k f) = 1
    minClockCycleTime(mapSequentialStreaming k f) = time(f)
+
+mapPartiallyParallel p k f :: {1, T[k]} -> {p, S[k/p]}
+   area(mapPartiallyParallel p k f) = p * area(f) + area(partition p k)
+   time(mapPartiallyParallel p k f) = p
+   minClockCycleTime(mapPartiallyParallel p k f) = time(f) + time(partition p k)
 
 
 REDUCE:
@@ -75,16 +80,48 @@ conv dataSize inputsPerClock kernelWidth :: {dataSize / inputsPerClock, S[inputs
    time(conv dataSize inputsPerClock kernelWidth) = 1
    minClockCycleTime(conv dataSize inputsPerClock kernelWidth) = reg write time + time(multiplty) + log_2(kernelWidth) * time(add)
 
+UPSAMPLE/DOWNSAMPLE:
+===========================================
+upsampleParallel n :: {1, T} -> {1, T[n]}
+    area(upsampleParallel n) = n*area(wire(width(T)))
+    time(upsampleParallel n) = 1
+    minClockCycleTime(upsampleParallel n) = wire time
+
+upsampleSequential n :: {1, T} -> {n, T}
+    area(upsampleSequential n) = area(reg(width(T))) + area(mux(elements = 2, width = width(T))) + area(counter(width = log_2(n))
+    time(upsampleSequential n) = n
+    minClockCycleTime(upsampleSequential n) = reg write time
+
+downsampleParallel n :: {1, T[n]} -> {1, T}
+    area(downsampleParallel n) = n*area(wire(width(T)))
+    time(downsampleParallel n) = 1
+    minClockCycleTime(downsampleSeqential) = wire time
+
+downsampleSequential n :: {n, T} -> {1, T}
+    area(downsampleSequential n) = n*area(wire(width(T))) + area(counter(width = log_2(n))
+    time(downsampleSequential n) = n
+    minClockCycleTime(downsampleSequential) = clock increment time + comparison time
+
 HELPERS:
 ===========================================
 streamify k :: {1, S[k]} -> {k, S}
-   area(streamify k) = (k-1)*area(reg(width(S))) + counter(width = width(S))
+   area(streamify k) = (k-1)*area(reg(width(S))) + area(counter(width = width(S)))
    time(streamify k) = k
    minClockCycleTime(streamify) = reg write time
 
 arrayify k :: {k, S} -> {1, S[k]}
-   area(arrayify k) = (k-1)*(area(reg(width(S))))+k*area(reg(width(S)))
+   area(arrayify k) = (k-1)*(area(reg(width(S)))) + k*area(reg(width(S)))
    time(arrayify k) = k
    minClockCycleTime(arrayify k) = reg write time
+
+overlap_partition k numOverlapped :: {1, S[k + numOverlapped - 1]} -> {1, S[numOverlapped][k]}
+    area(overlap_partition k numOverlapped) = 0 (implementation just rewiring, so its a nop for area)
+    time(overlap_partition k numOverlapped) = 0 (implementation just rewiring, so its a nop for time)
+    minClockCycleTime(overlap_parititon
+
+partition p k :: {1, S[k]} -> {k/p, S[p]}
+    area(partition p k) = (k-p)*area(reg(width(S))) + k/p*area(mux(elements = p, width = width(S))) + area(counter(width = log_2(p))
+    time(partition p k) = p
+    minClockCycleTime(partition p k) = reg write time
 
 
