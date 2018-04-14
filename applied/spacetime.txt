@@ -75,7 +75,7 @@ overlapPartition k i :: {1, S[k + i - 1]} -> {1, S[k][i]}
 
 CONVOLUTION:
 ===========================================
-conv dataSize inputsPerClock kernelWidth :: {dataSize / inputsPerClock, S[inputsPerClock]} -> {dataSize / inputsPerClock, S[inputsPerClock]}
+conv dataSize inputsPerClock kernelWidth :: {dataSize / inputsPerClock, S[inputsPerClock]} -> {dataSize / inputsPerClock, S[inputsPerClock][kernelWidth]}
    area(conv dataSize inputsPerClock kernelWidth) = area(linebuffer dataSize inputsPerclock kernelWidth) + inputsPerClock * area(mapParallel kernelWidth multiply) + inputsPerClock * area(reduceParallel kernelWidth add)
    time(conv dataSize inputsPerClock kernelWidth) = 1
    minClockCycleTime(conv dataSize inputsPerClock kernelWidth) = reg write time + time(multiplty) + log_2(kernelWidth) * time(add)

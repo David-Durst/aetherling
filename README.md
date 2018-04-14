@@ -36,18 +36,18 @@ Aetherling is a library for creating data-parallel pipelines in hardware. Aether
         1. How to install: https://github.com/phanrahan/mantle#setup
             1. After checking the repo out, switch to the coreir-dev branch before installing.
 1. Install Aetherling:
-```
-git clone https://github.com/David-Durst/aetherling/
-cd aetherling
-pip install -r requirements.txt
-pip install -e .
-```
+    ```
+    git clone https://github.com/David-Durst/aetherling/
+    cd aetherling
+    pip install -r requirements.txt
+    pip install -e .
+    ```
 1. Set the following environment variable (if you didn't already do so in the Mantle installation):
-```
-export MANTLE=coreir
-```
+    ```
+    export MANTLE=coreir
+    ```
 1. Run the unit tests:
-```
-pytest -s tests
-```
+    ```
+    pytest -s tests
+    ```
 
