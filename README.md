@@ -6,6 +6,7 @@ Aetherling is a library for creating data-parallel pipelines in hardware. Aether
 1. Manually-scheduled  - The user creates pipelines using Aetherlings low-level primitives for a hand-crafted, artisanal data pipeline that is parallelized exactly the desired amount.
 
 ## Documentation
+1. Read the [documentation of the stack Aetherling is built on top of](https://github.com/phanrahan/magma/blob/docs/doc/overview.md)
 1. The following document provides a description of how much space on hardware and how much time in clock cycles each operation takes: https://github.com/David-Durst/aetherling/blob/master/applied/spacetime.txt
 1. aetherling/modules contains the currently implemented modules
 1. tests contains a list of unit tests that show how to create Aetherling pipelines.
