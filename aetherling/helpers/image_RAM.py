@@ -30,14 +30,14 @@ def loadImage(imgSrc, pxPerClock):
     imgAsBits.frombytes(img.tobytes())
     return IMGData(img, imgAsBits, pxPerClock)
 
-def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock, parallelism = 1.0):
+def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock, parallelism = 1):
     imgData = loadImage(imgSrc, pxPerClock)
     returnedInterface = []
     if memoryInput:
         returnedInterface += ["input_wdata", In(Bits(imgData.bitsPerRow)),
                               "input_wen", In(Bit), "input_ren", In(Bit)]
     if memoryOutput:
-        returnedInterface += ["output_rdata", Out(Bits(int(parallelism * imgData.bitsPerRow))),
+        returnedInterface += ["output_rdata", Out(Bits(int(parallelism * imgData.bitsPerPixel))),
                               "output_ren", In(Bit)]
     return returnedInterface
 

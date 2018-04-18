@@ -6,21 +6,21 @@ from .partition import Partition
 @cache_definition
 def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: float,
                          op: Circuit, has_ce=False) -> Circuit:
-    assert numInputs*parallelism % 1 == 0, "Parallelism must be a fraction the gives an " \
-                                           "integer number of ops per cycle"
+    assert numInputs/parallelism % 1 == 0, "Parallelism must divide into numInputs with no " \
+                                           "remainder"
     """
-    Map an operation over numInputs inputs in 1/parallelism clock cycles
-    Aetherling Type: {1, T[numInputs]} -> {1/parallelism, S[numInputs*parallelism]}
+    Map an operation over numInputs inputs in numInputs/parallelism clock cycles
+    Aetherling Type: {1, T[numInputs]} -> {numInputs/parallelism, S[parallelism]}
 
     :param cirb: The CoreIR backend currently be used
     :param numInputs: The number of input elements
     :param op: The operator (the magma circuit) to map over the elements. It should have type T -> S
     :return: A module with all the ports of op, except that they will be converted to arrays
      of original type. Input ports will be of length numInputs, output ports will be of length
-      parallelism*numInputs. For example, if op has one input port I and one output O, the ports
+      numInputs/parallelism. For example, if op has one input port I and one output O, the ports
       will be:
       I : In(Array(numInputs, T)
-      O : Out(Array(numInputs*parallelism, S))
+      O : Out(Array(numInputs/parallelism, S))
     """
     class _MapPartiallyParallel(Circuit):
         name = "Map_N{}_P{}_OP({})".format(str(numInputs), str(parallelism), str(type(op)))
@@ -28,13 +28,13 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
         inputs = [nameOrPort if type(nameOrPort) == str else Array(numInputs, type(nameOrPort)) for nameOrPort in
                   op.inputargs()]
         outputs = [nameOrPort if type(nameOrPort) == str else \
-                       Array(int(numInputs * parallelism), type(nameOrPort)) for nameOrPort in
+                       Array(int(numInputs / parallelism), type(nameOrPort)) for nameOrPort in
                    op.outputargs()]
         IO = inputs + outputs
 
         @classmethod
         def definition(mapPartiallyParallel):
-            parallelOps = int(numInputs * parallelism)
+            parallelOps = int(numInputs / parallelism)
             inputNames = [name for name in mapPartiallyParallel.inputs[::2]]
             outputNames = [name for name in mapPartiallyParallel.outputs[::2]]
             ops = MapParallel(cirb, parallelOps, op)

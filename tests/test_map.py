@@ -38,7 +38,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
                                        addOne)
-    pixelToBitsDehydrate = MapParallel(cirb, int(pxPerClock*parallelism),
+    pixelToBitsDehydrate = MapParallel(cirb, int(pxPerClock/parallelism),
                                        Dehydrate(cirb, pixelType))
 
 
@@ -48,7 +48,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     # adjacent node inside circuit
     InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
     OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
-                   imgSrc, int(parallelism*pxPerClock))
+                   imgSrc, int(pxPerClock/parallelism))
     wire(addParallel.I0, bitsToPixelHydrate.out)
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
@@ -78,5 +78,5 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfBandIncreasedByAddAmount)
 
-def test_map_4pxPerClock_2PpxParallel():
-    run_test_map_npxPerClock_mparallelism(4,0.5)
+def test_map_4pxPerClock_2PxParallel():
+    run_test_map_npxPerClock_mparallelism(4,2)
