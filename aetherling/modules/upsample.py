@@ -2,11 +2,10 @@ import math
 
 from mantle import Register, SizedCounterModM, Decode
 from mantle.common.operator import *
-
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
 from .hydrate import Hydrate, Dehydrate
+from ..helpers.nameCleanup import cleanName
 
 __all__ = ['DefineUpsampleParallel', 'UpsampleParallel', 'DefineUpsampleSequential', 'UpsampleSequential']
 
@@ -19,7 +18,7 @@ def DefineUpsampleParallel(n, T):
     O : Out(Array(n, T))
     """
     class UpParallel(Circuit):
-        name = "UpsampleParallel_n{}_T{}".format(str(n), str(T))
+        name = "UpsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
         IO = ['I', In(T), 'O', Out(Array(n, T))]
         @classmethod
         def definition(upsampleParallel):
@@ -45,7 +44,7 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
     """
     class UpSequential(Circuit):
         name = "UpsampleSequential_n{}_T{}_hasCE{}" \
-               "_hasReset{}".format(str(n), str(T), str(has_ce), str(has_reset))
+               "_hasReset{}".format(str(n), cleanName(str(T)), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upsampleSequential):

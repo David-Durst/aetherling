@@ -3,12 +3,11 @@ import math
 from mantle import Register, SizedCounterModM, Decode
 from mantle.common.operator import *
 from mantle.coreir.type_helpers import Term
-
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
 from .hydrate import Dehydrate, Hydrate
 from .mapFullyParallelSequential import MapParallel
+from ..helpers.nameCleanup import cleanName
 
 __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
            'DefineDownsampleSequential', 'DownsampleSequential']
@@ -22,7 +21,7 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
     O : Out(T)
     """
     class DownsampleParallel(Circuit):
-        name = "DownsampleParallel_n{}_T{}".format(str(n), str(T))
+        name = "DownsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
         IO = ['I', In(Array(n, T)), 'O', Out(T)]
         @classmethod
         def definition(downsampleParallel):
@@ -53,8 +52,8 @@ def DefineDownsampleSequential(n, T, has_ce=False, has_reset=False):
     VALID : Out(Bit)
     """
     class DownsampleSequential(Circuit):
-        name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n)),\
-               str(T) + "_hasCE" + str(has_ce) + str(has_reset)
+        name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n)), \
+               cleanName(str(T)) + "_hasCE" + str(has_ce) + str(has_reset)
         IO = ['I', In(T), 'O', Out(T), 'VALID', Out(Bit)] + ClockInterface(has_ce, has_reset)
 
         @classmethod

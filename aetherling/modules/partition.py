@@ -4,6 +4,7 @@ from .hydrate import Hydrate, Dehydrate
 from .mapFullyParallelSequential import MapParallel
 from mantle.coreir.MUX import CommonlibMuxN
 from mantle import SizedCounterModM
+from ..helpers.nameCleanup import cleanName
 
 def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
               has_ce=False):
@@ -25,8 +26,8 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
 
     class Partition(Circuit):
         # https://stackoverflow.com/questions/12985456/replace-all-non-alphanumeric-characters-in-a-string
-        name = "Partition" + "".join([ c if c.isalnum() else "_" for c in str(arrayType)]) + \
-               "_" + str(subsetSize)
+        name = "Partition" + "".join([ c if c.isalnum() else "_" for c in \
+                                       str(cleanName(str(arrayType)))]) + "_" + str(subsetSize)
         elementType = arrayType.T
         IO = ['I', In(arrayType), 'O', Out(Array(subsetSize, elementType))] + \
             ClockInterface(has_ce=has_ce)
