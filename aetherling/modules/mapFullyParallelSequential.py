@@ -19,14 +19,16 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     if op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
+    name = "MapParallel_n{}_op({})".format(str(numInputs), str(op))
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
                                                          ["commonlib", "mantle", "coreir", "global"],
+                                                         name,
                                                          {"numInputs": numInputs,
-                                                 "operator": GetCoreIRModule(cirb, op)})
+                                                          "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
 
-def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer: Circuit) -> Circuit:
+def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     Map an operation over numInputs inputs over numInputs cycles.
     Note: the entire inputs must be delivered on the first cycle.
@@ -44,11 +46,13 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit, opContainer:
      I : In(Array(numInputs, T)
      O : Out(Array(numInputs, S))
     """
-    if opContainer.instances.__contains__(op):
-        opContainer.instances.remove(op)
+    if op.defn.instances.__contains__(op):
+        op.defn.instances.remove(op)
+    name = "MapParallel_n{}_op({})".format(str(numInputs), str(op))
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
                                                          ["commonlib", "mantle", "coreir", "global"],
+                                                         name,
                                                          {"numInputs": numInputs,
-                                                 "operator": GetCoreIRModule(cirb, op)})
+                                                          "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
