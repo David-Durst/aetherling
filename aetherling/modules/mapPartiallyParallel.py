@@ -24,7 +24,7 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
       O : Out(Array(numInputs/parallelism, S))
     """
     class _MapPartiallyParallel(Circuit):
-        name = "Map_n{}_p{}_op${}".format(str(numInputs), str(parallelism), cleanName(str(type(op))))
+        name = "Map_n{}_p{}_op{}".format(str(numInputs), str(parallelism), cleanName(str(type(op))))
         # extend each input to length of numInputs, each output to parallelism length
         inputs = [nameOrPort if type(nameOrPort) == str else Array(numInputs, type(nameOrPort)) for nameOrPort in
                   op.inputargs()]
