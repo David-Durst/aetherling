@@ -52,8 +52,8 @@ def DefineDownsampleSequential(n, T, has_ce=False, has_reset=False):
     VALID : Out(Bit)
     """
     class DownsampleSequential(Circuit):
-        name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n)), \
-               cleanName(str(T)) + "_hasCE" + str(has_ce) + str(has_reset)
+        name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n), \
+               cleanName(str(T)), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T), 'VALID', Out(Bit)] + ClockInterface(has_ce, has_reset)
 
         @classmethod
