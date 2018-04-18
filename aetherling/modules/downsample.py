@@ -23,7 +23,7 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
     O : Out(T)
     """
     class DownsampleParallel(Circuit):
-        name = "DownsampleParallel"
+        name = "DownsampleParallel_n{}_T{}".format(str(n), str(T))
         IO = ['I', In(Array(n, T)), 'O', Out(T)]
         @classmethod
         def definition(downsampleParallel):
@@ -55,7 +55,8 @@ def DefineDownsampleSequential(n, T, has_ce=False, has_reset=False):
     VALID : Out(Bit)
     """
     class DownsampleSequential(Circuit):
-        name = "DownsampleSequential"
+        name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n)),\
+               str(T) + "_hasCE" + str(has_ce) + str(has_reset)
         IO = ['I', In(T), 'O', Out(T), 'VALID', Out(Bit)] + ClockInterface(has_ce, has_reset)
 
         @classmethod
