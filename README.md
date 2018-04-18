@@ -22,16 +22,16 @@ Aetherling is a library for creating data-parallel pipelines in hardware. Aether
         1. How to install: https://github.com/rdaly525/coreir/blob/master/INSTALL.md
             1. Install from source
             1. After checking the repo out, switch to the dev branch before installing.
-            1. Be sure to follow the instructions under the "to build" and "install to /usr or /usr/bin" headings
-    1. [Magma](https://github.com/phanrahan/magma) - use the coreir-dev branch
-        1. This provides the Python API for creating circuits and basic computer architecture components.
-        1. How to install: https://github.com/phanrahan/magma#installation
-            1. After checking the repo out, switch to the coreir-dev branch before installing.
+            1. Be sure to follow the instructions under the "to build" and "install to /usr or /usr/bin" heading
     1. [PyCoreIR](https://github.com/leonardt/pycoreir)
         1. This provides the Python API for interfacing with CoreIR.
         1. How to install: https://github.com/leonardt/pycoreir#development-setup
             1. After checking the repo out, switch to the dev branch before installing.
             1. Follow the development installation instructions.
+    1. [Magma](https://github.com/phanrahan/magma) - use the coreir-dev branch
+        1. This provides the Python API for creating circuits and basic computer architecture components.
+        1. How to install: https://github.com/phanrahan/magma#installation
+            1. After checking the repo out, switch to the coreir-dev branch before installing.
     1. [Mantle](https://github.com/phanrahan/mantle)
         1. This is a library of useful Magma components.
         1. How to install: https://github.com/phanrahan/mantle#setup
