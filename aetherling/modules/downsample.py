@@ -13,7 +13,6 @@ from .mapFullyParallelSequential import MapParallel
 __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
            'DefineDownsampleSequential', 'DownsampleSequential']
 
-@cache_definition
 def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
     """
     Downsample an array of T's to a single T in one clock cycle.
@@ -43,7 +42,6 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
 def DownsampleParallel(cirb: CoreIRBackend, n, T):
     return DefineDownsampleParallel(cirb, n, T)()
 
-@cache_definition
 def DefineDownsampleSequential(n, T, has_ce=False, has_reset=False):
     """
     Downsample a stream of T's to a single T over n clock cycles.

@@ -10,7 +10,6 @@ from .hydrate import Hydrate, Dehydrate
 
 __all__ = ['DefineUpsampleParallel', 'UpsampleParallel', 'DefineUpsampleSequential', 'UpsampleSequential']
 
-@cache_definition
 def DefineUpsampleParallel(n, T):
     """
     Upsample a single T to an array of T's in one clock cycle.
@@ -20,7 +19,7 @@ def DefineUpsampleParallel(n, T):
     O : Out(Array(n, T))
     """
     class UpParallel(Circuit):
-        name = "UpParallel"
+        name = "UpsampleParallel_n{}_T{}".format(str(n), str(T))
         IO = ['I', In(T), 'O', Out(Array(n, T))]
         @classmethod
         def definition(upsampleParallel):
@@ -34,7 +33,6 @@ def UpsampleParallel(n, T):
     y = x()
     return y
 
-@cache_definition
 def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
     """
     Upsample a single T to a stream of T's over n clock cycles.
@@ -46,7 +44,8 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
     READY : In(Bit)
     """
     class UpSequential(Circuit):
-        name = "UpSequential"
+        name = "UpsampleSequential_n{}_T{}_hasCE{}" \
+               "_hasReset{}".format(str(n), str(T), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upsampleSequential):
