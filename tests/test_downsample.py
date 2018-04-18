@@ -1,4 +1,5 @@
 from aetherling.modules.downsample import DownsampleSequential, DownsampleParallel
+from magma.frontend.coreir_ import GetCoreIRModule
 from magma.simulator import PythonSimulator
 from magma import *
 from magma.backend import coreir_compile
@@ -19,7 +20,7 @@ def test_downsample_parallel():
     numIn = 2
     testVal = 3
     c = coreir.Context()
-    coreir_backend = CoreIRBackend(c)
+    cirb = CoreIRBackend(c)
     scope = Scope()
     outType = Array(width, Out(BitIn))
     inType = Array(numIn, In(outType))
@@ -27,13 +28,13 @@ def test_downsample_parallel():
 
     testcircuit = DefineCircuit('Test_Downsample_Parallel', *args)
 
-    downsampleParallel = DownsampleParallel(coreir_backend, numIn, inType.T)
+    downsampleParallel = DownsampleParallel(cirb, numIn, inType.T)
     wire(downsampleParallel.I, testcircuit.I)
     wire(testcircuit.O, downsampleParallel.O)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):
@@ -54,14 +55,18 @@ def test_downsample_sequential():
 
     testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
 
-    coreir_backend = CoreIRBackend(c)
-    upSequential = DownsampleSequential(numOut, inType)
-    wire(upSequential.I, testcircuit.I)
-    wire(testcircuit.O, upSequential.O)
-    wire(testcircuit.VALID, upSequential.VALID)
+    cirb = CoreIRBackend(c)
+    downsampleSequential = DownsampleSequential(numOut, inType)
+    wire(downsampleSequential.I, testcircuit.I)
+    wire(testcircuit.O, downsampleSequential.O)
+    wire(testcircuit.VALID, downsampleSequential.VALID)
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context,
+    #testModule = GetCoreIRModule(cirb, testcircuit)
+    #cirb.context.run_passes(["rungenerators", "verifyconnectivity-noclkrst"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    #testModule.save_to_file("downsampleSequential.json")
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
