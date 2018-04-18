@@ -7,12 +7,6 @@ from mantle import SizedCounterModM
 
 def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
               has_ce=False):
-    print("Hashes for partially parallel")
-    print(cirb.__hash__())
-    print(arrayType.__hash__(arrayType))
-    print(arrayType)
-    print(subsetSize.__hash__())
-    print(has_ce.__hash__())
     """
     Split an array of elements in arrayLength/subsetSize elements of size subsetSize each.
     Aetherling Type: {1, T[k]} -> {k/s, T[s]}
