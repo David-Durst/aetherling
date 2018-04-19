@@ -24,7 +24,7 @@ class IMGData:
             "bits using the pxPerClock %i" % pxPerClock
 
 # only load all used images once, keep them in RAM for run
-@lru_cache(maxsize=None)
+@cache_definition
 def loadImage(imgSrc, pxPerClock):
     img = Image.open(imgSrc)
     imgAsBits = bitarray(endian='little')

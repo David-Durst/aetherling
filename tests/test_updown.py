@@ -1,6 +1,8 @@
 from aetherling.modules.hydrate import Hydrate, Dehydrate
 from aetherling.modules.mapFullyParallelSequential import MapParallel
 from magma.backend.coreir_ import CoreIRBackend
+from magma.circuit import definitionCache
+from magma.frontend.coreir_ import GetCoreIRModule
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
@@ -43,7 +45,7 @@ def run_test_updown_npxPerClock(pxPerClock):
 
     EndCircuit()
 
-    #GetCoreIRModule(cirb, testcircuit).save_to_file("updown_out.json")
+    #GetCoreIRModule(cirb, testcircuit).save_to_file("updown_out{}.json".format(pxPerClock))
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
