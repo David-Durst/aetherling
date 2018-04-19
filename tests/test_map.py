@@ -38,8 +38,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
                                        addOne)
-    pixelToBitsDehydrate = MapParallel(cirb, int(pxPerClock/parallelism),
-                                       Dehydrate(cirb, pixelType))
+    pixelToBitsDehydrate = MapParallel(cirb, parallelism, Dehydrate(cirb, pixelType))
 
 
     # Note: input image RAM will send data to hydrate,
@@ -48,7 +47,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     # adjacent node inside circuit
     InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
     OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
-                   imgSrc, int(pxPerClock/parallelism))
+                   imgSrc, parallelism)
     wire(addParallel.I0, bitsToPixelHydrate.out)
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
@@ -67,12 +66,13 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
         sim.advance_cycle()
         sim.evaluate()
 
-    def validIfBandIncreasedByAddAmount(imgData, _, resultData):
-        for bandIndex in range(imgData.bandsPerPixel*pxPerClock):
+    def validIfBandIncreasedByAddAmount(imgData, rowIndex, resultData):
+        for bandIndex in range(imgData.bandsPerPixel*parallelism):
             bandStartIndex = bandIndex * imgData.bitsPerBand
             bandEndIndex = (bandIndex + 1) * imgData.bitsPerBand
-            if bit_vector.seq2int(imgData.imgAsBits[bandStartIndex:bandEndIndex]) + \
-                addAmount != bit_vector.seq2int(resultData):
+            if bit_vector.seq2int(imgData.imgAsBits[rowIndex+bandStartIndex:
+                    rowIndex+bandEndIndex]) + \
+                addAmount != bit_vector.seq2int(resultData[bandStartIndex:bandEndIndex]):
                 return False
         return True
 

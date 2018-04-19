@@ -29,20 +29,19 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
         inputs = [nameOrPort if type(nameOrPort) == str else Array(numInputs, type(nameOrPort)) for nameOrPort in
                   op.inputargs()]
         outputs = [nameOrPort if type(nameOrPort) == str else \
-                       Array(int(numInputs / parallelism), type(nameOrPort)) for nameOrPort in
+                       Array(parallelism, type(nameOrPort)) for nameOrPort in
                    op.outputargs()]
         IO = inputs + outputs
 
         @classmethod
         def definition(mapPartiallyParallel):
-            parallelOps = int(numInputs / parallelism)
             inputNames = [name for name in mapPartiallyParallel.inputs[::2]]
             outputNames = [name for name in mapPartiallyParallel.outputs[::2]]
-            ops = MapParallel(cirb, parallelOps, op)
+            ops = MapParallel(cirb, parallelism, op)
             # wire each input (which has been partitioned into subsets) into each operation
             for inputName in inputNames:
                 inputPartition = Partition(cirb, type(getattr(mapPartiallyParallel, inputName)),
-                                           parallelOps, has_ce=has_ce)
+                                           parallelism, has_ce=has_ce)
                 wire(getattr(mapPartiallyParallel, inputName), inputPartition.I)
                 wire(inputPartition.O, getattr(ops, inputName))
             # wire each each op (for one subset) to an output
