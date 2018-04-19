@@ -4,6 +4,7 @@ from mantle.coreir.memory import CoreirMem, getRAMAddrWidth
 from magma import *
 from mantle.common.countermod import SizedCounterModM
 from functools import lru_cache
+from mantle.coreir.type_helpers import Term
 from typing import Callable
 from io import BytesIO
 import math
@@ -58,23 +59,33 @@ def connectArraysAndArraysofArrays(RAMData, OtherNodeData, pxPerClock, bitsPerPi
             wire(RAMData[i*bitsPerPixel: (i+1)*bitsPerPixel], OtherNodeData[i])
 
 
-def InputImageRAM(cirb, circuit, nextNodeInput, imgSrc, pxPerClock):
+def InputImageRAM(cirb, circuit, nextNodeInput, imgSrc, pxPerClock, parallelism = None):
     imgData = loadImage(imgSrc, pxPerClock)
     imgRAM = CoreirMem(cirb, imgData.numRows, imgData.bitsPerRow)
 
     # this counter ensures writing to correct address always
     writeCounter = SizedCounterModM(imgData.numRows, has_ce=True)
-    # this counter ensures reading from the right address
+    # these counters ensure that emit pxPerClock for number of cycles that parallelism requries
+    if parallelism is not None:
+        readEnableCounter = SizedCounterModM(int(pxPerClock / parallelism), has_ce=True, cout=True)
+        term = Term(cirb, len(readEnableCounter.O))
     readCounter = SizedCounterModM(imgData.numRows, has_ce=True)
+
 
     wire(writeCounter.O, imgRAM.waddr)
     wire(circuit.input_wdata, imgRAM.wdata)
     wire(readCounter.O, imgRAM.raddr)
     connectArraysAndArraysofArrays(imgRAM.rdata, nextNodeInput,
                                    pxPerClock, imgData.bitsPerPixel)
-    wire(circuit.input_ren, readCounter.CE)
+    if parallelism is not None:
+        wire(circuit.input_ren, readEnableCounter.CE)
+        wire(readEnableCounter.COUT, readCounter.CE)
+        wire(readEnableCounter.O, term.I)
+    else:
+        wire(circuit.input_ren, readCounter.CE)
     wire(circuit.input_wen, imgRAM.wen)
     wire(circuit.input_wen, writeCounter.CE)
+
     return imgRAM
 
 
