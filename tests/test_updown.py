@@ -21,7 +21,7 @@ def run_test_updown_npxPerClock(pxPerClock):
     scope = Scope()
     args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock)
 
-    testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
+    testcircuit = DefineCircuit('Test_UpsampleDownsample_{}PxPerClock'.format(pxPerClock), *args)
 
     imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array(imgData.bitsPerPixel, Bit)

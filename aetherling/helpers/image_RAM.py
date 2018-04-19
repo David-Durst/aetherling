@@ -31,7 +31,9 @@ def loadImage(imgSrc, pxPerClock):
     imgAsBits.frombytes(img.tobytes())
     return IMGData(img, imgAsBits, pxPerClock)
 
-def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock, parallelism = 1):
+def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock, parallelism = None):
+    if parallelism is None:
+        parallelism = pxPerClock
     imgData = loadImage(imgSrc, pxPerClock)
     returnedInterface = []
     if memoryInput:
