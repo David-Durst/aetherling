@@ -2,6 +2,7 @@ from aetherling.modules.hydrate import Hydrate, Dehydrate
 from aetherling.modules.mapFullyParallelSequential import MapParallel
 from aetherling.modules.mapPartiallyParallel import MapPartiallyParallel
 from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRModule
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
@@ -17,11 +18,12 @@ imgDst = join(dirname(__file__), "custom_out.png")
 
 #NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
 def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
-    addAmount = 5
+    addAmount = 4
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock,
+    args = ["outConst", Out(Bits(8)), "outData", Out(Bits(8)), "outResult", Out(Bits(8)), 'testPartially', Array(3, Array(8, Out(Bit)))] + \
+           ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock,
                                                        parallelism)
 
     testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
@@ -45,24 +47,39 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     # which converts it to form upsample and downsample can use
     # note that these do wiriring to connect the RAMs to edge of test circuit and
     # adjacent node inside circuit
-    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
+    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock, parallelism)
     OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
                    imgSrc, parallelism)
     wire(addParallel.I0, bitsToPixelHydrate.out)
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
+    wire(testcircuit.outConst, addConstants.out[0][0])
+    wire(testcircuit.outData, bitsToPixelHydrate.out[0][0])
+    wire(testcircuit.outResult, addParallel.O[0][0])
+    wire(testcircuit.testPartially, addParallel.test)
 
     EndCircuit()
 
-    #GetCoreIRModule(cirb, testcircuit).save_to_file("updown_out.json")
+    #mod = GetCoreIRModule(cirb, type(addParallel))
+    #mod.save_to_file("test_map_partiallyParallel.json")
+    #return
+
+    #cirb.context.run_passes(["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst","flattentypes", "flatten"],
+    #                        ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    #mod.save_to_file("test_map.json")
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
+    print("Got here")
+    print(sim.get_value(addConstants.out, scope))
+    print("Did not get here")
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
     # run the simulation for all the rows
     for i in range(imgData.numRows):
         sim.evaluate()
+        print(sim.get_value(addConstants.out, scope))
         sim.advance_cycle()
         sim.evaluate()
 
