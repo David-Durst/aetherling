@@ -22,7 +22,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ["outConst", Out(Bits(8)), "outData", Out(Bits(8)), "outResult", Out(Bits(8)), 'testPartially', Array(3, Array(8, Out(Bit)))] + \
+    args = ["outConst", Out(Bits(8)), "outData0", Out(Array(3, Bits(8))), "outData1", Out(Array(3, Bits(8))), "outData2", Out(Array(3, Bits(8))), "outData3", Out(Array(3, Bits(8))), "outResult", Out(Bits(8)), 'testPartially', Array(3, Array(8, Out(Bit)))] + \
            ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock,
                                                        parallelism)
 
@@ -54,7 +54,10 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
     wire(testcircuit.outConst, addConstants.out[0][0])
-    wire(testcircuit.outData, bitsToPixelHydrate.out[0][0])
+    wire(testcircuit.outData0, bitsToPixelHydrate.out[0])
+    wire(testcircuit.outData1, bitsToPixelHydrate.out[1])
+    wire(testcircuit.outData2, bitsToPixelHydrate.out[2])
+    wire(testcircuit.outData3, bitsToPixelHydrate.out[3])
     wire(testcircuit.outResult, addParallel.O[0][0])
     wire(testcircuit.testPartially, addParallel.test)
 
@@ -72,14 +75,10 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    print("Got here")
-    print(sim.get_value(addConstants.out, scope))
-    print("Did not get here")
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
     # run the simulation for all the rows
     for i in range(imgData.numRows):
         sim.evaluate()
-        print(sim.get_value(addConstants.out, scope))
         sim.advance_cycle()
         sim.evaluate()
 
