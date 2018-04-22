@@ -79,6 +79,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     # run the simulation for all the rows
     for i in range(imgData.numRows):
         sim.evaluate()
+        print(sim.get_value(addParallel._instances[1].I, scope))
         sim.advance_cycle()
         sim.evaluate()
 
