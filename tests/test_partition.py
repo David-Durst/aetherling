@@ -32,11 +32,6 @@ def test_partition():
 
     EndCircuit()
 
-    mod = GetCoreIRModule(cirb, testcircuit)
-    cirb.flatten_and_save(mod, "partition4_16_unflattend.json", ["aetherlinglib", "commonlib", "mantle", "coreir", "global"], False)
-    cirb.flatten_and_save(mod, "partition4_16_flattened.json", ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    return
-
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
