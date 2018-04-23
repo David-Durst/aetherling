@@ -31,7 +31,7 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
         outputs = [nameOrPort if type(nameOrPort) == str else \
                        Array(parallelism, type(nameOrPort)) for nameOrPort in
                    op.outputargs()]
-        IO = inputs + outputs + ClockInterface(has_ce=has_ce) + ['test', Array(3, Array(8, Out(Bit)))]
+        IO = inputs + outputs + ClockInterface(has_ce=has_ce)
 
         @classmethod
         def definition(mapPartiallyParallel):
@@ -44,8 +44,6 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
                                            parallelism, has_ce=has_ce)
                 wire(getattr(mapPartiallyParallel, inputName), inputPartition.I)
                 wire(inputPartition.O, getattr(ops, inputName))
-                if inputName == 'I0':
-                    wire(inputPartition.O[0], mapPartiallyParallel.test)
                 if has_ce:
                     wire(mapPartiallyParallel.CE, inputPartition.CE)
             # wire each each op (for one subset) to an output

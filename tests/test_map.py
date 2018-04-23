@@ -22,11 +22,10 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ["outConst", Out(Bits(8)), "outData0", Out(Array(3, Bits(8))), "outData1", Out(Array(3, Bits(8))), "outData2", Out(Array(3, Bits(8))), "outData3", Out(Array(3, Bits(8))), "outResult", Out(Bits(8)), 'testPartially', Array(3, Array(8, Out(Bit)))] + \
-           ClockInterface(False, False, has_ce=True) + RAMInterface(imgSrc, True, True, pxPerClock,
-                                                       parallelism)
+    args = ClockInterface(False, False, has_ce=True) + RAMInterface(imgSrc, True, True, pxPerClock,
+                                                                    parallelism)
 
-    testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
+    testcircuit = DefineCircuit('Test_UpsampleDownsample_{}PxPerClock_{}Parallelism'.format(pxPerClock, parallelism), *args)
 
     imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array(imgData.bandsPerPixel, Array(imgData.bitsPerBand, Bit))
@@ -54,13 +53,6 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
     wire(testcircuit.CE, addParallel.CE)
-    wire(testcircuit.outConst, addConstants.out[0][0])
-    wire(testcircuit.outData0, bitsToPixelHydrate.out[0])
-    wire(testcircuit.outData1, bitsToPixelHydrate.out[1])
-    wire(testcircuit.outData2, bitsToPixelHydrate.out[2])
-    wire(testcircuit.outData3, bitsToPixelHydrate.out[3])
-    wire(testcircuit.outResult, addParallel.O[0][0])
-    wire(testcircuit.testPartially, addParallel.test)
 
     EndCircuit()
 
@@ -79,11 +71,11 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     #GetCoreIRModule(cirb, testcircuit).save_to_file("test_map_flattened.json.test")
     #return
-    addParallelScope = Scope(instance=addParallel, parent=scope)
-    addParallelPartitionScope = Scope(instance=addParallel._instances[1], parent=addParallelScope)
-    addParallelPartitionMuxScope = Scope(instance=addParallel._instances[1]._instances[1], parent=addParallelPartitionScope)
+    #addParallelScope = Scope(instance=addParallel, parent=scope)
+    #addParallelPartitionScope = Scope(instance=addParallel._instances[1], parent=addParallelScope)
+    #addParallelPartitionMuxScope = Scope(instance=addParallel._instances[1]._instances[1], parent=addParallelPartitionScope)
     #sim.get_value(addParallel._instances[1]._instances[1].I[0].data, addParallelPartitionScope)
-    dataVal = sim.get_value(addParallel._instances[1]._instances[1].I[0], addParallelPartitionScope)
+    #dataVal = sim.get_value(addParallel._instances[1]._instances[1].I[0], addParallelPartitionScope)
 
     #dataVal['sel'] = True
     #sim.set_value(addParallel._instances[1]._instances[1].I[0], dataVal, addParallelPartitionScope)
