@@ -89,18 +89,20 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     #sim.set_value(addParallel._instances[1]._instances[1].I[0], dataVal, addParallelPartitionScope)
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
-    # run the simulation for all the rows
-    for i in range(imgData.numRows):
+    # run the simulation for all the rows, adjusting for parallelism as less parallel
+    # means more rows
+    for i in range(int(imgData.numRows * (pxPerClock / parallelism))):
         sim.evaluate()
         sim.advance_cycle()
         sim.evaluate()
 
     def validIfBandIncreasedByAddAmount(imgData, rowIndex, resultData):
+        rowBitsStartIndex = rowIndex * imgData.bitsPerRow
         for bandIndex in range(imgData.bandsPerPixel*parallelism):
             bandStartIndex = bandIndex * imgData.bitsPerBand
             bandEndIndex = (bandIndex + 1) * imgData.bitsPerBand
             # need to handle wrap around with mod 256 as ints are 8 bit unsigned ints
-            if (bit_vector.seq2int(imgData.imgAsBits[rowIndex+bandStartIndex:rowIndex+bandEndIndex]) + \
+            if (bit_vector.seq2int(imgData.imgAsBits[rowBitsStartIndex+bandStartIndex:rowBitsStartIndex+bandEndIndex]) + \
                 addAmount) % 256 != bit_vector.seq2int(resultData[bandStartIndex:bandEndIndex]):
                 return False
         return True

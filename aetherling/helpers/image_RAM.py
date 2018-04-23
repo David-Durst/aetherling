@@ -157,7 +157,7 @@ def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock,
         imgResult.extend(sim.get_value(testcircuit.output_rdata, scope))
         bitsStartIndex = i * imgData.bitsPerRow
         bitsEndIndex = (i + 1) * imgData.bitsPerRow
-        assert validityChecker(imgData, i*imgData.bitsPerRow, imgResult[bitsStartIndex:bitsEndIndex])
+        assert validityChecker(imgData, i, imgResult[bitsStartIndex:bitsEndIndex])
         sim.evaluate()
         sim.advance_cycle()
         sim.evaluate()
@@ -166,6 +166,6 @@ def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock,
         image.save(dstPath)
 
 def validIfEqual(imgData, rowIndex, resultData):
-    bitsStartIndex = rowIndex * imgData.bitsPerRow
-    bitsEndIndex = (rowIndex + 1) * imgData.bitsPerRow
-    return imgData.imgAsBits[bitsStartIndex:bitsEndIndex] == resultData
+    rowBitsStartIndex = rowIndex * imgData.bitsPerRow
+    rowBitsEndIndex = (rowIndex + 1) * imgData.bitsPerRow
+    return imgData.imgAsBits[rowBitsStartIndex:rowBitsEndIndex] == resultData
