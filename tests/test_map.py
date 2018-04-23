@@ -34,11 +34,12 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     addConstants = MapParallel(cirb, pxPerClock,
                                MapParallel(cirb, imgData.bandsPerPixel,
                                            DefineCoreirConst(imgData.bitsPerBand, addAmount)()))
-    addOne = MapParallel(cirb, imgData.bandsPerPixel,
-                DefineAdd(imgData.bitsPerBand)())
 
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
-                                       addOne, has_ce=True)
+                                       MapParallel(cirb, imgData.bandsPerPixel,
+                                                   DefineAdd(imgData.bitsPerBand)()),
+                                       has_ce=True)
+
     pixelToBitsDehydrate = MapParallel(cirb, parallelism, Dehydrate(cirb, pixelType))
 
 
