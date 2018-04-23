@@ -13,9 +13,9 @@ import coreir
 from magma.scope import Scope
 
 def test_partition():
-    width = 16
-    parallelism = 4
-    testValInt = 80
+    width = 8
+    parallelism = 2
+    testValInt = 210
     testValBits = int2seq(testValInt)
     c = coreir.Context()
     cirb = CoreIRBackend(c)
@@ -32,9 +32,10 @@ def test_partition():
 
     EndCircuit()
 
-    #mod = GetCoreIRModule(cirb, testcircuit)
-    #cirb.flatten_and_save(mod, "partition4_16.json", ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    #return
+    mod = GetCoreIRModule(cirb, testcircuit)
+    cirb.flatten_and_save(mod, "partition4_16_unflattend.json", ["aetherlinglib", "commonlib", "mantle", "coreir", "global"], False)
+    cirb.flatten_and_save(mod, "partition4_16_flattened.json", ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    return
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])

@@ -63,23 +63,34 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     EndCircuit()
 
-    #mod = GetCoreIRModule(cirb, type(addParallel))
+    #mod = GetCoreIRModule(cirb, type(addParallel._instances[1]._instances[1]))
     #mod.save_to_file("test_map_partiallyParallel.json")
     #return
 
     #cirb.context.run_passes(["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst","flattentypes", "flatten"],
     #                        ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    #mod.save_to_file("test_map.json")
+    #mod.save_to_file("test_map_muxnmapped.json")
+    #returnx
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    #GetCoreIRModule(cirb, testcircuit).save_to_file("test_map_flattened.json")
+    #return
+    addParallelScope = Scope(instance=addParallel, parent=scope)
+    addParallelPartitionScope = Scope(instance=addParallel._instances[1], parent=addParallelScope)
+    addParallelPartitionMuxScope = Scope(instance=addParallel._instances[1]._instances[1], parent=addParallelPartitionScope)
+    #sim.get_value(addParallel._instances[1]._instances[1].I[0].data, addParallelPartitionScope)
+    dataVal = sim.get_value(addParallel._instances[1]._instances[1].I[0], addParallelPartitionScope)
+
+    dataVal['sel'] = True
+    sim.set_value(addParallel._instances[1]._instances[1].I[0], dataVal, addParallelPartitionScope)
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
     # run the simulation for all the rows
     for i in range(imgData.numRows):
         sim.evaluate()
-        print(sim.get_value(addParallel._instances[1].I, scope))
         sim.advance_cycle()
         sim.evaluate()
 
