@@ -46,6 +46,8 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
                 wire(inputPartition.O, getattr(ops, inputName))
                 if inputName == 'I0':
                     wire(inputPartition.O[0], mapPartiallyParallel.test)
+                if has_ce:
+                    wire(mapPartiallyParallel.CE, inputPartition.CE)
             # wire each each op (for one subset) to an output
             for outputName in outputNames:
                 wire(getattr(ops, outputName), getattr(mapPartiallyParallel, outputName))

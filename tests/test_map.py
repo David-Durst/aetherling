@@ -23,7 +23,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     cirb = CoreIRBackend(c)
     scope = Scope()
     args = ["outConst", Out(Bits(8)), "outData0", Out(Array(3, Bits(8))), "outData1", Out(Array(3, Bits(8))), "outData2", Out(Array(3, Bits(8))), "outData3", Out(Array(3, Bits(8))), "outResult", Out(Bits(8)), 'testPartially', Array(3, Array(8, Out(Bit)))] + \
-           ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock,
+           ClockInterface(False, False, has_ce=True) + RAMInterface(imgSrc, True, True, pxPerClock,
                                                        parallelism)
 
     testcircuit = DefineCircuit('Test_UpsampleDownsample_1PxPerClock', *args)
@@ -39,7 +39,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
                 DefineAdd(imgData.bitsPerBand)())
 
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
-                                       addOne)
+                                       addOne, has_ce=True)
     pixelToBitsDehydrate = MapParallel(cirb, parallelism, Dehydrate(cirb, pixelType))
 
 
@@ -53,6 +53,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     wire(addParallel.I0, bitsToPixelHydrate.out)
     wire(addParallel.I1, addConstants.out)
     wire(addParallel.O, pixelToBitsDehydrate.I)
+    wire(testcircuit.CE, addParallel.CE)
     wire(testcircuit.outConst, addConstants.out[0][0])
     wire(testcircuit.outData0, bitsToPixelHydrate.out[0])
     wire(testcircuit.outData1, bitsToPixelHydrate.out[1])
@@ -84,8 +85,8 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     #sim.get_value(addParallel._instances[1]._instances[1].I[0].data, addParallelPartitionScope)
     dataVal = sim.get_value(addParallel._instances[1]._instances[1].I[0], addParallelPartitionScope)
 
-    dataVal['sel'] = True
-    sim.set_value(addParallel._instances[1]._instances[1].I[0], dataVal, addParallelPartitionScope)
+    #dataVal['sel'] = True
+    #sim.set_value(addParallel._instances[1]._instances[1].I[0], dataVal, addParallelPartitionScope)
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)
     # run the simulation for all the rows
@@ -98,13 +99,14 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
         for bandIndex in range(imgData.bandsPerPixel*parallelism):
             bandStartIndex = bandIndex * imgData.bitsPerBand
             bandEndIndex = (bandIndex + 1) * imgData.bitsPerBand
-            if bit_vector.seq2int(imgData.imgAsBits[rowIndex+bandStartIndex:
-                    rowIndex+bandEndIndex]) + \
-                addAmount != bit_vector.seq2int(resultData[bandStartIndex:bandEndIndex]):
+            # need to handle wrap around with mod 256 as ints are 8 bit unsigned ints
+            if (bit_vector.seq2int(imgData.imgAsBits[rowIndex+bandStartIndex:rowIndex+bandEndIndex]) + \
+                addAmount) % 256 != bit_vector.seq2int(resultData[bandStartIndex:bandEndIndex]):
+                continue
                 return False
         return True
 
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfBandIncreasedByAddAmount)
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfBandIncreasedByAddAmount, dstPath="incrementedImage.png")
 
 def test_map_4pxPerClock_2PxParallel():
     run_test_map_npxPerClock_mparallelism(4,2)

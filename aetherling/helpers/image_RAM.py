@@ -115,6 +115,9 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
     sim.set_value(testcircuit.input_wen, [1], scope)
     sim.set_value(testcircuit.input_ren, [0], scope)
     sim.set_value(testcircuit.output_ren, [0], scope)
+    # if testcircuit has CE, disable it while this is going on
+    if hasattr(testcircuit, "CE"):
+        sim.set_value(testcircuit.CE, [0], scope)
     for i in range(imgData.numRows):
         bitsStartIndex = i*imgData.bitsPerRow
         bitsEndIndex = (i+1)*imgData.bitsPerRow
@@ -125,6 +128,8 @@ def LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock):
         sim.evaluate()
     sim.set_value(testcircuit.input_wen, [0], scope)
     sim.set_value(testcircuit.input_ren, [1], scope)
+    if hasattr(testcircuit, "CE"):
+        sim.set_value(testcircuit.CE, [1], scope)
 
 def DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock,
                               validityChecker, dstPath = None):
