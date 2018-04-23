@@ -102,11 +102,10 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
             # need to handle wrap around with mod 256 as ints are 8 bit unsigned ints
             if (bit_vector.seq2int(imgData.imgAsBits[rowIndex+bandStartIndex:rowIndex+bandEndIndex]) + \
                 addAmount) % 256 != bit_vector.seq2int(resultData[bandStartIndex:bandEndIndex]):
-                continue
                 return False
         return True
 
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock, validIfBandIncreasedByAddAmount, dstPath="incrementedImage.png")
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, parallelism, validIfBandIncreasedByAddAmount, dstPath="incrementedImage.png")
 
 def test_map_4pxPerClock_2PxParallel():
     run_test_map_npxPerClock_mparallelism(4,2)
