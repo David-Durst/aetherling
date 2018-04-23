@@ -76,7 +76,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    #GetCoreIRModule(cirb, testcircuit).save_to_file("test_map_flattened.json")
+    #GetCoreIRModule(cirb, testcircuit).save_to_file("test_map_flattened.json.test")
     #return
     addParallelScope = Scope(instance=addParallel, parent=scope)
     addParallelPartitionScope = Scope(instance=addParallel._instances[1], parent=addParallelScope)
