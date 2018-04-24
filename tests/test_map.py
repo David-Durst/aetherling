@@ -13,8 +13,9 @@ from mantle.coreir import DefineCoreirConst
 from os.path import dirname, join
 import bit_vector
 
-imgSrc = join(dirname(__file__), "custom.png")
-imgDst = join(dirname(__file__), "custom_out.png")
+imgSrc = join(dirname(__file__), "custom_small.png")
+# use this to write the img output image of the test to the folder containing these tests
+#imgDst = join(dirname(__file__), "custom_small_out.png")
 
 #NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
 def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
@@ -100,7 +101,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
                 return False
         return True
 
-    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, parallelism, validIfBandIncreasedByAddAmount, dstPath="incrementedImage.png")
+    DumpImageRAMForSimulation(sim, testcircuit, scope, imgSrc, parallelism, validIfBandIncreasedByAddAmount)
 
 def test_map_4pxPerClock_2PxParallel():
     run_test_map_npxPerClock_mparallelism(4,2)

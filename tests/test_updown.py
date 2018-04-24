@@ -12,8 +12,9 @@ from aetherling.modules.upsample import UpsampleParallel
 from aetherling.modules.downsample import DownsampleParallel
 from os.path import dirname, join
 
-imgSrc = join(dirname(__file__), "custom.png")
-imgDst = join(dirname(__file__), "custom_out.png")
+imgSrc = join(dirname(__file__), "custom_small.png")
+# use this to write the img output image of the test to the folder containing these tests
+#imgDst = join(dirname(__file__), "custom_small_out.png")
 
 #NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
 def run_test_updown_npxPerClock(pxPerClock):
