@@ -1,10 +1,11 @@
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
 from ..helpers.nameCleanup import cleanName
+from magma.t import Kind
 
 __all__ = ["Dehydrate", "Hydrate"]
 
-def Dehydrate(cirb: CoreIRBackend, T):
+def Dehydrate(cirb: CoreIRBackend, T: Kind):
     """
     Convert a nested type to a flat array of bits
     Aetherling Type: {1, T} -> {1, Bit[width(T)]}
