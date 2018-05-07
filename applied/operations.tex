@@ -147,7 +147,7 @@ combinational elements.
     \item map\_partially\_par k p f :: [$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)] 
         $\rightarrow$ ... $\rightarrow$ 
         [$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)] $\rightarrow$
-        \{$\frac{k}{p}$, T[p]\}
+        [$\emptyset$(0:$\frac{k}{p}-2$), T[p]]
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem implementation: map\_partially\_par k p f = flatten p k \$ \\ 
         deserialize $\frac{k}{p}$ \$ map p f \$ map m (serialize $\frac{k}{p}$) \$ map m (partition p k)
@@ -163,6 +163,10 @@ combinational elements.
         \subitem s.t. f :: (T,T) $\rightarrow$ T
         \subitem implementation: reduce\_seq k/p f \$ map\_seq k/p (reduce p f) 
         \$ partition p
+    \item reduce\_partially\_par\_stream k p f :: \{$\frac{k}{p}$, T[p]\}
+        $\rightarrow$ [$\emptyset$(0:$\frac{k}{p}-2$), T]
+        \subitem s.t. f :: (T,T) $\rightarrow$ T
+        \subitem implementation: reduce\_seq\_stream k/p f \$ reduce p f
 \end{enumerate}
 
 \section{Basic Applications}
@@ -187,6 +191,14 @@ These are simple combinations of the basic elements.
     \item mem\_write 1 \$ map 1 (+1) \$ mem\_read 1
     \item mem\_write t \$ map t (+1) \$ mem\_read t
     \item mem\_write t \$ map t (+1) \$ map t f1 \$ mem\_read t
+    \item mem\_write t \$ map\_seq t (+1) \$ mem\_read t
+        \subitem Note mem\_write and mem\_read fire every t'th clock cycle
+    \item mem\_write 1 \$ map\_seq\_stream t (+1) \$ mem\_read t
+        \subitem Note mem\_read fires every t'th clock cycle
+    \item mem\_write t \$ map\_partially\_par t p (+1) \$ mem\_read t
+        \subitem Note mem\_write and mem\_read fire every $\frac{t}{p}$'th clock cycle
+    \item mem\_write 1 \$ map\_partially\_par\_stream t p (+1) \$ mem\_read t
+        \subitem Note mem\_read fires every $\frac{t}{p}$'th clock cycle
 \end{enumerate}
 
 \subsection{Reduce}
@@ -194,9 +206,13 @@ These are simple combinations of the basic elements.
     \item mem\_write 1 \$ reduce t (+) \$ mem\_read t
     \item mem\_write 1 \$ reduce t (+) \$ deserialize t f \$ mem\_read 1 
         \subitem Note everything after deserialize fires every t'th clock cycle
-    \item mem\_write 1 \$ reduce\_seq t (+) \$ mem\_write t
-        \subitem Note mem\_write fires every t'th clock cycle
-    \item mem\_write 1 \$ reduce\_seq\_stream t (+) \$ mem\_write 1
+    \item mem\_write 1 \$ reduce\_seq t (+) \$ mem\_read t
+        \subitem Note mem\_write and mem\_read fire every t'th clock cycle
+    \item mem\_write 1 \$ reduce\_seq\_stream t (+) \$ mem\_read 1
+    \item mem\_write 1 \$ reduce\_partially\_par t p (+) \$ mem\_read t
+        \subitem Note mem\_read fires every t'th clock cycle
+    \item mem\_write 1 \$ reduce\_partially\_par\_stream t p (+) \$ mem\_read p
+        \subitem Note mem\_write fires every $\frac{t}{p}$'th clock cycle
 \end{enumerate}
 
 \subsection{Array Dimension Conversions}
