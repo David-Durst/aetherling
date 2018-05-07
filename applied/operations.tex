@@ -93,8 +93,8 @@ These are elements that are not built using other Aetherling elements.
 \subsection{Sequential Elements}
 
 \begin{enumerate}
-    \item serialize k :: \{1, T[k]\} $\rightarrow$ \{k, T\}
-    \item deserialize k :: \{k, T\} $\rightarrow$ \{1, T[k]\}
+    \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
+    \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
 \end{enumerate}
 
 \section{Basic Applications}
@@ -144,37 +144,30 @@ These are simple combinations of the basic elements.
 These are elements that are composed from basic elements and other other composed
 elements.
 
-\subsection{Multi-Cycle Versions Of Basic Combinational Elements}
+\subsection{Sequential Versions Of Basic Combinational Elements}
 These are operations that perform the same operations as the basic ones, but
 do it over multiple clock cycles.
 \begin{enumerate}
-    \item map\_seq p f :: [$S_1$[p], $\emptyset$(1:n-1)] $\rightarrow$ ... 
-        $\rightarrow$ [$S_{n-1}$[p], $\emptyset$(1:n-1)] $\rightarrow$ 
-        [$\emptyset$(0:n-2), T[p]]
-        \subitem s.t. f :: $S_1 \rightarrow$ ... $\rightarrow S_n \rightarrow$ T 
+    \item map\_seq p f :: [$S_1$[p], $\emptyset$(1:p-1)] $\rightarrow$ ...
+        $\rightarrow$ [$S_{n-1}$[p], $\emptyset$(1:p-1)] $\rightarrow$
+        [$\emptyset$(0:p-2), T[p]]
+        \subitem s.t. f :: $S_1 \rightarrow$ ... $\rightarrow S_n \rightarrow$ T
+        \subitem This map takes all the inputs in on the first cycle of the 
+        stream and emits all the outputs on the final cycle of the stream.
+        \subitem implementation: map\_seq p f = deserialize p \$ map 1 f \$ \\ serialize p
+        \subitem note that in the above implementation, the type for serialize 
+        contains all the different input types to map
+    \item map\_seq\_stream p f :: [$S_1$[p], $\emptyset$(1:p-1)] $\rightarrow$ ...
+        $\rightarrow$ [$S_{n-1}$[p], $\emptyset$(1:p-1)] $\rightarrow$
+        \{p, T\}
+        \subitem s.t. f :: $S_1 \rightarrow$ ... $\rightarrow S_n \rightarrow$ T
+        \subitem This map takes all the inputs in on the first cycle of the 
+        stream and emits one output on each cycle of the stream.
+        \subitem implementation: map\_seq\_stream p f = map 1 f \$ serialize p
     \item reduce p f :: T[p] $\rightarrow$ T
         \subitem s.t. f :: (T,T)$\rightarrow$ T
     \item up k :: T $\rightarrow$ T[k]
     \item down k :: T[k] $\rightarrow$ T
-    \item zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k]
-    \item unzip :: (S,T)[k] $\rightarrow$ (S[k], T[k])
-    \item mem\_read p :: () $\rightarrow$ T[p]
-    \item mem\_write p :: T[p] $\rightarrow$ ()
 \end{enumerate}
-\begin{adjustwidth}{2.5 em}{0 pt}
-    map\_seq p f :: [$\emptyset$]\{p, $S_1$\} $\rightarrow$ ... $\rightarrow$ \{p, $S_n$\} $\rightarrow$ 
-    T[p] \\ \null \qquad s.t. f :: $S_1 \rightarrow$ ... $\rightarrow S_n \rightarrow$ T \\
-    reduce p f :: T[p] $\rightarrow$ T \qquad s.t. f :: (T,T)$\rightarrow$ T \\
-    up k :: T $\rightarrow$ T[k] \\
-    down k :: T[k] $\rightarrow$ T \\
-    zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k] \\
-    unzip :: (S,T)[k] $\rightarrow$ (S[k], T[k]) \\
-    mem\_read p :: () $\rightarrow$ T[p] \\
-    mem\_write p :: T[p] $\rightarrow$ ()
-\end{adjustwidth}
-\begin{enumerate}
-    \item t
-\end{enumerate}
-
 
 \end{document}
