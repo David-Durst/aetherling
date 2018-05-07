@@ -13,29 +13,42 @@
 \subsection{Combinational Element Types}
 The type signature of combinational elements is:
 \begin{adjustwidth}{2.5 em}{0 pt}
-    input 1 type $\rightarrow$ ... $\rightarrow$ input n type $\rightarrow$ output type
+    input 0 type $\rightarrow$ ... $\rightarrow$ input n-1 type $\rightarrow$ output type
 \end{adjustwidth}
-Since these elements require only combinational logic, they must complete all
-logic each cycle. Therefore, their input and output types are over
-an implicit stream. This means that that they operate on one of each input every 
-clock cycle and emit one output every clock cycle. Also, they do not need
-ready-valid signals.
+Since these combinational elements process all inputs and output every 
+clock cycle, they do not need ready-valid signals to indicate when they are
+ready for input or emitting valid outputs.
 
 Each input or output has type T or T[p]. T is a base type, and it can contain 
 nested types like arrays that are not relevant for the current operation. T[p] 
 is an array of length p of T's. T[p][q] is an array of length p of arrays of 
 length q of T's.
 
-\subection{Sequential Element Types}
+\subsection{Sequential Element Types}
 The type signature of sequential elements is:
 \begin{adjustwidth}{2.5 em}{0 pt}
-    \{input 1 num cycles, input 1 type per cycle\} $\rightarrow$ ...
-    $\rightarrow$ \{input n num cycles, input n type per cycle\} $\rightarrow$
+    \{input 0 num cycles, input 0 type per cycle\} $\rightarrow$ ...
+    $\rightarrow$ \\
+    \{input n-1 num cycles, input n-1 type per cycle\} $\rightarrow$ \\ 
     \{ouput num cycles, output type per cycle\}
 \end{adjustwidth}
-Since these operations require sequential logic, their interfaces also must have
-clock inputs and may have ready-valid inputs and outputs. These handshake ports
-indicate:
+
+One of the inputs or outputs of a stream may have different types during different
+clock cycles in a stream. For example, a sequential reduce may emit invalid 
+data for most of the stream's cycles and then emit the result on the final
+cycle of the stream. Instead of \{cycles, type for all cycles\}, 
+this type is represented in the following way:
+\begin{adjustwidth}{2.5 em}{0 pt}
+    [type at cycle 0, type at cycle 1, ..., type at cycle n-1]
+\end{adjustwidth}
+For short-hand where a type is the same for multiple cycles:
+\begin{adjustwidth}{2.5 em}{0 pt}
+    [type at cycle 0[0:n-1], type at cycle n-1]
+\end{adjustwidth}
+The invalid type is represented as $\emptyset$.
+
+These elements interfaces also must have clock inputs and may have ready-valid 
+inputs and outputs. These ready-valid handshake ports indicate:
 \begin{enumerate}
         \item ready
             \subitem input: indicates to this sequential element that the next 
@@ -64,8 +77,9 @@ These are elements that are not built using other Aetherling elements.
     overlap\_partition p w :: T[w+p-1] $\rightarrow$ T[p][w] \\
     partition p k :: T[k] $\rightarrow$ T[k/p][p] \\
     flatten p k :: T[k/p][p] $\rightarrow$ T[k] \\
-    map p f :: S[p] $\rightarrow$ T[p]   \qquad s.t. f :: S $\rightarrow$ T \\
-    reduce p f :: T[p] $\rightarrow$ T \qquad s.t. f :: (T,T)$\rightarrow$ T \\
+    map p f :: $S_1$[p] $\rightarrow$ ... $\rightarrow$ $S_n$[p] $\rightarrow$ 
+    T[p] \\ \null \qquad s.t. f :: $S_1 \rightarrow$ ... $\rightarrow S_n \rightarrow$ T \\
+    reduce p f :: T[p] $\rightarrow$ T \\ \null \qquad s.t. f :: (T,T)$\rightarrow$ T \\
     up k :: T $\rightarrow$ T[k] \\
     down k :: T[k] $\rightarrow$ T \\
     zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k] \\
@@ -77,64 +91,71 @@ These are elements that are not built using other Aetherling elements.
 \subsection{Sequential Elements}
 
 \begin{adjustwidth}{2.5 em}{0 pt}
-    \text{serialize}\;k :: \{1, T[k]\} \rightarrow \{k, T\}
-    \text{deserialize}\;k :: \{k, T\} \rightarrow \{1, T[k]\}
+    serialize k :: \{1, T[k]\} $\rightarrow$ \{k, T\} \\
+    deserialize k :: \{k, T\} $\rightarrow$ \{1, T[k]\}
 \end{adjustwidth}
 
-\subsubsection{Ready-Valid Connector Operations}
-Any block of logic that doesn't run at full rate will need to either start or 
-end with sequential operation that changes rate, like serialize or deserialize.
-In order to connect this block with other blocks, it will need a ready valid.
-
-
-
 \section{Basic Applications}
-These are simple combinations of the 
+These are simple combinations of the basic elements.
+
 \subsection{Passthrough}
-\begin{enumerate}
-    \item mem\_write 1 \$ mem\_read 1 
-    \item mem\_write t \$ mem\_write t
-\end{enumerate}
+\begin{adjustwidth}{2.5 em}{0 pt}
+    mem\_write 1 \$ mem\_read 1 \\
+    mem\_write t \$ mem\_write t \\
+\end{adjustwidth}
 
 \subsection{Array-Stream Conversions}
-\begin{enumerate}
-    \item mem\_write 1 \$ deserialize t \$ mem\_read t
-        \subitem Note that mem\_read fires onces every t'th clock cycle
-    \item mem\_write 1 \$ deserialize t \$ serialize t \$ mem\_read 1
-        \subitem Note mem\_write fires every t'th clock cycle
-\end{enumerate}
+\begin{adjustwidth}{2.5 em}{0 pt}
+    mem\_write 1 \$ deserialize t \$ mem\_read t \\
+        \null \qquad Note that mem\_read fires onces every t'th clock cycle \\
+    mem\_write 1 \$ deserialize t \$ serialize t \$ mem\_read 1\\
+        \null \qquad Note mem\_write fires every t'th clock cycle
+\end{adjustwidth}
 
 \subsection{Map}
-\begin{enumerate}
-    \item mem\_write 1 \$ map 1 f \$ mem\_read 1
-    \item mem\_write t \$ map t f \$ mem\_read t
-    \item mem\_write t \$ map t f2 \$ map t f1 \$ mem\_read t
-\end{enumerate}
+\begin{adjustwidth}{2.5 em}{0 pt}
+    mem\_write 1 \$ map 1 f \$ mem\_read 1 \\
+    mem\_write t \$ map t f \$ mem\_read t \\
+    mem\_write t \$ map t f2 \$ map t f1 \$ mem\_read t \\
+\end{adjustwidth}
 
 \subsection{Reduce}
-\begin{enumerate}
-    \item mem\_write 1 \$ reduce t f \$ mem\_read t
-    \item mem\_write 1 \$ reduce t f \$ deserialize t f \$ mem\_read 1
-        \subitem Note everything after deserialize fires every t'th clock cycle
-\end{enumerate}
+\begin{adjustwidth}{2.5 em}{0 pt}
+    mem\_write 1 \$ reduce t f \$ mem\_read t \\
+    mem\_write 1 \$ reduce t f \$ deserialize t f \$ mem\_read 1 \\
+        \null \qquad Note everything after deserialize fires every t'th clock cycle
+\end{adjustwidth}
 
 \subsection{Array Dimension Conversions}
-\begin{enumerate}
-    \item mem\_write $\frac{t}{p}$ \$ partition p t \$ mem\_read t
-        \subitem Note that the element type mem\_write is writing is T[p],
-        and it writes $\frac{t}{p}$ of them every clock.
-    \item mem\_write t \$ flatten t \$ partition t \$ mem\_read t
-    \item mem\_write 1 \$ flatten t \$ partition t \$ deserialize t \$ mem\_read t
-        \subitem Note everything after deserialize fires onces every t'th clock 
-        cycle
-    \item mem\_write 1 \$ down t \$ up t \$ mem\_read 1
-\end{enumerate}
+\begin{adjustwidth}{2.5 em}{0 pt}
+    mem\_write $\frac{t}{p}$ \$ partition p t \$ mem\_read t \\
+        \null \qquad Note that the element type mem\_write is writing is T[p], 
+        and it writes $\frac{t}{p}$ of them every clock. \\
+    mem\_write t \$ flatten t \$ partition t \$ mem\_read t \\
+    mem\_write 1 \$ flatten t \$ partition t \$ deserialize t \$ mem\_read t \\
+        \null \qquad Note everything after deserialize fires onces every t'th 
+        clock cycle
+    mem\_write 1 \$ down t \$ up t \$ mem\_read 1
+\end{adjustwidth}
 
-\section{Advanced Applications}
+\section{Composed Elements}
+These are elements that are composed from basic elements and other other composed
+elements.
 
-\subsection{}
-These are operations that are combinations of the basic ones. They are also
-applica
+\subsection{Multi-Cycle Versions Of Basic Combinational Elements}
+These are operations that perform the same operations as the basic ones, but
+do it over multiple clock cycles.
+\begin{adjustwidth}{2.5 em}{0 pt}
+    map\_seq p f :: [$\emptyset$]\{p, $S_1$\} $\rightarrow$ ... $\rightarrow$ \{p, $S_n$\} $\rightarrow$ 
+    T[p] \\ \null \qquad s.t. f :: $S_1 \rightarrow$ ... $\rightarrow S_n \rightarrow$ T \\
+    reduce p f :: T[p] $\rightarrow$ T \qquad s.t. f :: (T,T)$\rightarrow$ T \\
+    up k :: T $\rightarrow$ T[k] \\
+    down k :: T[k] $\rightarrow$ T \\
+    zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k] \\
+    unzip :: (S,T)[k] $\rightarrow$ (S[k], T[k]) \\
+    mem\_read p :: () $\rightarrow$ T[p] \\
+    mem\_write p :: T[p] $\rightarrow$ ()
+\end{adjustwidth}
 \begin{enumerate}
     \item t
 \end{enumerate}
