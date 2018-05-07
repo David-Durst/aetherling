@@ -1,0 +1,143 @@
+\documentclass[11pt,fleqn]{article}
+\usepackage{amsmath}
+\usepackage{changepage}% http://ctan.org/pkg/changepage
+\numberwithin{equation}{subsection}
+\usepackage[parfill]{parskip}
+\setlength{\marginparwidth}{0pt}
+\usepackage{layout}
+\begin{document}
+\title{Aetherling Nodes and Example Pipelines}
+
+\section{Notation}
+Single cycle, combinational logic has the form: 
+\begin{adjustwidth}{2.5 em}{0 pt}
+    input 1 $\rightarrow$ ... $\rightarrow$ input n $\rightarrow$ output
+\end{adjustwidth}
+
+Each input or output has type T or T[p]
+
+T is a base type, it can contain nested types like arrays that are not relevant
+for the current operation.
+
+T[p] is an array of length p of T's. T[p][q] is an array of length p of arrays of length q of T's.
+
+Multiple cycle, sequential logic has the form:
+\
+\{c, T\} is a stream of T's. There is one T per clock cycle for c cycles.
+
+\section{Basic Operations}
+
+\subsection{Combinational Operations}
+These operations require only combinational logic. Therefore, they do not
+require a clock nor ready-valid signals. All their input and output types are over
+an implicit stream. This means that that they operate on one input every clock
+cycle and emit one output every clock cycle.
+
+\[
+    \text{tuple} :: S \rightarrow T \rightarrow (S,T)
+\]
+\[
+    \text{lb}\;p\;w :: T[p] \rightarrow T[w+p-1] 
+\]
+\[
+    \text{overlap\_partition}\;p\;w :: T[w+p-1] \rightarrow T[p][w]
+\]
+\[
+    \text{partition}\;p\;k :: T[k] \rightarrow T[k/p][p]
+\]
+\[
+    \text{flatten}\;p\;k :: T[k/p][p] \rightarrow T[k]
+\]
+\[
+    \text{map}\;p\;f :: S[p] \rightarrow T[p]   \qquad \text{s.t.}\;f :: S \rightarrow T
+\]
+\[
+    \text{reduce}\;p\;f :: T[p] \rightarrow T \qquad \text{s.t.}\;f :: (T,T)\rightarrow T
+\]
+\[
+    \text{up}\;k :: T \rightarrow T[k]
+\]
+\[
+    \text{down}\;k :: T[k] \rightarrow T 
+\]
+\[
+    \text{zip} :: (S[k],T[k]) \rightarrow (S,T)[k]
+\]
+\[
+    \text{unzip} :: (S,T)[k] \rightarrow (S[k], T[k])
+\]
+\[
+    \text{mem\_read}\;p :: () \rightarrow T[p] 
+\]
+\[
+    \text{mem\_write}\;p :: T[p] \rightarrow ()
+\]
+
+\subsection{Sequential Operations}
+These operations require sequential logic. Therefore, they require a clock and
+ready-valid signals. Their input and output types are over explicit streams.
+
+\[
+    \text{serialize}\;k :: \{1, T[k]\} \rightarrow \{k, T\}
+\]
+\[
+    \text{deserialize}\;k :: \{k, T\} \rightarrow \{1, T[k]\}
+\]
+
+\subsubsection{Ready-Valid Connector Operations}
+Any sequential block of
+
+
+\section{Basic Applications}
+These are simple combinations of the 
+\subsection{Passthrough}
+\begin{enumerate}
+    \item mem\_write 1 \$ mem\_read 1 
+    \item mem\_write t \$ mem\_write t
+\end{enumerate}
+
+\subsection{Array-Stream Conversions}
+\begin{enumerate}
+    \item mem\_write 1 \$ deserialize t \$ mem\_read t
+        \subitem Note that mem\_read fires onces every t'th clock cycle
+    \item mem\_write 1 \$ deserialize t \$ serialize t \$ mem\_read 1
+        \subitem Note mem\_write fires every t'th clock cycle
+\end{enumerate}
+
+\subsection{Map}
+\begin{enumerate}
+    \item mem\_write 1 \$ map 1 f \$ mem\_read 1
+    \item mem\_write t \$ map t f \$ mem\_read t
+    \item mem\_write t \$ map t f2 \$ map t f1 \$ mem\_read t
+\end{enumerate}
+
+\subsection{Reduce}
+\begin{enumerate}
+    \item mem\_write 1 \$ reduce t f \$ mem\_read t
+    \item mem\_write 1 \$ reduce t f \$ deserialize t f \$ mem\_read 1
+        \subitem Note everything after deserialize fires every t'th clock cycle
+\end{enumerate}
+
+\subsection{Array Dimension Conversions}
+\begin{enumerate}
+    \item mem\_write $\frac{t}{p}$ \$ partition p t \$ mem\_read t
+        \subitem Note that the element type mem\_write is writing is T[p],
+        and it writes $\frac{t}{p}$ of them every clock.
+    \item mem\_write t \$ flatten t \$ partition t \$ mem\_read t
+    \item mem\_write 1 \$ flatten t \$ partition t \$ deserialize t \$ mem\_read t
+        \subitem Note everything after deserialize fires onces every t'th clock 
+        cycle
+    \item mem\_write 1 \$ down t \$ up t \$ mem\_read 1
+\end{enumerate}
+
+\section{Advanced Applications}
+
+\subsection{}
+These are operations that are combinations of the basic ones. They are also
+applica
+\begin{enumerate}
+    \item t
+\end{enumerate}
+
+
+\end{document}
