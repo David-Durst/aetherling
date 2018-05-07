@@ -8,6 +8,11 @@
 \begin{document}
 \title{Aetherling Nodes and Example Pipelines}
 
+\section{TODOS}
+\begin{enumerate}
+    \item Need to add area/time estimates for each element and application
+\end{enumerate}
+
 \section{Type Notation}
 
 \subsection{Combinational Element Types}
@@ -95,6 +100,10 @@ These are elements that are not built using other Aetherling elements.
 \begin{enumerate}
     \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
     \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
+    \item reduce\_seq p f :: [T[p], $\emptyset$(1:p-2)] $\rightarrow$ [$\emptyset$(0:p-3), T]
+        \subitem s.t. f :: (T,T)$\rightarrow$ T
+    \item reduce\_seq\_stream p f :: \{p, T\} $\rightarrow$ [$\emptyset$(0:p-2), T]
+        \subitem s.t. f :: (T,T)$\rightarrow$ T
 \end{enumerate}
 
 \section{Basic Applications}
@@ -164,8 +173,6 @@ do it over multiple clock cycles.
         \subitem This map takes all the inputs in on the first cycle of the 
         stream and emits one output on each cycle of the stream.
         \subitem implementation: map\_seq\_stream p f = map 1 f \$ serialize p
-    \item reduce p f :: T[p] $\rightarrow$ T
-        \subitem s.t. f :: (T,T)$\rightarrow$ T
     \item up k :: T $\rightarrow$ T[k]
     \item down k :: T[k] $\rightarrow$ T
 \end{enumerate}
