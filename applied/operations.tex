@@ -33,45 +33,21 @@ require a clock nor ready-valid signals. All their input and output types are ov
 an implicit stream. This means that that they operate on one input every clock
 cycle and emit one output every clock cycle.
 
-\[
-    \text{tuple} :: S \rightarrow T \rightarrow (S,T)
-\]
-\[
-    \text{lb}\;p\;w :: T[p] \rightarrow T[w+p-1] 
-\]
-\[
-    \text{overlap\_partition}\;p\;w :: T[w+p-1] \rightarrow T[p][w]
-\]
-\[
-    \text{partition}\;p\;k :: T[k] \rightarrow T[k/p][p]
-\]
-\[
-    \text{flatten}\;p\;k :: T[k/p][p] \rightarrow T[k]
-\]
-\[
-    \text{map}\;p\;f :: S[p] \rightarrow T[p]   \qquad \text{s.t.}\;f :: S \rightarrow T
-\]
-\[
-    \text{reduce}\;p\;f :: T[p] \rightarrow T \qquad \text{s.t.}\;f :: (T,T)\rightarrow T
-\]
-\[
-    \text{up}\;k :: T \rightarrow T[k]
-\]
-\[
-    \text{down}\;k :: T[k] \rightarrow T 
-\]
-\[
-    \text{zip} :: (S[k],T[k]) \rightarrow (S,T)[k]
-\]
-\[
-    \text{unzip} :: (S,T)[k] \rightarrow (S[k], T[k])
-\]
-\[
-    \text{mem\_read}\;p :: () \rightarrow T[p] 
-\]
-\[
-    \text{mem\_write}\;p :: T[p] \rightarrow ()
-\]
+\begin{adjustwidth}{2.5 em}{0 pt}
+    tuple :: S $\rightarrow$ T $\rightarrow$ (S,T) \\
+    lb p w :: T[p] $\rightarrow$ T[w+p-1] \\
+    overlap\_partition p w :: T[w+p-1] $\rightarrow$ T[p][w] \\
+    partition p k :: T[k] $\rightarrow$ T[k/p][p] \\
+    flatten p k :: T[k/p][p] $\rightarrow$ T[k] \\
+    map p f :: S[p] $\rightarrow$ T[p]   \qquad s.t. f :: S $\rightarrow$ T \\
+    reduce p f :: T[p] $\rightarrow$ T \qquad s.t. f :: (T,T)$\rightarrow$ T \\
+    up k :: T $\rightarrow$ T[k] \\
+    down k :: T[k] $\rightarrow$ T \\
+    zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k] \\
+    unzip :: (S,T)[k] $\rightarrow$ (S[k], T[k]) \\
+    mem\_read p :: () $\rightarrow$ T[p] \\
+    mem\_write p :: T[p] $\rightarrow$ ()
+\end{adjustwidth}
 
 \subsection{Sequential Operations}
 These operations require sequential logic. Therefore, they require a clock and
