@@ -173,7 +173,8 @@ do it over multiple clock cycles.
         \subitem This map takes all the inputs in on the first cycle of the 
         stream and emits one output on each cycle of the stream.
         \subitem implementation: map\_seq\_stream p f = map 1 f \$ serialize p
-    \item up k :: T $\rightarrow$ T[k]
+    \item up\_seq k :: [T, $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
+        \subitem implementation: up\_seq k = serialize k
     \item down k :: T[k] $\rightarrow$ T
 \end{enumerate}
 
