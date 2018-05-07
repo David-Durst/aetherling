@@ -8,30 +8,55 @@
 \begin{document}
 \title{Aetherling Nodes and Example Pipelines}
 
-\section{Notation}
-Single cycle, combinational logic has the form: 
+\section{Type Notation}
+
+\subsection{Combinational Element Types}
+The type signature of combinational elements is:
 \begin{adjustwidth}{2.5 em}{0 pt}
-    input 1 $\rightarrow$ ... $\rightarrow$ input n $\rightarrow$ output
+    input 1 type $\rightarrow$ ... $\rightarrow$ input n type $\rightarrow$ output type
 \end{adjustwidth}
+Since these elements require only combinational logic, they must complete all
+logic each cycle. Therefore, their input and output types are over
+an implicit stream. This means that that they operate on one of each input every 
+clock cycle and emit one output every clock cycle. Also, they do not need
+ready-valid signals.
 
-Each input or output has type T or T[p]
+Each input or output has type T or T[p]. T is a base type, and it can contain 
+nested types like arrays that are not relevant for the current operation. T[p] 
+is an array of length p of T's. T[p][q] is an array of length p of arrays of 
+length q of T's.
 
-T is a base type, it can contain nested types like arrays that are not relevant
-for the current operation.
+\subection{Sequential Element Types}
+The type signature of sequential elements is:
+\begin{adjustwidth}{2.5 em}{0 pt}
+    \{input 1 num cycles, input 1 type per cycle\} $\rightarrow$ ...
+    $\rightarrow$ \{input n num cycles, input n type per cycle\} $\rightarrow$
+    \{ouput num cycles, output type per cycle\}
+\end{adjustwidth}
+Since these operations require sequential logic, their interfaces also must have
+clock inputs and may have ready-valid inputs and outputs. These handshake ports
+indicate:
+\begin{enumerate}
+        \item ready
+            \subitem input: indicates to this sequential element that the next 
+            one in the pipeline has completed its prior input stream and is 
+            ready to receive more input.
+            \subitem output: indicates to the previous sequential element in the 
+            pipeline that this one has completed its prior input stream and is
+            ready to receive more input.
+        \item valid
+            \subitem input: indicates to this sequential element that the previous
+            one in the pipeline is emitting valid data that this sequential 
+            element can use as input.
+            \subitem output: indicates to the next sequential element in the
+            pipeline that this one is emitting valid data that the next one
+            can use as input.
+\end{enumerate}
 
-T[p] is an array of length p of T's. T[p][q] is an array of length p of arrays of length q of T's.
+\section{Basic Elements}
+These are elements that are not built using other Aetherling elements.
 
-Multiple cycle, sequential logic has the form:
-\
-\{c, T\} is a stream of T's. There is one T per clock cycle for c cycles.
-
-\section{Basic Operations}
-
-\subsection{Combinational Operations}
-These operations require only combinational logic. Therefore, they do not
-require a clock nor ready-valid signals. All their input and output types are over
-an implicit stream. This means that that they operate on one input every clock
-cycle and emit one output every clock cycle.
+\subsection{Combinational Elements}
 
 \begin{adjustwidth}{2.5 em}{0 pt}
     tuple :: S $\rightarrow$ T $\rightarrow$ (S,T) \\
@@ -49,19 +74,18 @@ cycle and emit one output every clock cycle.
     mem\_write p :: T[p] $\rightarrow$ ()
 \end{adjustwidth}
 
-\subsection{Sequential Operations}
-These operations require sequential logic. Therefore, they require a clock and
-ready-valid signals. Their input and output types are over explicit streams.
+\subsection{Sequential Elements}
 
-\[
+\begin{adjustwidth}{2.5 em}{0 pt}
     \text{serialize}\;k :: \{1, T[k]\} \rightarrow \{k, T\}
-\]
-\[
     \text{deserialize}\;k :: \{k, T\} \rightarrow \{1, T[k]\}
-\]
+\end{adjustwidth}
 
 \subsubsection{Ready-Valid Connector Operations}
-Any sequential block of
+Any block of logic that doesn't run at full rate will need to either start or 
+end with sequential operation that changes rate, like serialize or deserialize.
+In order to connect this block with other blocks, it will need a ready valid.
+
 
 
 \section{Basic Applications}
