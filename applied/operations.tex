@@ -73,10 +73,11 @@ inputs and outputs. These ready-valid handshake ports indicate:
             can use as input.
 \end{enumerate}
 
-\section{Basic Elements}
-These are elements that are not built using other Aetherling elements.
+\section{Elements}
 
-\subsection{Combinational Elements}
+\subsection{Basic Combinational Elements}
+These are elements that are built using logical primitives not available in
+Aetherling elements.
 
 \begin{enumerate}
     \item tuple :: S $\rightarrow$ T $\rightarrow$ (S,T)
@@ -99,12 +100,20 @@ These are elements that are not built using other Aetherling elements.
 
 \subsection{Sequential Elements}
 
-\subsubsection{Sequential Versions Of Basic Combinational Elements}
-These are the sequential elements that cannot be implemented using the
+\subsubsection{Rate Changing Elements}
+
+\begin{enumerate}
+    \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
+    \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
+\end{enumerate}
+
+\subsubsection{Basic Sequential Versions Of Basic Combinational Elements}
+These are the sequential elements that cannot be implemented using only the basic
 combinational elements. In an ideal world, there would only be basic
 combinational logic blocks and rate changing sequential elements, but these
 elements are better implemented using logical blocks that do not belong in
 Aetherling.
+
 \begin{enumerate}
     \item reduce\_seq p f :: [T[p], $\emptyset$(1:p-1)] $\rightarrow$ [$\emptyset$(0:p-2), T]
         \subitem s.t. f :: (T,T)$\rightarrow$ T
@@ -114,16 +123,10 @@ Aetherling.
     \item down\_seq k :: \{k, T\} $\rightarrow$ [T, $\emptyset$(1:k-1)]
 \end{enumerate}
 
-\subsubsection{Rate Changing Elements}
+\subsubsection{Composed Sequential Versions Of Basic Combinational Elements}
+These are the sequential elements that can be implemented using only the basic
+combinational elements.
 
-\begin{enumerate}
-    \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
-    \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
-\end{enumerate}
-
-\subsection{Sequential Versions Composed From Basic Combinational Elements}
-These are operations that perform the same operations as the basic ones, but
-do it over multiple clock cycles and are composed from the basic elements.
 \begin{enumerate}
     \item map\_seq p f :: [$S_0$[p], $\emptyset$(1:p-1)] $\rightarrow$ ...
         $\rightarrow$ [$S_{m-1}$[p], $\emptyset$(1:p-1)] $\rightarrow$
@@ -208,6 +211,5 @@ These are simple combinations of the basic elements.
     \item mem\_write 1 \$ down t \$ up t \$ mem\_read 1
     \item mem\_write 1 \$ down\_seq t \$ up\_seq t \$ mem\_read 1
 \end{enumerate}
-
 
 \end{document}
