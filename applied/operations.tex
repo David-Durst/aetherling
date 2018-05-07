@@ -97,13 +97,26 @@ These are elements that are not built using other Aetherling elements.
 
 \subsection{Sequential Elements}
 
+\subsubsection{Sequential Versions Of Basic Combinational Elements}
+These are the sequential elements that cannot be implemented using the
+combinational elements. In an ideal world, there would only be basic
+combinational logic blocks and rate changing sequential elements, but these
+elements are better implemented using logical blocks that do not belong in
+Aetherling.
 \begin{enumerate}
-    \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
-    \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
-    \item reduce\_seq p f :: [T[p], $\emptyset$(1:p-2)] $\rightarrow$ [$\emptyset$(0:p-3), T]
+    \item reduce\_seq p f :: [T[p], $\emptyset$(1:p-1)] $\rightarrow$ [$\emptyset$(0:p-2), T]
         \subitem s.t. f :: (T,T)$\rightarrow$ T
     \item reduce\_seq\_stream p f :: \{p, T\} $\rightarrow$ [$\emptyset$(0:p-2), T]
         \subitem s.t. f :: (T,T)$\rightarrow$ T
+    \item up\_seq k :: [T, $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
+    \item down\_seq k :: {k, T} $\rightarrow$ [T, $\emptyset$(1:k-1)]
+\end{enumerate}
+
+\subsubsection{Rate Changing Elements}
+
+\begin{enumerate}
+    \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
+    \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
 \end{enumerate}
 
 \section{Basic Applications}
@@ -125,16 +138,19 @@ These are simple combinations of the basic elements.
 
 \subsection{Map}
 \begin{enumerate}
-    \item mem\_write 1 \$ map 1 f \$ mem\_read 1
-    \item mem\_write t \$ map t f \$ mem\_read t
-    \item mem\_write t \$ map t f2 \$ map t f1 \$ mem\_read t
+    \item mem\_write 1 \$ map 1 (+1) \$ mem\_read 1
+    \item mem\_write t \$ map t (+1) \$ mem\_read t
+    \item mem\_write t \$ map t (+1) \$ map t f1 \$ mem\_read t
 \end{enumerate}
 
 \subsection{Reduce}
 \begin{enumerate}
-    \item mem\_write 1 \$ reduce t f \$ mem\_read t
-    \item mem\_write 1 \$ reduce t f \$ deserialize t f \$ mem\_read 1 
+    \item mem\_write 1 \$ reduce t (+) \$ mem\_read t
+    \item mem\_write 1 \$ reduce t (+) \$ deserialize t f \$ mem\_read 1 
         \subitem Note everything after deserialize fires every t'th clock cycle
+    \item mem\_write 1 \$ reduce\_seq t (+) \$ mem\_write t
+        \subitem Note mem\_write fires every t'th clock cycle
+    \item mem\_write 1 \$ reduce\_seq\_stream t (+) \$ mem\_write 1
 \end{enumerate}
 
 \subsection{Array Dimension Conversions}
@@ -147,6 +163,7 @@ These are simple combinations of the basic elements.
         \subitem Note everything after deserialize fires onces every t'th 
         clock cycle
     \item mem\_write 1 \$ down t \$ up t \$ mem\_read 1
+    \item mem\_write 
 \end{enumerate}
 
 \section{Composed Elements}
@@ -173,9 +190,7 @@ do it over multiple clock cycles.
         \subitem This map takes all the inputs in on the first cycle of the 
         stream and emits one output on each cycle of the stream.
         \subitem implementation: map\_seq\_stream p f = map 1 f \$ serialize p
-    \item up\_seq k :: [T, $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
-        \subitem implementation: up\_seq k = serialize k
-    \item down k :: T[k] $\rightarrow$ T
+    \item map\_part\_par p k f :: []
 \end{enumerate}
 
 \end{document}
