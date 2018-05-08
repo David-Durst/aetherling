@@ -18,13 +18,16 @@
 \section{Type Notation}
 
 \subsection{Combinational Element Types}
+A combinational element is one that is implemented using only combinational logic.
 The type signature of combinational elements is:
 \begin{adjustwidth}{2.5 em}{0 pt}
     input 0 type $\rightarrow$ ... $\rightarrow$ input n-1 type $\rightarrow$ output type
 \end{adjustwidth}
 Since these combinational elements process all inputs and output every 
-clock cycle, they do not need ready-valid signals to indicate when they are
-ready for input or emitting valid outputs.
+clock cycle, they do not consume nor produce ready or valid signals. If they
+are contained within a larger, nested pipeline that has ready-valid signals,
+they do no affect those signals. These elements are always ready and produce 
+valid data on every cycle that they receive valid data.
 
 Each input or output has type T or T[p]. T is a base type, and it can contain 
 nested types like arrays that are not relevant for the current operation. T[p] 
@@ -32,6 +35,7 @@ is an array of length p of T's. T[p][q] is an array of length p of arrays of
 length q of T's.
 
 \subsection{Sequential Element Types}
+A sequential element is one that has sequential logic in its implementation.
 The type signature of sequential elements is:
 \begin{adjustwidth}{2.5 em}{0 pt}
     \{input 0 num cycles, input 0 type per cycle\} $\rightarrow$ ...
@@ -46,11 +50,11 @@ data for most of the stream's cycles and then emit the result on the final
 cycle of the stream. Instead of \{cycles, type for all cycles\}, 
 this type is represented in the following way:
 \begin{adjustwidth}{2.5 em}{0 pt}
-    [type at cycle 0, type at cycle 1, ..., type at cycle n-1]
+    \{type at cycle 0, type at cycle 1, ..., type at cycle n-1\}
 \end{adjustwidth}
 For short-hand where a type is the same for multiple cycles:
 \begin{adjustwidth}{2.5 em}{0 pt}
-    [type at cycle 0(0:n-2), type at cycle n-1]
+    \{type at cycle 0(0:n-2), type at cycle n-1\}
 \end{adjustwidth}
 The invalid type is represented as $\emptyset$.
 
@@ -94,8 +98,8 @@ Aetherling elements.
     \item down k :: T[k] $\rightarrow$ T
     \item zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k]
     \item unzip :: (S,T)[k] $\rightarrow$ (S[k], T[k])
-    \item mem\_read p :: () $\rightarrow$ T[p]
-    \item mem\_write p :: T[p] $\rightarrow$ ()
+    \item mem\_read p :: $\emptyset$ $\rightarrow$ T[p]
+    \item mem\_write p :: T[p] $\rightarrow$ $\emptyset$
 \end{enumerate}
 
 \subsection{Sequential Elements}
@@ -103,8 +107,8 @@ Aetherling elements.
 \subsubsection{Rate Changing Elements}
 
 \begin{enumerate}
-    \item serialize k :: [T[k], $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
-    \item deserialize k :: \{k, T\} $\rightarrow$ [$\emptyset$(0:k-2), T[k]]
+    \item serialize p :: \{T[p], $\emptyset$(1:p-1)\} $\rightarrow$ \{p, T\}
+    \item deserialize p :: \{p, T\} $\rightarrow$ \{$\emptyset$(0:p-2), T[p]\}
 \end{enumerate}
 
 \subsubsection{Basic Sequential Versions Of Basic Combinational Elements}
@@ -115,12 +119,12 @@ elements are better implemented using logical blocks that do not belong in
 Aetherling.
 
 \begin{enumerate}
-    \item reduce\_seq p f :: [T[p], $\emptyset$(1:p-1)] $\rightarrow$ [$\emptyset$(0:p-2), T]
+    \item reduce\_seq k f :: \{T[k], $\emptyset$(1:k-1)\} $\rightarrow$ \{$\emptyset$(0:k-2), T\}
         \subitem s.t. f :: (T,T)$\rightarrow$ T
-    \item reduce\_seq\_stream p f :: \{p, T\} $\rightarrow$ [$\emptyset$(0:p-2), T]
+    \item reduce\_seq\_stream k f :: \{k, T\} $\rightarrow$ \{$\emptyset$(0:k-2), T\}
         \subitem s.t. f :: (T,T)$\rightarrow$ T
-    \item up\_seq k :: [T, $\emptyset$(1:k-1)] $\rightarrow$ \{k, T\}
-    \item down\_seq k :: \{k, T\} $\rightarrow$ [T, $\emptyset$(1:k-1)]
+    \item up\_seq k :: \{T, $\emptyset$(1:k-1)\} $\rightarrow$ \{k, T\}
+    \item down\_seq k :: \{k, T\} $\rightarrow$ \{T, $\emptyset$(1:k-1)\}
 \end{enumerate}
 
 \subsubsection{Composed Sequential Versions Of Basic Combinational Elements}
@@ -128,43 +132,43 @@ These are the sequential elements that can be implemented using only the basic
 combinational elements.
 
 \begin{enumerate}
-    \item map\_seq p f :: [$S_0$[p], $\emptyset$(1:p-1)] $\rightarrow$ ...
-        $\rightarrow$ [$S_{m-1}$[p], $\emptyset$(1:p-1)] $\rightarrow$
-        [$\emptyset$(0:p-2), T[p]]
+    \item map\_seq k f :: \{$S_0$[k], $\emptyset$(1:p-1)\} $\rightarrow$ ...
+        $\rightarrow$ \{$S_{m-1}$[p], $\emptyset$(1:p-1)\} $\rightarrow$
+        \{$\emptyset$(0:p-2), T[p]\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem This map takes all the inputs in on the first cycle of the 
         stream and emits all the outputs on the final cycle of the stream.
-        \subitem implementation: map\_seq p f = deserialize p \$ map 1 f \$ \\ map m (serialize p)
+        \subitem implementation: map\_seq p f = deserialize p \$ f \$ \\ map m (serialize p)
         \subitem note that in the above implementation, the type for serialize 
         contains all the different input types to map
-    \item map\_seq\_stream p f :: [$S_0$[p], $\emptyset$(1:p-1)] $\rightarrow$ ...
-        $\rightarrow$ [$S_{m-1}$[p], $\emptyset$(1:p-1)] $\rightarrow$
+    \item map\_seq\_stream p f :: \{$S_0$[p], $\emptyset$(1:p-1)\} $\rightarrow$ ...
+        $\rightarrow$ \{$S_{m-1}$[p], $\emptyset$(1:p-1)\} $\rightarrow$
         \{p, T\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem This map takes all the inputs in on the first cycle of the 
         stream and emits one output on each cycle of the stream.
-        \subitem implementation: map\_seq\_stream p f = map 1 f \$ map m (serialize p)
-    \item map\_partially\_par k p f :: [$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)] 
+        \subitem implementation: map\_seq\_stream p f = f \$ map m (serialize p)
+    \item map\_partially\_par k p f :: \{$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} 
         $\rightarrow$ ... $\rightarrow$ 
-        [$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)] $\rightarrow$
-        [$\emptyset$(0:$\frac{k}{p}-2$), T[p]]
+        \{$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} $\rightarrow$
+        \{$\emptyset$(0:$\frac{k}{p}-2$), T[p]\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem implementation: map\_partially\_par k p f = flatten p k \$ \\ 
         deserialize $\frac{k}{p}$ \$ map p f \$ map m (serialize $\frac{k}{p}$) \$ map m (partition p k)
-    \item map\_partially\_par\_stream k p f :: [$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)] 
+    \item map\_partially\_par\_stream k p f :: \{$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} 
         $\rightarrow$ ... $\rightarrow$ 
-        [$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)] $\rightarrow$
+        \{$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} $\rightarrow$
         \{$\frac{k}{p}$, T[p]\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem implementation: map\_partially\_par k p f = map p f \$ \\ 
         map m (serialize $\frac{k}{p}$) \$ map m (partition p k)
-    \item reduce\_partially\_par k p f :: [T[p], $\emptyset$(1:$\frac{k}{p}-1$)] 
-        $\rightarrow$ [$\emptyset$(0:$\frac{k}{p}-2$), T]
+    \item reduce\_partially\_par k p f :: \{T[p], $\emptyset$(1:$\frac{k}{p}-1$)\} 
+        $\rightarrow$ \{$\emptyset$(0:$\frac{k}{p}-2$), T\}
         \subitem s.t. f :: (T,T) $\rightarrow$ T
         \subitem implementation: reduce\_seq k/p f \$ map\_seq k/p (reduce p f) 
         \$ partition p
     \item reduce\_partially\_par\_stream k p f :: \{$\frac{k}{p}$, T[p]\}
-        $\rightarrow$ [$\emptyset$(0:$\frac{k}{p}-2$), T]
+        $\rightarrow$ \{$\emptyset$(0:$\frac{k}{p}-2$), T\}
         \subitem s.t. f :: (T,T) $\rightarrow$ T
         \subitem implementation: reduce\_seq\_stream k/p f \$ reduce p f
 \end{enumerate}
@@ -175,15 +179,17 @@ These are simple combinations of the basic elements.
 \subsection{Passthrough}
 \begin{enumerate}
     \item mem\_write 1 \$ mem\_read 1
-    \item mem\_write t \$ mem\_write t 
+    \item mem\_write t \$ mem\_read t 
 \end{enumerate}
 
 \subsection{Array-Stream Conversions}
 \begin{enumerate}
     \item mem\_write 1 \$ deserialize t \$ mem\_read t
         \subitem Note that mem\_read fires onces every t'th clock cycle
-    \item mem\_write 1 \$ deserialize t \$ serialize t \$ mem\_read 1
-        \subitem Note mem\_write fires every t'th clock cycle
+    \item mem\_write t \$ deserialize t \$ serialize t \$ mem\_read t
+        \subitem Note mem\_write and mem\_read fires every t'th clock cycle
+    \item mem\_write 1 \$ serialize t \$ deserialize t \$ mem\_read 1
+        \subitem Note this has a t cycle startup before mem\_write starts writing
 \end{enumerate}
 
 \subsection{Map}
