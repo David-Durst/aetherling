@@ -1,0 +1,28 @@
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{operations}[2018/05/08 formatting for Aetherlings Operations description]
+
+\RequirePackage{color}
+\definecolor{timcolor}{rgb}{0.8,0.5,0.0}
+\definecolor{kfcolor}{rgb}{0.75,0.0,0.0}
+\definecolor{yhcolor}{rgb}{0.2,0.3,1.0}
+\definecolor{mygray}{gray}{0.6}
+\definecolor{keywordcolor}{rgb}{0.0,0.0,1.0}
+\definecolor{typecolor}{rgb}{0.17,0.56,0.68}
+\definecolor{commentcolor}{rgb}{0.0,0.0,0.0}
+
+\RequirePackage{listings}
+\lstset{%                                                                                                    
+    language=Haskell,
+    mathescape=true,
+    basicstyle=\ttfamily,
+    numbers=none, % TODO: use `none` for camera-ready                                                        
+    %numberstyle=\tiny\color{mygray},
+    escapeinside={@*}{*@},
+    keywordstyle=[0]\color{keywordcolor},
+    keywordstyle=[1]\color{typecolor},
+    keywordstyle=[2]\color{ratecolor},
+    commentstyle=\color{commentcolor},
+    belowskip=0pt, %\smallskipamount,
+    breaklines=true
+}
+
