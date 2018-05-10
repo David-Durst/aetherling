@@ -1,6 +1,7 @@
 \documentclass[11pt,fleqn]{article}
 \usepackage{amsmath}
 \usepackage{changepage}% http://ctan.org/pkg/changepage
+\usepackage{operations}
 \numberwithin{equation}{subsection}
 \usepackage[parfill]{parskip}
 \setlength{\marginparwidth}{0pt}
@@ -20,9 +21,11 @@
 \subsection{Combinational Element Types}
 A combinational element is one that is implemented using only combinational logic.
 The type signature of combinational elements is:
-\begin{adjustwidth}{2.5 em}{0 pt}
-    input 0 type $\rightarrow$ ... $\rightarrow$ input n-1 type $\rightarrow$ output type
-\end{adjustwidth}
+%\begin{adjustwidth}{2.5 em}{0 pt}
+\begin{lstlisting}
+    input 0 type -> ... $\rightarrow$ input n-1 type $\rightarrow$ output type
+\end{lstlisting}
+%\end{adjustwidth}
 Since these combinational elements process all inputs and output every 
 clock cycle, they do not consume nor produce ready or valid signals. If they
 are contained within a larger, nested pipeline that has ready-valid signals,
@@ -232,6 +235,12 @@ These are simple combinations of the basic elements.
         clock cycle
     \item mem\_write 1 \$ down t \$ up t \$ mem\_read 1
     \item mem\_write 1 \$ down\_seq t \$ up\_seq t \$ mem\_read 1
+\end{enumerate}
+
+\section{Advanced Applications}
+\subsection{Convolution}
+\begin{enumerate}
+    \item conv k p w
 \end{enumerate}
 
 \end{document}
