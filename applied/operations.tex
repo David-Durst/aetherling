@@ -21,11 +21,9 @@
 \subsection{Combinational Element Types}
 A combinational element is one that is implemented using only combinational logic.
 The type signature of combinational elements is:
-%\begin{adjustwidth}{2.5 em}{0 pt}
 \begin{lstlisting}
-    input 0 type -> ... $\rightarrow$ input n-1 type $\rightarrow$ output type
+    input 0 type -> ... -> input n-1 type -> output type
 \end{lstlisting}
-%\end{adjustwidth}
 Since these combinational elements process all inputs and output every 
 clock cycle, they do not consume nor produce ready or valid signals. If they
 are contained within a larger, nested pipeline that has ready-valid signals,
@@ -40,25 +38,23 @@ length q of T's.
 \subsection{Sequential Element Types}
 A sequential element is one that has sequential logic in its implementation.
 The type signature of sequential elements is:
-\begin{adjustwidth}{2.5 em}{0 pt}
-    \{input 0 num cycles, input 0 type per cycle\} $\rightarrow$ ...
-    $\rightarrow$ \\
-    \{input n-1 num cycles, input n-1 type per cycle\} $\rightarrow$ \\ 
-    \{ouput num cycles, output type per cycle\}
-\end{adjustwidth}
+\begin{lstlisting}
+    {input 0 num cycles, input 0 type per cycle} -> ... -> {input n-1 num cycles, input n-1 type per cycle} ->
+    {ouput num cycles, output type per cycle}
+\end{lstlisting}
 
 One of the inputs or outputs of a stream may have different types during different
 clock cycles in a stream. For example, a sequential reduce may emit invalid 
 data for most of the stream's cycles and then emit the result on the final
 cycle of the stream. Instead of \{cycles, type for all cycles\}, 
 this type is represented in the following way:
-\begin{adjustwidth}{2.5 em}{0 pt}
-    \{type at cycle 0, type at cycle 1, ..., type at cycle n-1\}
-\end{adjustwidth}
+\begin{lstlisting}
+    {type at cycle 0, type at cycle 1, ..., type at cycle n-1}
+\end{lstlisting}
 For short-hand where a type is the same for multiple cycles:
-\begin{adjustwidth}{2.5 em}{0 pt}
-    \{type at cycle 0(0:n-2), type at cycle n-1\}
-\end{adjustwidth}
+\begin{lstlisting}
+    {type at cycle 0(0:n-2), type at cycle n-1}
+\end{lstlisting}
 The invalid type is represented as $\emptyset$.
 
 These elements interfaces also must have clock inputs and may have ready-valid 
@@ -87,22 +83,21 @@ These are elements that are built using logical primitives not available in
 Aetherling elements.
 
 \begin{enumerate}
-    \item tuple :: S $\rightarrow$ T $\rightarrow$ (S,T)
-    \item lb p w :: T[p] $\rightarrow$ T[w+p-1]
-    \item overlap\_partition p w :: T[w+p-1] $\rightarrow$ T[p][w]
-    \item partition p k :: T[k] $\rightarrow$ T[k/p][p]
-    \item flatten p k :: T[k/p][p] $\rightarrow$ T[k]
-    \item map p f :: $S_0$[p] $\rightarrow$ ... $\rightarrow$ $S_{m-1}$[p] $\rightarrow$ 
-        T[p]
-        \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T 
-    \item reduce p f :: T[p] $\rightarrow$ T
-        \subitem s.t. f :: (T,T)$\rightarrow$ T
-    \item up k :: T $\rightarrow$ T[k]
-    \item down k :: T[k] $\rightarrow$ T
-    \item zip :: (S[k],T[k]) $\rightarrow$ (S,T)[k]
-    \item unzip :: (S,T)[k] $\rightarrow$ (S[k], T[k])
-    \item mem\_read p :: $\emptyset$ $\rightarrow$ T[p]
-    \item mem\_write p :: T[p] $\rightarrow$ $\emptyset$
+    \item \lstinline!tuple :: S -> T -> (S,T)!
+    \item \lstinline!lb p w :: T[p] -> T[w+p-1]!
+    \item \lstinline!overlap\_partition p w :: T[w+p-1] -> T[p][w]!
+    \item \lstinline!partition p k :: T[k] -> T[k/p][p]!
+    \item \lstinline!flatten p k :: T[k/p][p] -> T[k]!
+    \item \lstinline!map p f :: $S_0$[p] -> ... -> $S_{m-1}$[p] -> T[p]!
+        \subitem s.t. f :: $S_0$ -> ... -> $S_{m-1}$ -> T 
+    \item reduce p f :: T[p] -> T
+        \subitem s.t. f :: (T,T)-> T
+    \item up k :: T -> T[k]
+    \item down k :: T[k] -> T
+    \item zip :: (S[k],T[k]) -> (S,T)[k]
+    \item unzip :: (S,T)[k] -> (S[k], T[k])
+    \item mem\_read p :: $\emptyset$ -> T[p]
+    \item mem\_write p :: T[p] -> $\emptyset$
 \end{enumerate}
 
 \subsection{Sequential Elements}
@@ -110,8 +105,8 @@ Aetherling elements.
 \subsubsection{Rate Changing Elements}
 
 \begin{enumerate}
-    \item serialize p :: \{T[p], $\emptyset$(1:p-1)\} $\rightarrow$ \{p, T\}
-    \item deserialize p :: \{p, T\} $\rightarrow$ \{$\emptyset$(0:p-2), T[p]\}
+    \item serialize p :: \{T[p], $\emptyset$(1:p-1)\} -> \{p, T\}
+    \item deserialize p :: \{p, T\} -> \{$\emptyset$(0:p-2), T[p]\}
 \end{enumerate}
 
 \subsubsection{Basic Sequential Versions Of Basic Combinational Elements}
@@ -122,12 +117,12 @@ elements are better implemented using logical blocks that do not belong in
 Aetherling.
 
 \begin{enumerate}
-    \item reduce\_seq k f :: \{T[k], $\emptyset$(1:k-1)\} $\rightarrow$ \{$\emptyset$(0:k-2), T\}
-        \subitem s.t. f :: (T,T)$\rightarrow$ T
-    \item reduce\_seq\_stream k f :: \{k, T\} $\rightarrow$ \{$\emptyset$(0:k-2), T\}
-        \subitem s.t. f :: (T,T)$\rightarrow$ T
-    \item up\_seq k :: \{T, $\emptyset$(1:k-1)\} $\rightarrow$ \{k, T\}
-    \item down\_seq k :: \{k, T\} $\rightarrow$ \{T, $\emptyset$(1:k-1)\}
+    \item reduce\_seq k f :: \{T[k], $\emptyset$(1:k-1)\} -> \{$\emptyset$(0:k-2), T\}
+        \subitem s.t. f :: (T,T)-> T
+    \item reduce\_seq\_stream k f :: \{k, T\} -> \{$\emptyset$(0:k-2), T\}
+        \subitem s.t. f :: (T,T)-> T
+    \item up\_seq k :: \{T, $\emptyset$(1:k-1)\} -> \{k, T\}
+    \item down\_seq k :: \{k, T\} -> \{T, $\emptyset$(1:k-1)\}
 \end{enumerate}
 
 \subsubsection{Composed Sequential Versions Of Basic Combinational Elements}
@@ -135,8 +130,8 @@ These are the sequential elements that can be implemented using only the basic
 combinational elements.
 
 \begin{enumerate}
-    \item map\_seq k f :: \{$S_0$[k], $\emptyset$(1:p-1)\} $\rightarrow$ ...
-        $\rightarrow$ \{$S_{m-1}$[p], $\emptyset$(1:p-1)\} $\rightarrow$
+    \item map\_seq k f :: \{$S_0$[k], $\emptyset$(1:p-1)\} -> ...
+        -> \{$S_{m-1}$[p], $\emptyset$(1:p-1)\} ->
         \{$\emptyset$(0:p-2), T[p]\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem This map takes all the inputs in on the first cycle of the 
@@ -144,35 +139,35 @@ combinational elements.
         \subitem implementation: map\_seq p f = deserialize p \$ f \$ \\ map m (serialize p)
         \subitem note that in the above implementation, the type for serialize 
         contains all the different input types to map
-    \item map\_seq\_stream p f :: \{$S_0$[p], $\emptyset$(1:p-1)\} $\rightarrow$ ...
-        $\rightarrow$ \{$S_{m-1}$[p], $\emptyset$(1:p-1)\} $\rightarrow$
+    \item map\_seq\_stream p f :: \{$S_0$[p], $\emptyset$(1:p-1)\} -> ...
+        -> \{$S_{m-1}$[p], $\emptyset$(1:p-1)\} ->
         \{p, T\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem This map takes all the inputs in on the first cycle of the 
         stream and emits one output on each cycle of the stream.
         \subitem implementation: map\_seq\_stream p f = f \$ map m (serialize p)
     \item map\_partially\_par k p f :: \{$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} 
-        $\rightarrow$ ... $\rightarrow$ 
-        \{$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} $\rightarrow$
+        -> ... -> 
+        \{$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} ->
         \{$\emptyset$(0:$\frac{k}{p}-2$), T[p]\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem implementation: map\_partially\_par k p f = flatten p k \$ \\ 
         deserialize $\frac{k}{p}$ \$ map p f \$ map m (serialize $\frac{k}{p}$) \$ map m (partition p k)
     \item map\_partially\_par\_stream k p f :: \{$S_0$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} 
-        $\rightarrow$ ... $\rightarrow$ 
-        \{$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} $\rightarrow$
+        -> ... -> 
+        \{$S_{m-1}$[k], $\emptyset$(1:$\frac{k}{p}-1$)\} ->
         \{$\frac{k}{p}$, T[p]\}
         \subitem s.t. f :: $S_0 \rightarrow$ ... $\rightarrow S_{m-1} \rightarrow$ T
         \subitem implementation: map\_partially\_par k p f = map p f \$ \\ 
         map m (serialize $\frac{k}{p}$) \$ map m (partition p k)
     \item reduce\_partially\_par k p f :: \{T[p], $\emptyset$(1:$\frac{k}{p}-1$)\} 
-        $\rightarrow$ \{$\emptyset$(0:$\frac{k}{p}-2$), T\}
-        \subitem s.t. f :: (T,T) $\rightarrow$ T
+        -> \{$\emptyset$(0:$\frac{k}{p}-2$), T\}
+        \subitem s.t. f :: (T,T) -> T
         \subitem implementation: reduce\_seq k/p f \$ map\_seq k/p (reduce p f) 
         \$ partition p
     \item reduce\_partially\_par\_stream k p f :: \{$\frac{k}{p}$, T[p]\}
-        $\rightarrow$ \{$\emptyset$(0:$\frac{k}{p}-2$), T\}
-        \subitem s.t. f :: (T,T) $\rightarrow$ T
+        -> \{$\emptyset$(0:$\frac{k}{p}-2$), T\}
+        \subitem s.t. f :: (T,T) -> T
         \subitem implementation: reduce\_seq\_stream k/p f \$ reduce p f
 \end{enumerate}
 
