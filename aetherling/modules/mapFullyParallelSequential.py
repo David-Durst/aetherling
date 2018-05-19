@@ -20,9 +20,8 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     if op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
     name = "MapParallel_n{}_op{}".format(str(numInputs), cleanName(str(type(op))))
-    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel",
+    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
-                                                         name,
                                                          {"numInputs": numInputs,
                                                           "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
@@ -49,9 +48,8 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     if op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
     name = "MapParallel_n{}_op{}".format(str(numInputs), cleanName(str(type(op))))
-    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential",
+    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "mapSequential", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
-                                                         name,
                                                          {"numInputs": numInputs,
                                                           "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
