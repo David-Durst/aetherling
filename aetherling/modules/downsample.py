@@ -6,7 +6,7 @@ from mantle.coreir.type_helpers import Term
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from .hydrate import Dehydrate, Hydrate
-from .mapFullyParallelSequential import MapParallel
+from .map_fully_parallel_sequential import MapParallel
 from ..helpers.nameCleanup import cleanName
 
 __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',

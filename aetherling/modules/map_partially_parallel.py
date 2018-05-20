@@ -1,4 +1,4 @@
-from .mapFullyParallelSequential import MapParallel
+from .map_fully_parallel_sequential import MapParallel
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from .partition import Partition
