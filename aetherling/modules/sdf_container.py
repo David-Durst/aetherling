@@ -44,7 +44,7 @@ class SDFSolver(object):
         self.nodes.append(_Node(newIdx, definition.circuit_def))
         return newIdx
 
-    def wire(self, srcIdx: int, srcPort: Type, dstIdx: int, dstPort: Type):
+    def createEdge(self, srcIdx: int, srcPort: Type, dstIdx: int, dstPort: Type):
         """
         Connect two SDF elements.
         Note: unlike Magma, direction matters here.
