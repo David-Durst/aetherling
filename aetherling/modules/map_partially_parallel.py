@@ -7,8 +7,6 @@ from ..helpers.nameCleanup import cleanName
 @cache_definition
 def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: float,
                          op: Circuit, has_ce=False) -> Circuit:
-    assert numInputs/parallelism % 1 == 0, "Parallelism must divide into numInputs with no " \
-                                           "remainder"
     """
     Map an operation over numInputs inputs in numInputs/parallelism clock cycles
     Aetherling Type: {1, T[numInputs]} -> {numInputs/parallelism, S[parallelism]}
@@ -23,6 +21,10 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
       I : In(Array(numInputs, T)
       O : Out(Array(numInputs/parallelism, S))
     """
+    
+    assert numInputs/parallelism % 1 == 0, "Parallelism must divide into numInputs with no " \
+                                           "remainder"
+
     class _MapPartiallyParallel(Circuit):
         name = "Map_n{}_p{}_op{}".format(str(numInputs), str(parallelism), cleanName(str(type(op))))
         # extend each input to length of numInputs, each output to parallelism length
