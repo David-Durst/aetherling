@@ -24,7 +24,6 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
     :return: A module with the following ports:
         I : In(Array(N, T))
         out : Out(T)
-        en : In(Bit)
         ready : Out(Bit)
         and others depending on has_ arguments
     """
@@ -40,7 +39,7 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
         else:
             count_interface = []
 
-        IO = ["I", In(Array(N, T)), "out", Out(T), "en", In(Bit), "ready", Out(Bit)] + \
+        IO = ["I", In(Array(N, T)), "out", Out(T), "ready", Out(Bit)] + \
              ClockInterface(has_ce, has_reset) + count_interface
 
         @classmethod
@@ -92,7 +91,6 @@ def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=Fal
     :return: A module with the following ports:
         I : In(Array(N, T))
         out : Out(T)
-        en : In(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
     """
@@ -112,7 +110,6 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
     :return: A module with the following ports:
         I : In(T)
         out : Out(Array(N, T))
-        en : In(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
     """
@@ -122,7 +119,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
     class _Deserializer(Circuit):
         name = "serialize_t{}_n{}".format(cleanName(str(T)), str(N))
 
-        IO = ["I", In(T), "out", Out(Array(N, T)), "en", In(Bit), "valid", Out(Bit)] + \
+        IO = ["I", In(T), "out", Out(Array(N, T)), "valid", Out(Bit)] + \
              ClockInterface(has_ce, has_reset)
 
         @classmethod
@@ -167,7 +164,6 @@ def Deserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=F
     :return: A module with the following ports:
         I : In(T)
         out : Out(Array(N, T))
-        en : In(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
     """
