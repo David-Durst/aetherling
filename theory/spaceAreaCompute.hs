@@ -18,16 +18,16 @@ len T_Bit = 1
 len (T_Array t i) = i * len t
 
 -- first int tracks max combinational path time, second tracks number of cycles
-data SequentialCombinationalTime = SCTime Int Int deriving (Eq, Show)
+data SeqCombTime = SCTime Int Int deriving (Eq, Show)
 
-addTimes :: SCTime -> SCTime -> SCTime
+addTimes :: SeqCombTime -> SeqCombTime -> SeqCombTime
 -- if either is just a combinational element, combinational time increases
 -- and num cycles is constant
 addTimes (SCTime c1 s1) (SCTime c2 s2) | s1 == 0 || s2 == 0 = 
-  SCTime (c1+c2) max(s1, s2)
--- if both are sequential, assume registers at end of each ops
+  SCTime (c1 + c2) (max s1 s2)
+-- if both are sequential, assume registers at end of each op
 addTimes (SCTime c1 s1) (SCTime c2 s2) | s1 == 0 && s2 == 0 = 
-  SCTime max(c1, c2) (s1+s2)
+  SCTime (max c1 c2) (s1 + s2)
 
 -- the typeclasses that all the elements of the IR must implement
 
