@@ -36,8 +36,8 @@ class HasStreamLen a =
 class SpaceTime a =
   spaceOps :: a -> Int
   spaceWire :: a -> Int
-  time :: a -> Int
-  tokenType :: a -> TokenType
+  time :: a -> SeqCombTime
+  tType :: a -> TokenType
   streamLen :: a -> Int 
 
 -- all leaf ops operate over streams of length one
@@ -59,10 +59,15 @@ instance SpaceTime ArithmeticOp where
   spaceWire (Sub t) = spaceWire (Add t)
   spaceWire (Mul t) = spaceWire (Add t)
   spaceWire (Div t) = spaceWire (Add t)
-  time (Add t) = 
-
-
-
+  time (Add t) = SCTime 1 0
+  time (Sub t) = SCTime 1 0
+  time (Mul t) = SCTime mulSpaceTimeIncreaser 0
+  time (Div t) = SCTime divSpaceTimeIncreaser 0
+  tType (Add t) = t
+  tType (Sub t) = tType (Add t)
+  tType (Mul t) = tType (Add t)
+  tType (Div t) = tType (Add t)
+  streamLen _ = 1
 
 
 -- These are leaf nodes that do memory ops, they read and write 
