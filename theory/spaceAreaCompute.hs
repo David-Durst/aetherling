@@ -11,28 +11,32 @@ class SpaceTime a =
   spaceWire :: a -> Int
   time :: a -> Int
 
--- data SpaceTimeOp = 
---   MapSeqST MapSeq
---   | MapParST MapPar
---   | MapDelayST MapDelay
---   | Ma
+-- These are leaf nodes for Op that do math
+data ArithmeticOp = Add | Sub | Mul | Div
 
--- the elements of the type system
+-- These are the scheduling ops for building types of pipelines in the lower, 
+-- scheduled IR. 
+-- Can schedule in two dimenions - over streams (for handling more data)
+-- and over parallelism (for doing more or fewer tokens at once)
+data SchedulingOp = 
+  MapSeq MapSeqParams SchedulingOp
+  | MapPar MapParParams SchedulingOp
+  | MapDelay MapDelayParams SchedulingOp
+  | ReducePar ReduceParParams SchedulingOp
+  | ReduceDelay ReduceDelayParams SchedulingOp
+  | Arithmetic ArithmeticOp
+
 
 -- MapSeq handles mapping >= 0 in sequence dimension
 -- min length is 0 and there is no max
-data MapSeq a = MapSeq {
+data MapSeqParams {
   seqStreamLen :: Int,
-  seqContainedOp :: a
 }
 
 -- MapPar handles mapping >= 0 in token dimension
 -- The tokens to MapPar are arrays of length parallelism of tokens for 
 -- parContainedOp
-data MapPar a = MapPar {
-  parallelism :: Int,
-  parContainedOp :: a
-}
+data MapParams a = MapPar { parallelism :: Int }
 
 instance (HasStreamLen a) => StreamLen (MapPar a) where
   streamLen MapPar {op = parContainedOp} = streamLen op
@@ -40,11 +44,7 @@ instance (HasStreamLen a) => StreamLen (MapPar a) where
 -- MapDelay hanndles mapping <= 0 in token dimension
 -- The tokens for mapDelay are the same as the tokens for delayContainedOp
 -- This emits a token numeratorActive / denominatorActive clocks
-data MapDelay a = MapDelay {
-  numeratorActive :: Int,
-  denominatorActive :: Int,
-  delayContainedOp :: a
-}
+data MapDelayParams = MapDelay { numeratorActive :: Int, denominatorActive :: Int }
 
 areaOps :: SpaceTime -> Int
 areaWiring :: SpaceTime -> Int
