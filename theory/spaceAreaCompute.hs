@@ -10,59 +10,62 @@ data TokenType =
   T_Int
   | T_Bit
   | T_Array TokenType Int -- Int here is the length
-  deriving (Eq)
+  deriving (Eq, Show)
 
 len :: TokenType -> Int
 len T_Int = 8
 len T_Bit = 1
 len (T_Array t i) = i * len t
 
--- first int tracks max combinational path time, second tracks number of cycles
-data SeqCombTime = SCTime Int Int deriving (Eq, Show)
+-- first int tracks number of ops, second int tracks wiring consumed
+data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
+
+addArea :: OpsWireArea -> OpsWireArea -> OpsWireArea
+-- Note: need more realistic area approximation
+addArea (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
+
+-- seq time tracks number of clock cycles, comb time tracks max combinational
+-- path time 
+data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
 
 addTimes :: SeqCombTime -> SeqCombTime -> SeqCombTime
 -- if either is just a combinational element, combinational time increases
 -- and num cycles is constant
-addTimes (SCTime c1 s1) (SCTime c2 s2) | s1 == 0 || s2 == 0 = 
-  SCTime (c1 + c2) (max s1 s2)
+addTimes (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 || s1 == 0 =
+  SCTime (max s0 s1) (c0 + c1)
 -- if both are sequential, assume registers at end of each op
-addTimes (SCTime c1 s1) (SCTime c2 s2) | s1 == 0 && s2 == 0 = 
-  SCTime (max c1 c2) (s1 + s2)
+addTimes (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 && s1 == 0 =
+  SCTime (s0 + s1) (max c0 c1)
 
 -- the typeclasses that all the elements of the IR must implement
 
-class HasStreamLen a =
-
-class SpaceTime a =
-  spaceOps :: a -> Int
-  spaceWire :: a -> Int
+class SpaceTime a where
+  space :: a -> OpsWireArea
   time :: a -> SeqCombTime
   tType :: a -> TokenType
-  streamLen :: a -> Int 
+  streamLen :: a -> Int
 
 -- all leaf ops operate over streams of length one
 
 -- These are leaf nodes for Op that do math
-data ArithmeticOp = 
+data ArithmeticOp =
   Add TokenType
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
-  deriving (HasSpaceTime, Eq)
+  deriving (Eq, Show)
 
 instance SpaceTime ArithmeticOp where
-  spaceOps (Add t) = 1 * len t
-  spaceOps (Sub t) = 1 * len t
-  spaceOps (Mul t) = mulSpaceTimeIncreaser * len t
-  spaceOps (Div t) = divSpaceTimeIncreaser * len t
-  spaceWire (Add t) = 2 (len t)
-  spaceWire (Sub t) = spaceWire (Add t)
-  spaceWire (Mul t) = spaceWire (Add t)
-  spaceWire (Div t) = spaceWire (Add t)
-  time (Add t) = SCTime 1 0
-  time (Sub t) = SCTime 1 0
-  time (Mul t) = SCTime mulSpaceTimeIncreaser 0
-  time (Div t) = SCTime divSpaceTimeIncreaser 0
+  space (Add t) = OWA (1 * len t) (2 * len t)
+  space (Sub t) = space (Add t)
+  space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
+    where OWA _ wireArea = space (Add t)
+  space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
+    where OWA _ wireArea = space (Add t)
+  time (Add t) = SCTime 0 1
+  time (Sub t) = SCTime 0 1
+  time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
+  time (Div t) = SCTime 0 divSpaceTimeIncreaser
   tType (Add t) = t
   tType (Sub t) = tType (Add t)
   tType (Mul t) = tType (Add t)
@@ -72,15 +75,22 @@ instance SpaceTime ArithmeticOp where
 
 -- These are leaf nodes that do memory ops, they read and write 
 -- one token 
-data MemoryOp = Mem_Read TokenType | Mem_Write TokenType deriving (HasStreamLen,
-  HasTokenType, HasSpaceTime)
+data MemoryOp = Mem_Read TokenType | Mem_Write TokenType deriving (Eq, Show)
+
+instance SpaceTime MemoryOp where
+  spaceOps 
 
 
+-- leaf nodes define what is done for one token in one firing, and 
+-- can scale them up or down across one firing and multiple firings
+--
 -- These are the scheduling ops for building types of pipelines in the lower, 
 -- scheduled IR. 
 -- Can schedule in two dimenions - over multiple firings (for handling more tokens)
 -- and a single firing (for doing wider or narrower tokens over different
 -- numbers of clocks)
+-- mapSeq handles scaling all operations over multiple firings
+-- mapPar, reducePar, and foldPar handle scaling operations in single firing
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
 data SchedulingOp = 
