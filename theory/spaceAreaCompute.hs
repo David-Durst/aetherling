@@ -1,7 +1,5 @@
--- constant for lengths
-counterLen = 1
-
--- constants for scaling mul and div compared to add and sub
+-- constant use for scaling operations in space and time
+RWtime = 1
 mulSpaceTimeIncreaser = 5
 divSpaceTimeIncreaser = 5
 
@@ -17,25 +15,28 @@ len T_Int = 8
 len T_Bit = 1
 len (T_Array t i) = i * len t
 
+class Addable a where
+  (|+|) :: a -> a -> a
+
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
 
-addArea :: OpsWireArea -> OpsWireArea -> OpsWireArea
--- Note: need more realistic area approximation
-addArea (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
+instance Addable OpsWireArea where
+  -- Note: need more realistic area approximation
+  (|+|) (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
 
 -- seq time tracks number of clock cycles, comb time tracks max combinational
 -- path time 
 data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
 
-addTimes :: SeqCombTime -> SeqCombTime -> SeqCombTime
--- if either is just a combinational element, combinational time increases
--- and num cycles is constant
-addTimes (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 || s1 == 0 =
-  SCTime (max s0 s1) (c0 + c1)
--- if both are sequential, assume registers at end of each op
-addTimes (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 && s1 == 0 =
-  SCTime (s0 + s1) (max c0 c1)
+instance Addable SeqCombTime where
+  -- if either is just a combinational element, combinational time increases
+  -- and num cycles is constant
+  (|+|) (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 || s1 == 0 =
+    SCTime (max s0 s1) (c0 + c1)
+  -- if both are sequential, assume registers at end of each op
+  (|+|) (SCTime s0 c0) (SCTime s1 c1) =
+    SCTime (s0 + s1) (max c0 c1)
 
 -- the typeclasses that all the elements of the IR must implement
 
@@ -56,7 +57,7 @@ data ArithmeticOp =
   deriving (Eq, Show)
 
 instance SpaceTime ArithmeticOp where
-  space (Add t) = OWA (1 * len t) (2 * len t)
+  space (Add t) = OWA (len t) (2 * len t)
   space (Sub t) = space (Add t)
   space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
     where OWA _ wireArea = space (Add t)
@@ -74,12 +75,17 @@ instance SpaceTime ArithmeticOp where
 
 
 -- These are leaf nodes that do memory ops, they read and write 
--- one token 
+-- one token
 data MemoryOp = Mem_Read TokenType | Mem_Write TokenType deriving (Eq, Show)
 
 instance SpaceTime MemoryOp where
-  spaceOps 
-
+  space Mem_Read t = OWA (len t) (len t)
+  space Mem_Write t = space (Mem_Read t)
+  -- assuming reads are 
+  time _ = SCTime 0 RWtime
+  tType (Mem_Read t) = t
+  tType (Mem_Write t) = tType (Mem_Read t)
+  streamLen _ = 1
 
 -- leaf nodes define what is done for one token in one firing, and 
 -- can scale them up or down across one firing and multiple firings
