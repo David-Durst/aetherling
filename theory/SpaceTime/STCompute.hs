@@ -4,7 +4,7 @@ import SpaceTime.STHelpers
 
 class SpaceTime a where
   space :: a -> OpsWireArea
-  -- this is the time to process one token, not a full stream of them
+  -- this is the time to process one or more firings
   time :: a -> SeqCombTime
   inTokenType :: a -> TokenType
   outTokenType :: a -> TokenType
@@ -74,20 +74,38 @@ instance SpaceTime MemoryOp where
 -- mapPar, reducePar, and foldPar handle scaling operations in single firing
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
-data SchedulingOp = 
-  Compose SchedulingOp SchedulingOp
-  | MapSeq MapSeqParams SchedulingOp
-  | MapPar ParParams SchedulingOp
-  | ReducePar ParParams SchedulingOp
+data MultipleFiringOp = MapSeq MapSeqParams (Either MultipleFiringOp SingleFiringOp)
+
+instance SpaceTime MultipleFiringOp where
+  -- when mapping over sequence, area is time to count over sequence plus 
+  -- area of stuff that is being applied to each element of sequence
+  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) = 
+    (counterSpace s) |+| (space op)
+  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) = 
+    (counterSpace s) |+| (space op)
+  -- if this is a combinational node, add clocks to it equal to num cycles
+  -- going to run over
+  -- otherwise just multiply it by stream length as registers going to increase
+  -- with |* operator
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) =
+    replicateTimeOverStream (time op) s
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) | 
+    isCombNode $ time op = (time op) |+| (registerTime |* s)
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) = (time op) |* s
+  inTokenType (MapSeq _ (Left op)) = inTokenType op
+  outTokenType (MapSeq _ (Left op)) = outTokenType op
+  inTokenType (MapSeq _ (Right op)) = inTokenType op
+  outTokenType (MapSeq _ (Right op)) = outTokenType op
+
+data SingleFiringOp = 
+  Compose SingleFiringOp SingleFiringOp
+  | MapPar ParParams SingleFiringOp
+  | ReducePar ParParams SingleFiringOp
   | Arithmetic ArithmeticOp
   | Memory MemoryOp
 
-instance SpaceTime SchedulingOp where
+instance SpaceTime SingleFiringOp where
   space (Compose op0 op1) = (space op0) |+| (space op1)
-  -- when mapping over sequence, area is time to count over sequence plus 
-  -- area of stuff that is being applied to each element of sequence
-  space (MapSeq (MapSeqParams {s = seqStreamLen}) op) = 
-    (counterSpace s) |+| (space op)
   -- area of parallel map is area of all the copies
   space (MapPar (ParParams {p = parallelism}) op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
@@ -104,7 +122,6 @@ instance SpaceTime SchedulingOp where
   space (Memory op) = space op
 
   time (Compose op0 op1) = (time op0) |+| (time op1)
-  time (MapSeq _ op) = (time op) 
   time (MapPar _ op) = (time op)
   time (ReducePar _ op) = 
     if streamLen rp > 1 
@@ -117,8 +134,6 @@ instance SpaceTime SchedulingOp where
 
   inTokenType (Compose op0 _) = inTokenType op0
   outTokenType (Compose _ op1) = outTokenType op1
-  inTokenType (MapSeq _ op) = inTokenType op
-  outTokenType (MapSeq _ op) = outTokenType op
   inTokenType (MapPar (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (inTokenType op) p
   outTokenType (MapPar (ParParams {p = parallelism}) op) = 
@@ -132,13 +147,13 @@ instance SpaceTime SchedulingOp where
   outTokenType (Memory op) = outTokenType op
 
 -- For creating the compose ops
-(|.|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
+(|.|) :: Maybe SingleFiringOp -> Maybe SingleFiringOp -> Maybe SingleFiringOp
 (|.|) (Just op0) (Just op1) | streamLen(op0) == streamLen(op1) &&
   tType(op0) == tType(op1) = Just (Combine op0 op1)
 (|.|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
-(|>>=|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
+(|>>=|) :: Maybe SingleFiringOp -> Maybe SingleFiringOp -> Maybe SingleFiringOp
 (|>>=|) op1 op0 = op0 (|.|) op1
 
 -- MapSeq handles mapping in multiple firing dimension
@@ -152,16 +167,3 @@ data MapSeqParams = MapSeqParams { seqStreamLen :: Int }
 -- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
 data ParParams = MapParParams { parallelism :: Int, utilizedClocks :: Int,
   allClocksInStream :: Int }
-
-instance (HasStreamLen a) => StreamLen (MapPar a) where
-  streamLen MapPar {op = parContainedOp} = streamLen op
-
-areaOps :: SpaceTime -> Int
-areaWiring :: SpaceTime -> Int
-time :: SpaceTime -> Int
-s SpaceTime a where
-  areaOps :: a -> int
-  areaWiring :: a -> int
-  time :: a -> int
-
-data Map = MapSeq int 

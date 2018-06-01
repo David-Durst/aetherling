@@ -82,3 +82,9 @@ instance MergeOrScale SeqCombTime where
 
 registerTime :: SeqCombTime
 registerTime = SCTime {1, 1}
+
+-- given a SeqCombTime and a stream length, return its time assuming registers
+-- are at the end of each element of stream
+replicateTimeOverStream :: SeqCombTime -> Int -> SeqCombTime
+replicateTimeOverStream t@(SCTime s _) i | s == 0 = t |+| (registerTime |* i)
+replicateTimeOverStream t@(SCTime s _) i = t |* i
