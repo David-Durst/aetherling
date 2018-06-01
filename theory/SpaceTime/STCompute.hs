@@ -67,25 +67,34 @@ data SchedulingOp =
   | MapPar MapParParams SchedulingOp
   | ReducePar ReduceParParams SchedulingOp
   | Arithmetic ArithmeticOp
+  | Memory MemoryOp
 
 instance SpaceTime SchedulingOp where
   space (Compose op0 op1) = (space op0) |+| (space op1)
   -- when mapping over sequence, area is time to count over sequence plus 
   -- area of stuff that is being applied to each element of sequence
-  space ms@(MapSeq _ op) = (counterSpace (streamLen ms)) |+| (space op)
+  space (MapSeq (MapSeqParams {s = seqStreamLen}) op) = 
+    (counterSpace s) |+| (space op)
   -- area of parallel map is area of all the copies
-  space (MapPar (MapParParms {p = parallelism}) op) = (space op) |* parallelism
+  space (MapPar (MapParParms {p = parallelism}) op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 token
-  space rp@(ReducePar {p = parallelism} op) = ceilLog
+  space rp@(ReducePar (ReduceParParams {p = parallelism}) op) =
     if streamLen rp > 1 
       -- add 1 op and len of op as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
       -- clock
-      then reduceTreeSpace + (space op) + len(tType op)
+      then reduceTreeSpace |+| (space op) |+| (registerSpace $ tType op)
       else reduceTreeSpace
-    where reduceTreeSpace = (space op) * (ceilLog p)
+    where reduceTreeSpace = (space op) |* (ceilLog p)
+  space (Arithmetic op) = space op
+  space (Memory op) = space op
+  time (Compose op0 op1) = (time op0) |+| (time op1)
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) op) = (time op) |* s
+  time (MapPar (MapParParams {ac = allClocksInStream}) op) = (time op) |* ac
+  time (ReducePar (ReduceParParams {ac = allClocksInStream}))
 
+-- For creating the compose ops
 (|.|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
 (|.|) (Just op0) (Just op1) | streamLen(op0) == streamLen(op1) &&
   tType(op0) == tType(op1) = Just (Combine op0 op1)
@@ -99,12 +108,12 @@ instance SpaceTime SchedulingOp where
 -- min length is 0 and there is no max
 data MapSeqParams = MapSeqParams { seqStreamLen :: Int }
 
--- MapPar handles mapping in single firing dimension
--- The tokens to MapPar are arrays of length parallelism of tokens for
--- contained op, unless parallelism is 1, then they are the same as the 
+-- ParParams handles mapping and reducing in single firing dimension
+-- The tokens to ReducePar and MapPar are arrays of length parallelism of tokens 
+-- for the contained op, unless parallelism is 1, then they are the same as the 
 -- tokens for the contained op
 -- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
-data MapParParams = MapParParams { parallelism :: Int, utilizedClocks :: Int,
+data ParParams = MapParParams { parallelism :: Int, utilizedClocks :: Int,
   allClocksInStream :: Int }
 
 instance (HasStreamLen a) => StreamLen (MapPar a) where
