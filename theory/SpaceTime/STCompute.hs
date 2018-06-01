@@ -70,36 +70,53 @@ data SchedulingOp =
 
 instance SpaceTime SchedulingOp where
   space (Compose op0 op1) = (space op0) |+| (space op1)
-  space ms@(MapSeq _ op) = counterSpace (streamLen ms) |+| (space op)
-  space (MapPar params op) = 
+  -- when mapping over sequence, area is time to count over sequence plus 
+  -- area of stuff that is being applied to each element of sequence
+  space ms@(MapSeq _ op) = (counterSpace (streamLen ms)) |+| (space op)
+  -- area of parallel map is area of all the copies
+  space (MapPar (MapParParms {p = parallelism}) op) = (space op) |* parallelism
+  -- area of reduce is area of reduce tree, with area for register for partial
+  -- results if a signle firing is more than 1 token
+  space rp@(ReducePar {p = parallelism} op) = ceilLog
+    if streamLen rp > 1 
+      -- add 1 op and len of op as need register for partial result and need op 
+      -- to combine reduceTree results with that register if stream more than 1
+      -- clock
+      then reduceTreeSpace + (space op) + len(tType op)
+      else reduceTreeSpace
+    where reduceTreeSpace = (space op) * (ceilLog p)
 
 (|.|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
-(|.|) Nothing _ = Nothing
-(|.|) _ Nothing = Nothing
-(|.|) (Just op0) (Just op1) | 
-(c) (Just op0) (Just op1) | 
+(|.|) (Just op0) (Just op1) | streamLen(op0) == streamLen(op1) &&
+  tType(op0) == tType(op1) = Just (Combine op0 op1)
+(|.|) _ _ = Nothing
 
+-- This is in same spirit as Monad's >>=, kinda abusing notation
+(|>>=|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
+(|>>=|) op1 op0 = op0 (|.|) op1
 
--- MapSeq handles mapping >= 0 in sequence dimension
+-- MapSeq handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
-data MapSeqParams {
-  seqStreamLen :: Int,
-}
+data MapSeqParams = MapSeqParams { seqStreamLen :: Int }
 
--- MapPar handles mapping >= 1 in token dimension
--- The tokens to MapPar are arrays of length parallelism of tokens for 
--- parContainedOp
-data MapParParams a = MapPar { parallelism :: Int }
+-- MapPar handles mapping in single firing dimension
+-- The tokens to MapPar are arrays of length parallelism of tokens for
+-- contained op, unless parallelism is 1, then they are the same as the 
+-- tokens for the contained op
+-- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
+data MapParParams = MapParParams { parallelism :: Int, utilizedClocks :: Int,
+  allClocksInStream :: Int }
 
 instance (HasStreamLen a) => StreamLen (MapPar a) where
   streamLen MapPar {op = parContainedOp} = streamLen op
 
--- MapDelay hanndles mapping <= 1 in token dimension
--- The tokens for mapDelay are the same as the tokens for delayContainedOp
--- This emits a token numeratorActive / denominatorActive clocks
-data MapDelayParams = MapDelay { numeratorActive :: Int, denominatorActive :: Int }
-
-data ReducePar
+-- ReduceParParams handles reductions in single firing dimension
+-- The tokens to ReducePar are arrays of length parallelism of tokens for
+-- contained op, unless parallelism is 1, then they are the same as the token
+-- for the contained op
+-- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
+data ReduceParParams = ReduceParParams { parallelism :: Int, 
+  utilizedClocks :: Int, allClocksInStream :: Int }
 
 areaOps :: SpaceTime -> Int
 areaWiring :: SpaceTime -> Int
