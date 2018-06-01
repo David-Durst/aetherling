@@ -4,9 +4,12 @@ import SpaceTime.STHelpers
 
 class SpaceTime a where
   space :: a -> OpsWireArea
+  -- this is the time to process one token, not a full stream of them
   time :: a -> SeqCombTime
-  tType :: a -> TokenType
-  streamLen :: a -> Int
+  inTokenType :: a -> TokenType
+  outTokenType :: a -> TokenType
+  inStreamLen :: a -> Int
+  outStreamLen :: a -> Int
 
 -- all leaf ops operate over streams of length one
 
@@ -29,11 +32,16 @@ instance SpaceTime ArithmeticOp where
   time (Sub t) = SCTime 0 1
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
-  tType (Add t) = t
-  tType (Sub t) = tType (Add t)
-  tType (Mul t) = tType (Add t)
-  tType (Div t) = tType (Add t)
-  streamLen _ = 1
+  inTokenType (Add t) = t
+  outTokenType (Add t) = t
+  inTokenType (Sub t) = t
+  outTokenType (Sub t) = t
+  inTokenType (Mul t) = t
+  outTokenType (Mul t) = t
+  inTokenType (Div t) = t
+  outTokenType (Div t) = t
+  inStreamLen _ = 1
+  outStreamLen _ = 1
 
 
 -- These are leaf nodes that do memory ops, they read and write 
@@ -45,8 +53,10 @@ instance SpaceTime MemoryOp where
   space (Mem_Write t) = space (Mem_Read t)
   -- assuming reads are 
   time _ = SCTime 0 rwTime
-  tType (Mem_Read t) = t
-  tType (Mem_Write t) = tType (Mem_Read t)
+  inTokenType (Mem_Read _) = T_Unit
+  outTokenType (Mem_Read t) = t
+  inTokenType (Mem_Write t) = t
+  outTokenType (Mem_Write t) = T_Unit
   streamLen _ = 1
 
 -- leaf nodes define what is done for one token in one firing, and 
@@ -64,8 +74,8 @@ instance SpaceTime MemoryOp where
 data SchedulingOp = 
   Compose SchedulingOp SchedulingOp
   | MapSeq MapSeqParams SchedulingOp
-  | MapPar MapParParams SchedulingOp
-  | ReducePar ReduceParParams SchedulingOp
+  | MapPar ParParams SchedulingOp
+  | ReducePar ParParams SchedulingOp
   | Arithmetic ArithmeticOp
   | Memory MemoryOp
 
@@ -76,23 +86,30 @@ instance SpaceTime SchedulingOp where
   space (MapSeq (MapSeqParams {s = seqStreamLen}) op) = 
     (counterSpace s) |+| (space op)
   -- area of parallel map is area of all the copies
-  space (MapPar (MapParParms {p = parallelism}) op) = (space op) |* p
+  space (MapPar (ParParms {p = parallelism}) op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 token
-  space rp@(ReducePar (ReduceParParams {p = parallelism}) op) =
+  space rp@(ReducePar (ParParams {p = parallelism}) op) =
     if streamLen rp > 1 
-      -- add 1 op and len of op as need register for partial result and need op 
+      -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
       -- clock
       then reduceTreeSpace |+| (space op) |+| (registerSpace $ tType op)
       else reduceTreeSpace
-    where reduceTreeSpace = (space op) |* (ceilLog p)
+    where reduceTreeSpace = (space op) |* (p-1)
   space (Arithmetic op) = space op
   space (Memory op) = space op
   time (Compose op0 op1) = (time op0) |+| (time op1)
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) op) = (time op) |* s
-  time (MapPar (MapParParams {ac = allClocksInStream}) op) = (time op) |* ac
-  time (ReducePar (ReduceParParams {ac = allClocksInStream}))
+  time (MapSeq _ op) = (time op) 
+  time (MapPar _ op) = (time op)
+  time (ReducePar _ op) = 
+    if streamLen rp > 1 
+      -- add 1 op and register for same reason as above 
+      then reduceTreeTime |+| (time op) |+| registerTime
+      else reduceTreeTime
+    where reduceTreeTime = (Time op) |* (ceilLog p)
+  time (Arithmetic op) = time op
+  time (Memory op) = time op
 
 -- For creating the compose ops
 (|.|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
@@ -118,14 +135,6 @@ data ParParams = MapParParams { parallelism :: Int, utilizedClocks :: Int,
 
 instance (HasStreamLen a) => StreamLen (MapPar a) where
   streamLen MapPar {op = parContainedOp} = streamLen op
-
--- ReduceParParams handles reductions in single firing dimension
--- The tokens to ReducePar are arrays of length parallelism of tokens for
--- contained op, unless parallelism is 1, then they are the same as the token
--- for the contained op
--- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
-data ReduceParParams = ReduceParParams { parallelism :: Int, 
-  utilizedClocks :: Int, allClocksInStream :: Int }
 
 areaOps :: SpaceTime -> Int
 areaWiring :: SpaceTime -> Int

@@ -65,3 +65,5 @@ instance MergeOrScale SeqCombTime where
   (|*) (SCTime s c) i | s == 0 = SCTime 0 (c*i)
   (|/) (SCTime s c) i | s == 0 = SCTime 0 (c*i)
 
+registerTime :: SeqCombTime
+registerTime = SCTime {1, 1}
