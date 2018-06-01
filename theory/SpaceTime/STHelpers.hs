@@ -6,12 +6,22 @@ divSpaceTimeIncreaser = 5
 
 -- the types used for tracking data about operators
 data TokenType =
-  T_Int
+  T_Unit
+  | T_Int
   | T_Bit
   | T_Array TokenType Int -- Int here is the length
   deriving (Eq, Show)
 
+-- use this array constructor to avoid arrays of length 1, makes for easier
+-- type equality checks
+arrayTokenBuilder :: TokenType -> Int -> TokenType
+arrayTokenBuilder t l | l > 1 = T_Array t l
+arrayTokenBuilder t _ = t
+
+flatArrayOfTokenType t l = T_Array t l
+
 len :: TokenType -> Int
+len T_Unit = 0
 len T_Int = 8
 len T_Bit = 1
 len (T_Array t i) = i * len t
