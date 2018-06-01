@@ -74,6 +74,20 @@ instance SpaceTime MemoryOp where
 -- mapPar, reducePar, and foldPar handle scaling operations in single firing
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
+data MultipleOps =
+  ComposeWrapper MultipleFiringOp
+  | Compose ComposeWrapper ComposeWrapper
+
+instance SpaceTime MultipleOps where
+  space (Compose op0 op1) = (space op0) |+| (space op1)
+  space (ComposeWrapper op) = space op
+  time (Compose op0 op1) = (time op0) |+| (time op1)
+  time (ComposeWrapper op) = time op
+  inTokenType (Compose op0 _) = inTokenType op0
+  inTokenType (ComposeWrapper op) = inTokenType op
+  outTokenType (Compose _ op1) = outTokenType op1
+  outTokenType (ComposeWrapper op) = outTokenType op
+
 data MultipleFiringOp = MapSeq MapSeqParams (Either MultipleFiringOp SingleFiringOp)
 
 instance SpaceTime MultipleFiringOp where
@@ -89,23 +103,20 @@ instance SpaceTime MultipleFiringOp where
   -- with |* operator
   time (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) =
     replicateTimeOverStream (time op) s
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) | 
-    isCombNode $ time op = (time op) |+| (registerTime |* s)
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) = (time op) |* s
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) =
+    replicateTimeOverStream (time op) s
   inTokenType (MapSeq _ (Left op)) = inTokenType op
   outTokenType (MapSeq _ (Left op)) = outTokenType op
   inTokenType (MapSeq _ (Right op)) = inTokenType op
   outTokenType (MapSeq _ (Right op)) = outTokenType op
 
 data SingleFiringOp = 
-  Compose SingleFiringOp SingleFiringOp
-  | MapPar ParParams SingleFiringOp
+  MapPar ParParams SingleFiringOp
   | ReducePar ParParams SingleFiringOp
   | Arithmetic ArithmeticOp
   | Memory MemoryOp
 
 instance SpaceTime SingleFiringOp where
-  space (Compose op0 op1) = (space op0) |+| (space op1)
   -- area of parallel map is area of all the copies
   space (MapPar (ParParams {p = parallelism}) op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
@@ -121,7 +132,6 @@ instance SpaceTime SingleFiringOp where
   space (Arithmetic op) = space op
   space (Memory op) = space op
 
-  time (Compose op0 op1) = (time op0) |+| (time op1)
   time (MapPar _ op) = (time op)
   time (ReducePar _ op) = 
     if streamLen rp > 1 
@@ -132,8 +142,6 @@ instance SpaceTime SingleFiringOp where
   time (Arithmetic op) = time op
   time (Memory op) = time op
 
-  inTokenType (Compose op0 _) = inTokenType op0
-  outTokenType (Compose _ op1) = outTokenType op1
   inTokenType (MapPar (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (inTokenType op) p
   outTokenType (MapPar (ParParams {p = parallelism}) op) = 
@@ -147,13 +155,13 @@ instance SpaceTime SingleFiringOp where
   outTokenType (Memory op) = outTokenType op
 
 -- For creating the compose ops
-(|.|) :: Maybe SingleFiringOp -> Maybe SingleFiringOp -> Maybe SingleFiringOp
-(|.|) (Just op0) (Just op1) | streamLen(op0) == streamLen(op1) &&
-  tType(op0) == tType(op1) = Just (Combine op0 op1)
+(|.|) :: Maybe MultipleFiringOp -> Maybe MultipleFiringOp -> Maybe MultipleFiringOp
+(|.|) (Just op0) (Just op1) | outStreamLen(op0) == inStreamLen(op1) &&
+  outTokenType(op0) == inTokenType(op1) = Just (Combine op0 op1)
 (|.|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
-(|>>=|) :: Maybe SingleFiringOp -> Maybe SingleFiringOp -> Maybe SingleFiringOp
+(|>>=|) :: Maybe MultipleFiringOp -> Maybe MultipleFiringOp -> Maybe MultipleFiringOp
 (|>>=|) op1 op0 = op0 (|.|) op1
 
 -- MapSeq handles mapping in multiple firing dimension
