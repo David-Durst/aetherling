@@ -63,6 +63,9 @@ registerSpace op = OWA (len op) (len op)
 -- path time 
 data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
 
+isCombNode :: SeqCombTime -> Bool
+isCombNode (SCTime s _) = s == 0
+
 instance MergeOrScale SeqCombTime where
   -- if either is just a combinational element, combinational time increases
   -- and num cycles is constant
@@ -73,7 +76,9 @@ instance MergeOrScale SeqCombTime where
   -- when scaling up/down combinational, combinational time gets longer
   -- otherwise sequential time gets longer
   (|*) (SCTime s c) i | s == 0 = SCTime 0 (c*i)
+  (|*) (SCTime s _) i == SCTime (s*i) 0
   (|/) (SCTime s c) i | s == 0 = SCTime 0 (c*i)
+  (|/) (SCTime s _) i == SCTime (s*i) 0
 
 registerTime :: SeqCombTime
 registerTime = SCTime {1, 1}
