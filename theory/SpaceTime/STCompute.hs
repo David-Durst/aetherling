@@ -1,4 +1,5 @@
-module SpaceTime.Compute where
+module SpaceTime.STCompute where
+import SpaceTime.STHelpers
 -- the typeclasses that all the elements of the IR must implement
 
 class SpaceTime a where
