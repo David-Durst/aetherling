@@ -25,9 +25,13 @@ class MergeOrScale a where
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
 
+-- do division and log on ints and return result rounded up to ceiling
 ceilDiv :: Int -> Int -> Int
 ceilDiv dividend divisor = fromIntegral $ toInteger $ ceiling
   ((fromIntegral dividend) / (fromIntegral divisor))
+
+ceilLog :: Int -> Int
+ceilLog a = fromIntegral $ toInteger $ ceiling $ logBase 2 $ fromIntegral a
 
 instance MergeOrScale OpsWireArea where
   -- Note: need more realistic area approximation
