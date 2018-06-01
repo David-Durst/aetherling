@@ -44,7 +44,10 @@ instance MergeOrScale OpsWireArea where
 -- that uses log bits for area and time
 counterSpace :: Int -> OpsWireArea
 counterSpace countTo = OWA numBits numBits
-  where numBits = fromIntegral $ toInteger $ ceiling $ log $ fromIntegral countTo
+  where numBits = ceilLog countTo
+
+registerSpace :: TokenType -> OpsWireArea
+registerSpace op = OWA (len op) (len op)
 
 -- seq time tracks number of clock cycles, comb time tracks max combinational
 -- path time 
