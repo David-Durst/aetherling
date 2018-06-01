@@ -88,3 +88,6 @@ registerTime = SCTime {1, 1}
 replicateTimeOverStream :: SeqCombTime -> Int -> SeqCombTime
 replicateTimeOverStream t@(SCTime s _) i | s == 0 = t |+| (registerTime |* i)
 replicateTimeOverStream t@(SCTime s _) i = t |* i
+
+-- This tracks the lengths of streams over one and multiple firings
+data StreamLens = StreamLens { oneFiringLen :: Int, multipleFiringLen :: Int }
