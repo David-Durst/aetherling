@@ -56,8 +56,11 @@ instance SpaceTime MemoryOp where
   inTokenType (Mem_Read _) = T_Unit
   outTokenType (Mem_Read t) = t
   inTokenType (Mem_Write t) = t
-  outTokenType (Mem_Write t) = T_Unit
-  streamLen _ = 1
+  outTokenType (Mem_Write _) = T_Unit
+  inStreamLen (Mem_Read _) = 0
+  outStreamLen (Mem_Read _) = 1
+  inStreamLen (Mem_Write _) = 1
+  outStreamLen (Mem_Write _) = 0
 
 -- leaf nodes define what is done for one token in one firing, and 
 -- can scale them up or down across one firing and multiple firings
@@ -86,7 +89,7 @@ instance SpaceTime SchedulingOp where
   space (MapSeq (MapSeqParams {s = seqStreamLen}) op) = 
     (counterSpace s) |+| (space op)
   -- area of parallel map is area of all the copies
-  space (MapPar (ParParms {p = parallelism}) op) = (space op) |* p
+  space (MapPar (ParParams {p = parallelism}) op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 token
   space rp@(ReducePar (ParParams {p = parallelism}) op) =
@@ -99,6 +102,7 @@ instance SpaceTime SchedulingOp where
     where reduceTreeSpace = (space op) |* (p-1)
   space (Arithmetic op) = space op
   space (Memory op) = space op
+
   time (Compose op0 op1) = (time op0) |+| (time op1)
   time (MapSeq _ op) = (time op) 
   time (MapPar _ op) = (time op)
@@ -110,6 +114,22 @@ instance SpaceTime SchedulingOp where
     where reduceTreeTime = (Time op) |* (ceilLog p)
   time (Arithmetic op) = time op
   time (Memory op) = time op
+
+  inTokenType (Compose op0 _) = inTokenType op0
+  outTokenType (Compose _ op1) = outTokenType op1
+  inTokenType (MapSeq _ op) = inTokenType op
+  outTokenType (MapSeq _ op) = outTokenType op
+  inTokenType (MapPar (ParParams {p = parallelism}) op) = 
+    arrayTokenBuilder (inTokenType op) p
+  outTokenType (MapPar (ParParams {p = parallelism}) op) = 
+    arrayTokenBuilder (outTokenType op) p
+  inTokenType (ReducePar (ParParams {p = parallelism}) op) = 
+    arrayTokenBuilder (inTokenType op) p
+  outTokenType (ReducePar _ op) = outTokenType op
+  inTokenType (Arithmetic op) = inTokenType op
+  outTokenType (Arithmetic op) = outTokenType op
+  inTokenType (Memory op) = inTokenType op
+  outTokenType (Memory op) = outTokenType op
 
 -- For creating the compose ops
 (|.|) :: Maybe SchedulingOp -> Maybe SchedulingOp -> Maybe SchedulingOp
