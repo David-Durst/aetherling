@@ -90,20 +90,6 @@ replicateTimeOverStream t@(SCTime s _) i | s == 0 = t |+| (registerTime |* i)
 replicateTimeOverStream t@(SCTime s _) i = t |* i
 
 -- This tracks both the input and output streams to an op
-data StreamLens = IOSLens { inOneFiringLen :: Int, outOneFiringLen :: Int,
+data IOStreamLens = IOSLens { inOneFiringLen :: Int, outOneFiringLen :: Int,
   numFirings :: Int } deriving (Eq, Show)
-
--- NOTE: Not a commutative operator, thus not giving it a |+| operation
--- This joins two streams, where input is input of first stream and out 
--- output is output of second stream
-mergeStreams :: StreamLens -> StreamLens -> Maybe StreamLens
-mergeIOStreams (StreamLens inStreamLens _)
-  (InOutStreamLens _ outStreamLens) = InOutStreamLens inStreamLens outStreamLens
-
-
--- if a stream is already over multiple firings, multiply multiple firings
--- number as repeating. If only over single firings, make this multiple firings
--- number
-repeatStreamOverMultipleFirings :: InOutStreamLens -> Int -> InOutStreamLens
-repeatStreamOverMultipleFirings 
 
