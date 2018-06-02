@@ -80,6 +80,7 @@ data SingleFiringOp =
   | ReducePar ParParams SingleFiringOp
   | Arithmetic ArithmeticOp
   | Memory MemoryOp
+  deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
@@ -141,7 +142,7 @@ instance SpaceTime MultipleFiringOp where
   inTokenType (MapSeq _ (Right op)) = inTokenType op
   outTokenType (MapSeq _ (Right op)) = outTokenType op
 
-data MultipleOps =
+data Schedule =
   ComposeWrapper MultipleFiringOp
   | Compose ComposeWrapper ComposeWrapper
 
