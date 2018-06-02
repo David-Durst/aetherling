@@ -74,41 +74,6 @@ instance SpaceTime MemoryOp where
 -- mapPar, reducePar, and foldPar handle scaling operations in single firing
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
-data MultipleOps =
-  ComposeWrapper MultipleFiringOp
-  | Compose ComposeWrapper ComposeWrapper
-
-instance SpaceTime MultipleOps where
-  space (Compose op0 op1) = (space op0) |+| (space op1)
-  space (ComposeWrapper op) = space op
-  time (Compose op0 op1) = (time op0) |+| (time op1)
-  time (ComposeWrapper op) = time op
-  inTokenType (Compose op0 _) = inTokenType op0
-  inTokenType (ComposeWrapper op) = inTokenType op
-  outTokenType (Compose _ op1) = outTokenType op1
-  outTokenType (ComposeWrapper op) = outTokenType op
-
-data MultipleFiringOp = MapSeq MapSeqParams (Either MultipleFiringOp SingleFiringOp)
-
-instance SpaceTime MultipleFiringOp where
-  -- when mapping over sequence, area is time to count over sequence plus 
-  -- area of stuff that is being applied to each element of sequence
-  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) = 
-    (counterSpace s) |+| (space op)
-  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) = 
-    (counterSpace s) |+| (space op)
-  -- if this is a combinational node, add clocks to it equal to num cycles
-  -- going to run over
-  -- otherwise just multiply it by stream length as registers going to increase
-  -- with |* operator
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) =
-    replicateTimeOverStream (time op) s
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) =
-    replicateTimeOverStream (time op) s
-  inTokenType (MapSeq _ (Left op)) = inTokenType op
-  outTokenType (MapSeq _ (Left op)) = outTokenType op
-  inTokenType (MapSeq _ (Right op)) = inTokenType op
-  outTokenType (MapSeq _ (Right op)) = outTokenType op
 
 data SingleFiringOp = 
   MapPar ParParams SingleFiringOp
@@ -132,7 +97,7 @@ instance SpaceTime SingleFiringOp where
   space (Arithmetic op) = space op
   space (Memory op) = space op
 
-  time (MapPar _ op) = (time op)
+  time (MapPar _ op) = (time op) -- need to handle stream length in here
   time (ReducePar _ op) = 
     if streamLen rp > 1 
       -- add 1 op and register for same reason as above 
@@ -154,14 +119,50 @@ instance SpaceTime SingleFiringOp where
   inTokenType (Memory op) = inTokenType op
   outTokenType (Memory op) = outTokenType op
 
+data MultipleFiringOp = MapSeq MapSeqParams (Either MultipleFiringOp SingleFiringOp)
+
+instance SpaceTime MultipleFiringOp where
+  -- when mapping over sequence, area is time to count over sequence plus 
+  -- area of stuff that is being applied to each element of sequence
+  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) = 
+    (counterSpace s) |+| (space op)
+  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) = 
+    (counterSpace s) |+| (space op)
+  -- if this is a combinational node, add clocks to it equal to num cycles
+  -- going to run over
+  -- otherwise just multiply it by stream length as registers going to increase
+  -- with |* operator
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) =
+    replicateTimeOverStream (time op) s
+  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) =
+    replicateTimeOverStream (time op) s
+  inTokenType (MapSeq _ (Left op)) = inTokenType op
+  outTokenType (MapSeq _ (Left op)) = outTokenType op
+  inTokenType (MapSeq _ (Right op)) = inTokenType op
+  outTokenType (MapSeq _ (Right op)) = outTokenType op
+
+data MultipleOps =
+  ComposeWrapper MultipleFiringOp
+  | Compose ComposeWrapper ComposeWrapper
+
+instance SpaceTime MultipleOps where
+  space (Compose op0 op1) = (space op0) |+| (space op1)
+  space (ComposeWrapper op) = space op
+  time (Compose op0 op1) = (time op0) |+| (time op1)
+  time (ComposeWrapper op) = time op
+  inTokenType (Compose op0 _) = inTokenType op0
+  inTokenType (ComposeWrapper op) = inTokenType op
+  outTokenType (Compose _ op1) = outTokenType op1
+  outTokenType (ComposeWrapper op) = outTokenType op
+
 -- For creating the compose ops
-(|.|) :: Maybe MultipleFiringOp -> Maybe MultipleFiringOp -> Maybe MultipleFiringOp
+(|.|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
 (|.|) (Just op0) (Just op1) | outStreamLen(op0) == inStreamLen(op1) &&
   outTokenType(op0) == inTokenType(op1) = Just (Combine op0 op1)
 (|.|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
-(|>>=|) :: Maybe MultipleFiringOp -> Maybe MultipleFiringOp -> Maybe MultipleFiringOp
+(|>>=|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
 (|>>=|) op1 op0 = op0 (|.|) op1
 
 -- MapSeq handles mapping in multiple firing dimension
