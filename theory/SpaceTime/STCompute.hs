@@ -8,10 +8,7 @@ class SpaceTime a where
   time :: a -> SeqCombTime
   inTokenType :: a -> TokenType
   outTokenType :: a -> TokenType
-  inStreamLen :: a -> Int
-  outStreamLen :: a -> Int
-
--- all leaf ops operate over streams of length one
+  StreamLens :: a -> IOStreamLens
 
 -- These are leaf nodes for Op that do math
 data ArithmeticOp =
@@ -40,8 +37,7 @@ instance SpaceTime ArithmeticOp where
   outTokenType (Mul t) = t
   inTokenType (Div t) = t
   outTokenType (Div t) = t
-  inStreamLen _ = 1
-  outStreamLen _ = 1
+  streamLens _ = IOSLens 1 1 0
 
 
 -- These are leaf nodes that do memory ops, they read and write 
@@ -57,10 +53,14 @@ instance SpaceTime MemoryOp where
   outTokenType (Mem_Read t) = t
   inTokenType (Mem_Write t) = t
   outTokenType (Mem_Write _) = T_Unit
-  inStreamLen (Mem_Read _) = 0
-  outStreamLen (Mem_Read _) = 1
-  inStreamLen (Mem_Write _) = 1
-  outStreamLen (Mem_Write _) = 0
+  streamLens (Mem_Read _) = IOSLens 0 1 0
+  streamLens (Mem_Write _) = IOSLens 1 0 0
+
+-- ParParams handles parallelism and inverse parallelism (aka underutilization)
+-- for a single firing
+-- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
+data ParParams = ParParams { parallelism :: Int, utilizedClocks :: Int,
+  allClocksInStream :: Int }
 
 -- leaf nodes define what is done for one token in one firing, and 
 -- can scale them up or down across one firing and multiple firings
@@ -70,24 +70,24 @@ instance SpaceTime MemoryOp where
 -- Can schedule in two dimenions - over multiple firings (for handling more tokens)
 -- and a single firing (for doing wider or narrower tokens over different
 -- numbers of clocks)
--- mapSeq handles scaling all operations over multiple firings
--- mapPar, reducePar, and foldPar handle scaling operations in single firing
+-- iter handles scaling all operations over multiple firings
+-- map, reduce, and fold handle scaling operations in single firing
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
 
 data SingleFiringOp = 
-  MapPar ParParams SingleFiringOp
-  | ReducePar ParParams SingleFiringOp
+  Map ParParams SingleFiringOp
+  | Reduce ParParams SingleFiringOp
   | Arithmetic ArithmeticOp
   | Memory MemoryOp
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
-  space (MapPar (ParParams {p = parallelism}) op) = (space op) |* p
+  space (Map (ParParams {p = parallelism}) op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 token
-  space rp@(ReducePar (ParParams {p = parallelism}) op) =
+  space rp@(Reduce (ParParams {p = parallelism}) op) =
     if streamLen rp > 1 
       -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
@@ -98,8 +98,8 @@ instance SpaceTime SingleFiringOp where
   space (Arithmetic op) = space op
   space (Memory op) = space op
 
-  time (MapPar _ op) = (time op) -- need to handle stream length in here
-  time (ReducePar _ op) = 
+  time (Map _ op) = (time op) -- need to handle stream length in here
+  time (Reduce _ op) = 
     if streamLen rp > 1 
       -- add 1 op and register for same reason as above 
       then reduceTreeTime |+| (time op) |+| registerTime
@@ -108,13 +108,13 @@ instance SpaceTime SingleFiringOp where
   time (Arithmetic op) = time op
   time (Memory op) = time op
 
-  inTokenType (MapPar (ParParams {p = parallelism}) op) = 
+  inTokenType (Map (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (inTokenType op) p
-  outTokenType (MapPar (ParParams {p = parallelism}) op) = 
+  outTokenType (Map (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (outTokenType op) p
-  inTokenType (ReducePar (ParParams {p = parallelism}) op) = 
+  inTokenType (Reduce (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (inTokenType op) p
-  outTokenType (ReducePar _ op) = outTokenType op
+  outTokenType (Reduce _ op) = outTokenType op
   inTokenType (Arithmetic op) = inTokenType op
   outTokenType (Arithmetic op) = outTokenType op
   inTokenType (Memory op) = inTokenType op
@@ -168,12 +168,5 @@ instance SpaceTime MultipleOps where
 
 -- MapSeq handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
-data MapSeqParams = MapSeqParams { seqStreamLen :: Int }
+data IterParams = InterParams { seqStreamLen :: Int }
 
--- ParParams handles mapping and reducing in single firing dimension
--- The tokens to ReducePar and MapPar are arrays of length parallelism of tokens 
--- for the contained op, unless parallelism is 1, then they are the same as the 
--- tokens for the contained op
--- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
-data ParParams = MapParParams { parallelism :: Int, utilizedClocks :: Int,
-  allClocksInStream :: Int }
