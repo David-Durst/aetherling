@@ -8,7 +8,7 @@ class SpaceTime a where
   time :: a -> SeqCombTime
   inTokenType :: a -> TokenType
   outTokenType :: a -> TokenType
-  StreamLens :: a -> IOStreamLens
+  streamLens :: a -> IOStreamLens
 
 inNumTokens :: (SpaceTime a) => a -> Int
 inNumTokens (IOSLens tokensInOneFiring _ n) = tokensInOneFiring * n
@@ -103,12 +103,13 @@ instance SpaceTime SingleFiringOp where
   space (Arithmetic op) = space op
   space (Memory op) = space op
 
-  time (Map _ op) = (time op) -- need to handle stream length in here
-  time (Reduce _ op) = 
+  time (Map (ParParams {ac = allClocksInStream}) op) =
+    replicateTimeOverStream (time op) ace
+  time (Reduce (ParParams {ac = allClocksInStream}) op) = 
     if streamLen rp > 1 
       -- add 1 op and register for same reason as above 
-      then reduceTreeTime |+| (time op) |+| registerTime
-      else reduceTreeTime
+      then replicateTimeOverStream (reduceTreeTime |+| (time op) |+| registerTime) ac
+      else replicateTimeOverStream reduceTreeTime
     where reduceTreeTime = (Time op) |* (ceilLog p)
   time (Arithmetic op) = time op
   time (Memory op) = time op
@@ -125,7 +126,7 @@ instance SpaceTime SingleFiringOp where
   inTokenType (Memory op) = inTokenType op
   outTokenType (Memory op) = outTokenType op
 
-  streamLens
+  streamLens (Map (ParaParams {u = utilizedClocks}) ) = 
 
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
