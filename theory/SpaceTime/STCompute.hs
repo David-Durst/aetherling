@@ -10,6 +10,11 @@ class SpaceTime a where
   outTokenType :: a -> TokenType
   StreamLens :: a -> IOStreamLens
 
+inNumTokens :: (SpaceTime a) => a -> Int
+inNumTokens (IOSLens tokensInOneFiring _ n) = tokensInOneFiring * n
+outNumTokens :: (SpaceTime a) => a -> Int
+outNumTokens (IOSLens _ tokensOutOneFiring n) = tokensOutOneFiring * n
+
 -- These are leaf nodes for Op that do math
 data ArithmeticOp =
   Add TokenType
@@ -120,27 +125,33 @@ instance SpaceTime SingleFiringOp where
   inTokenType (Memory op) = inTokenType op
   outTokenType (Memory op) = outTokenType op
 
-data MultipleFiringOp = MapSeq MapSeqParams (Either MultipleFiringOp SingleFiringOp)
+  streamLens
+
+-- Iter handles mapping in multiple firing dimension
+-- min length is 0 and there is no max
+data IterParams = InterParams { seqStreamLen :: Int }
+
+data MultipleFiringOp = Iter IterParams (Either MultipleFiringOp SingleFiringOp)
 
 instance SpaceTime MultipleFiringOp where
   -- when mapping over sequence, area is time to count over sequence plus 
   -- area of stuff that is being applied to each element of sequence
-  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) = 
+  space (Iter (IterParams {s = seqStreamLen}) (Left op)) = 
     (counterSpace s) |+| (space op)
-  space (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) = 
+  space (Iter (IterParams {s = seqStreamLen}) (Right op)) = 
     (counterSpace s) |+| (space op)
   -- if this is a combinational node, add clocks to it equal to num cycles
   -- going to run over
   -- otherwise just multiply it by stream length as registers going to increase
   -- with |* operator
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Left op)) =
+  time (Iter (IterParams {s = seqStreamLen}) (Left op)) =
     replicateTimeOverStream (time op) s
-  time (MapSeq (MapSeqParams {s = seqStreamLen}) (Right op)) =
+  time (Iter (IterParams {s = seqStreamLen}) (Right op)) =
     replicateTimeOverStream (time op) s
-  inTokenType (MapSeq _ (Left op)) = inTokenType op
-  outTokenType (MapSeq _ (Left op)) = outTokenType op
-  inTokenType (MapSeq _ (Right op)) = inTokenType op
-  outTokenType (MapSeq _ (Right op)) = outTokenType op
+  inTokenType (Iter _ (Left op)) = inTokenType op
+  outTokenType (Iter _ (Left op)) = outTokenType op
+  inTokenType (Iter _ (Right op)) = inTokenType op
+  outTokenType (Iter _ (Right op)) = outTokenType op
 
 data Schedule =
   ComposeWrapper MultipleFiringOp
@@ -158,15 +169,11 @@ instance SpaceTime MultipleOps where
 
 -- For creating the compose ops
 (|.|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
-(|.|) (Just op0) (Just op1) | outStreamLen(op0) == inStreamLen(op1) &&
-  outTokenType(op0) == inTokenType(op1) = Just (Combine op0 op1)
+(|.|) (Just op0) (Just op1) | (outNumTokens op0) == (inNumTokens op1) &&
+  (outTokenType op0) == (inTokenType op1) = Just (Combine op0 op1)
 (|.|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 (|>>=|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
 (|>>=|) op1 op0 = op0 (|.|) op1
-
--- MapSeq handles mapping in multiple firing dimension
--- min length is 0 and there is no max
-data IterParams = InterParams { seqStreamLen :: Int }
 
