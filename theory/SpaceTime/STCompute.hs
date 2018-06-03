@@ -191,13 +191,13 @@ instance SpaceTime Schedule where
   space (Schedule ops) = foldl (|+|) owAreaZero $ map space ops
   -- TODO: make this account for pipelining
   time (Schedule ops) = foldl (|+|) scTimeZero $ map time ops
-  inTokenType (Schedule (opHd:_)) = inTokenType opHd
-  outTokenType (Schedule ops) = outTokenType $ tail ops
+  inTokenType (Schedule ops) = inTokenType $ head ops
+  outTokenType (Schedule ops) = outTokenType $ last ops
   -- TODO: This assumes a Schedule is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
   streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
     where (IOSLens iIn _ nIn) = streamLens $ head ops
-          (IOSLens _ oOut nOut) = streamLens $ tail ops
+          (IOSLens _ oOut nOut) = streamLens $ last ops
   -- is there a better utilization than weighted by operator area
   util (Schedule ops) =  unnormalizedUtil / (fromIntegral $ length ops)
     where unnormalizedUtil = foldl (+) 0 $ 
@@ -205,11 +205,11 @@ instance SpaceTime Schedule where
 
 -- For creating the compose ops
 (|.|) :: Maybe Schedule -> Maybe Schedule -> Maybe Schedule
-(|.|) (Just (Schedule ops0)) (Just (Schedule ops1)) 
+(|.|) (Just (Schedule ops0)) (Just (Schedule ops1))
   | outNumTokens ops0tl == inNumTokens ops1hd && 
     outTokenType ops0tl == inTokenType ops1hd = Just $ Schedule $ ops0 ++ ops1
   where
-    ops0tl = tail ops0
+    ops0tl = last ops0
     ops1hd = head ops1
 (|.|) _ _ = Nothing
 
