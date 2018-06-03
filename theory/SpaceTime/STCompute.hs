@@ -7,8 +7,8 @@ class SpaceTime a where
   -- this is the time to process one or more firings
   time :: a -> SeqCombTime
   util :: a -> Float
-  inTokenType :: a -> TokenType
-  outTokenType :: a -> TokenType
+  inPortsType :: a -> PortsType
+  outPortsType :: a -> PortsType
   streamLens :: a -> IOStreamLens
 
 inNumTokens :: (SpaceTime a) => a -> Int
@@ -26,6 +26,9 @@ data ArithmeticOp =
   | Div TokenType
   deriving (Eq, Show)
 
+twoInPorts t = portsFromTokens [("I0", 1, t), ("I1", 1, t)]
+oneOutPort t = portsFromTokens [("O", 1, t)]
+
 instance SpaceTime ArithmeticOp where
   space (Add t) = OWA (len t) (2 * len t)
   space (Sub t) = space (Add t)
@@ -38,14 +41,14 @@ instance SpaceTime ArithmeticOp where
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
   util _ = 1.0
-  inTokenType (Add t) = t
-  inTokenType (Sub t) = t
-  inTokenType (Mul t) = t
-  inTokenType (Div t) = t
-  outTokenType (Add t) = t
-  outTokenType (Sub t) = t
-  outTokenType (Mul t) = t
-  outTokenType (Div t) = t
+  inPortsType (Add t) = twoInPorts t
+  inPortsType (Sub t) = twoInPorts t
+  inPortsType (Mul t) = twoInPorts t
+  inPortsType (Div t) = twoInPorts t
+  outPortsType (Add t) = oneOutPort t
+  outPortsType (Sub t) = oneOutPort t
+  outPortsType (Mul t) = oneOutPort t
+  outPortsType (Div t) = oneOutPort t
   streamLens _ = IOSLens 1 1 0
 
 -- These are leaf nodes that do memory ops, they read and write 
@@ -58,10 +61,10 @@ instance SpaceTime MemoryOp where
   -- assuming reads are 
   time _ = SCTime 0 rwTime
   util _ = 1.0
-  inTokenType (Mem_Read _) = T_Unit
-  inTokenType (Mem_Write t) = t
-  outTokenType (Mem_Read t) = t
-  outTokenType (Mem_Write _) = T_Unit
+  inPortsType (Mem_Read _) = T_Unit
+  inPortsType (Mem_Write t) = oneOutPort t
+  outPortsType (Mem_Read t) = portsFromTokens [("I", 1, t)]
+  outPortsType (Mem_Write _) = T_Ports []
   streamLens (Mem_Read _) = IOSLens 0 1 0
   streamLens (Mem_Write _) = IOSLens 1 0 0
 
@@ -101,7 +104,7 @@ instance SpaceTime SingleFiringOp where
       -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
       -- clock
-      then reduceTreeSpace |+| (space op) |+| (registerSpace $ outTokenType op)
+      then reduceTreeSpace |+| (space op) |+| (registerSpace $ outPortsType op)
       else reduceTreeSpace
     where reduceTreeSpace = (space op) |* (p-1)
   space (ArithmeticSF op) = space op
@@ -123,17 +126,17 @@ instance SpaceTime SingleFiringOp where
   util (ArithmeticSF op) = util op
   util (MemorySF op) = util op
 
-  inTokenType (MapSF ParParams{parallelism = p} op) = 
-    arrayTokenBuilder (inTokenType op) p
-  inTokenType (ReduceSF ParParams{parallelism = p} op) = 
-    arrayTokenBuilder (inTokenType op) p
-  inTokenType (ArithmeticSF op) = inTokenType op
-  inTokenType (MemorySF op) = inTokenType op
-  outTokenType (MapSF ParParams{parallelism = p} op) = 
-    arrayTokenBuilder (outTokenType op) p
-  outTokenType (ReduceSF _ op) = outTokenType op
-  outTokenType (ArithmeticSF op) = outTokenType op
-  outTokenType (MemorySF op) = outTokenType op
+  inPortsType (MapSF ParParams{parallelism = p} op) = 
+    arrayTokenBuilder (inPortsType op) p
+  inPortsType (ReduceSF ParParams{parallelism = p} op) = 
+    arrayTokenBuilder (inPortsType op) p
+  inPortsType (ArithmeticSF op) = inPortsType op
+  inPortsType (MemorySF op) = inPortsType op
+  outPortsType (MapSF ParParams{parallelism = p} op) = 
+    arrayTokenBuilder (outPortsType op) p
+  outPortsType (ReduceSF _ op) = outPortsType op
+  outPortsType (ArithmeticSF op) = outPortsType op
+  outPortsType (MemorySF op) = outPortsType op
 
   -- number of firings should be 0 as not wrapped in multiple firings at this 
   -- point
@@ -167,10 +170,10 @@ instance SpaceTime MultipleFiringOp where
   util (Iter _ (Left op)) = util op
   util (Iter _ (Right op)) = util op
 
-  inTokenType (Iter _ (Left op)) = inTokenType op
-  inTokenType (Iter _ (Right op)) = inTokenType op
-  outTokenType (Iter _ (Left op)) = outTokenType op
-  outTokenType (Iter _ (Right op)) = outTokenType op
+  inPortsType (Iter _ (Left op)) = inPortsType op
+  inPortsType (Iter _ (Right op)) = inPortsType op
+  outPortsType (Iter _ (Left op)) = outPortsType op
+  outPortsType (Iter _ (Right op)) = outPortsType op
 
   streamLens (Iter (IterParams numIters) (Left op)) =
     IOSLens i o ((max n 1) * numIters)
@@ -191,8 +194,8 @@ instance SpaceTime Schedule where
   space (Schedule ops) = foldl (|+|) owAreaZero $ map space ops
   -- TODO: make this account for pipelining
   time (Schedule ops) = foldl (|+|) scTimeZero $ map time ops
-  inTokenType (Schedule ops) = inTokenType $ head ops
-  outTokenType (Schedule ops) = outTokenType $ last ops
+  inPortsType (Schedule ops) = inPortsType $ head ops
+  outPortsType (Schedule ops) = outPortsType $ last ops
   -- TODO: This assumes a Schedule is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
   streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
@@ -210,7 +213,7 @@ instance SpaceTime Schedule where
   -- output port types of first are input port types of second
   -- and same average number of tokens per clock
   | outNumTokens ops0tl == inNumTokens ops1hd && 
-    outTokenType ops0tl == inTokenType ops1hd &&
+    outPortsType ops0tl == inPortsType ops1hd &&
     (seqTime $ time s0) == (seqTime $ time s1) = Just $ Schedule $ ops0 ++ ops1
   where
     ops0tl = last ops0
