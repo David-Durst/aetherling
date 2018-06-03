@@ -16,27 +16,41 @@ ceilDiv dividend divisor = fromIntegral $ toInteger $ ceiling
 ceilLog :: Int -> Int
 ceilLog a = fromIntegral $ toInteger $ ceiling $ logBase 2 $ fromIntegral a
 
+class HasLen a where
+  len :: a -> Int
+
 -- the types used for tracking data about operators
 data TokenType =
   T_Unit
   | T_Int
   | T_Bit
-  | T_Array TokenType Int -- Int here is the length
   deriving (Eq, Show)
 
--- use this array constructor to avoid arrays of length 1, makes for easier
--- type equality checks
-arrayTokenBuilder :: TokenType -> Int -> TokenType
-arrayTokenBuilder t l | l > 1 = T_Array t l
-arrayTokenBuilder t _ = t
+instance HasLen TokenType where
+  len T_Unit = 0
+  len T_Int = 8
+  len T_Bit = 1
 
-flatArrayOfTokenType t l = T_Array t l
+-- Int here is the length
+data TokensType = T_Array TokenType Int deriving (Eq, Show)
 
-len :: TokenType -> Int
-len T_Unit = 0
-len T_Int = 8
-len T_Bit = 1
-len (T_Array t i) = i * len t
+instance HasLen TokensType where
+  len (T_Array t i) = i * len t
+
+-- implicitly not banning multiple ports with same name here
+-- names are only helpful reminders, can have duplicates with non-renamed ports
+data PortsType = T_Ports [([Char], TokensType)] deriving (Eq, Show)
+
+instance HasLen PortsType where
+  len (T_Ports ports) = foldl (+) 0 $ map (len . snd) ports
+
+mergePorts :: PortsType -> PortsType -> PortsType
+mergePorts (T_Ports ports0) (T_Ports ports1) = T_Ports $ ports0 ++ ports1
+
+portsFromTokens :: [([Char], Int, TokenType)] -> PortsType
+portsFromTokens ts = T_Ports $ map makeTokens ts
+  where makeTokens (tName, tNum, tType) = (tName, T_Array tType tNum)
+
 
 class MergeOrScale a where
   (|+|) :: a -> a -> a
