@@ -80,9 +80,9 @@ instance MergeOrScale SeqCombTime where
   -- when scaling up/down combinational, combinational time gets longer
   -- otherwise sequential time gets longer
   (|*) (SCTime s c) i | s == 0 = SCTime 0 (c * i)
-  (|*) (SCTime s c) i == SCTime (s * i) c
+  (|*) (SCTime s c) i = SCTime (s * i) c
   (|/) (SCTime s c) i | s == 0 = SCTime 0 (c `ceilDiv` i)
-  (|/) (SCTime s c) i == SCTime (s `ceilDiv` i) c
+  (|/) (SCTime s c) i = SCTime (s `ceilDiv` i) c
 
 registerTime :: SeqCombTime
 registerTime = SCTime {1, 1}
