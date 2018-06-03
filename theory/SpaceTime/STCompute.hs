@@ -187,7 +187,7 @@ instance SpaceTime Schedule where
           (IOSLens _ oOut nOut) = streamLens $ tail opTl
   -- is there a better utilization than weighted by area average?
   util (Compos ops) =  unnormalizedUtil / (length ops)
-    where unnormalizedUtil = foldl (+) 0 $ map (\op => op * (space op)) ops
+    where unnormalizedUtil = foldl (+) 0 $ map (\op -> op * (space op)) ops
 
 -- For creating the compose ops
 (|.|) :: Maybe Schedule -> Maybe Schedule -> Maybe Schedule
