@@ -169,6 +169,9 @@ instance SpaceTime MultipleFiringOp where
     IOSLens i o ((max n 1) * numIters)
     where (IOSLens i o n) = streamLens op
 
+  util (Iter _ (Left op)) = util op
+  util (Iter _ (Right op)) = util op
+
 data Schedule = Schedule [MultipleFiringOp] deriving (Eq, Show)
 
 -- TODO: A constructor with right precedence so can be used with |.| as 
@@ -189,13 +192,14 @@ instance SpaceTime Schedule where
     where (IOSLens iIn _ nIn) = streamLens $ head ops
           (IOSLens _ oOut nOut) = streamLens $ tail opTl
   -- is there a better utilization than weighted by area average?
-  util (Schedule ops) =  unnormalizedUtil / (length ops)
-    where unnormalizedUtil = foldl (+) 0 $ map (\op -> op * (space op)) ops
+  util (Schedule ops) =  unnormalizedUtil |/ (length ops)
+    where unnormalizedUtil = foldl (|+|) owAreaZero $ map (\op -> (space op) |* (util op)) ops
 
 -- For creating the compose ops
 (|.|) :: Maybe Schedule -> Maybe Schedule -> Maybe Schedule
-(|.|) (Just ops0) (Just ops1) | outNumTokens ops0tl == inNumTokens ops1hd &&
-  outTokenType ops0tl == inTokenType ops1hd = Just $ Schedule $ ops0 ++ ops1
+(|.|) (Just (Schedule ops0)) (Just (Schedule ops1)) 
+  | outNumTokens ops0tl == inNumTokens ops1hd && 
+    outTokenType ops0tl == inTokenType ops1hd = Just $ Schedule $ ops0 ++ ops1
   where
     ops0tl = tail ops0
     ops1hd = head ops1
