@@ -12,9 +12,11 @@ class SpaceTime a where
   streamLens :: a -> IOStreamLens
 
 inNumTokens :: (SpaceTime a) => a -> Int
-inNumTokens (IOSLens tokensInOneFiring _ n) = tokensInOneFiring * n
+inNumTokens op = tokensInOneFiring * n
+  where (IOSLens tokensInOneFiring _ n) = streamLens op
 outNumTokens :: (SpaceTime a) => a -> Int
-outNumTokens (IOSLens _ tokensOutOneFiring n) = tokensOutOneFiring * n
+outNumTokens op = tokensOutOneFiring * n
+  where (IOSLens _ tokensOutOneFiring n) = streamLens op
 
 -- These are leaf nodes for Op that do math
 data ArithmeticOp =
