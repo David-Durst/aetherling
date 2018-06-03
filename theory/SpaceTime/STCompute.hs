@@ -205,9 +205,13 @@ instance SpaceTime Schedule where
 
 -- For creating the compose ops
 (|.|) :: Maybe Schedule -> Maybe Schedule -> Maybe Schedule
-(|.|) (Just (Schedule ops0)) (Just (Schedule ops1))
+(|.|) (Just s0@(Schedule ops0)) (Just s1@(Schedule ops1))
+  -- only join two schedules if same stream lengths over total firings
+  -- output port types of first are input port types of second
+  -- and same average number of tokens per clock
   | outNumTokens ops0tl == inNumTokens ops1hd && 
-    outTokenType ops0tl == inTokenType ops1hd = Just $ Schedule $ ops0 ++ ops1
+    outTokenType ops0tl == inTokenType ops1hd &&
+    (seqTime $ time s0) == (seqTime $ time s1) = Just $ Schedule $ ops0 ++ ops1
   where
     ops0tl = last ops0
     ops1hd = head ops1
