@@ -1,8 +1,11 @@
 module SpaceTime.STHelpers where
 -- helpful functions and constants
 -- constant use for scaling operations in space and time
+rwTime :: Int
 rwTime = 1
+mulSpaceTimeIncreaser :: Int
 mulSpaceTimeIncreaser = 5
+divSpaceTimeIncreaser :: Int
 divSpaceTimeIncreaser = 5
 
 -- do division and log on ints and return result rounded up to ceiling
