@@ -128,16 +128,16 @@ instance SpaceTime SingleFiringOp where
   outTokenType (Arithmetic op) = outTokenType op
   outTokenType (Memory op) = outTokenType op
 
-  streamLens (Map (ParaParams {u = utilizedClocks}) op) = IOSLens (i * u) (i * o) n
+  streamLens (Map (ParParams {u = utilizedClocks}) op) = IOSLens (i * u) (i * o) n
     where (IOSLens i o n) = streamLens op
-  streamLens (Reduce (ParaParams {u = utilizedClocks}) op) = IOSLens (i * u) o n
+  streamLens (Reduce (ParParams {u = utilizedClocks}) op) = IOSLens (i * u) o n
     where (IOSLens i o n) = streamLens op
   streamLens (Arithmetic op) = streamLens op
   streamLens (Memory op) = streamLens op
 
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
-data IterParams = InterParams { numIterations :: Int }
+data IterParams = IterParams { numIterations :: Int }
 
 data MultipleFiringOp = Iter IterParams (Either MultipleFiringOp SingleFiringOp)
 
@@ -166,7 +166,7 @@ instance SpaceTime MultipleFiringOp where
     IOSLens i o ((max n 1) * numIters)
     where (IOSLens i o n) = streamLens op
 
-data Schedule = Compose [MultipleFiringOp] deriving (Eq, Show)
+data Schedule = Schedule [MultipleFiringOp] deriving (Eq, Show)
 
 -- TODO: A constructor with right precedence so can be used with |.| as 
 -- sc Iter Map Add |.| sc Iter Map Reduce Add
@@ -186,7 +186,7 @@ instance SpaceTime Schedule where
     where (IOSLens iIn _ nIn) = streamLens $ head ops
           (IOSLens _ oOut nOut) = streamLens $ tail opTl
   -- is there a better utilization than weighted by area average?
-  util (Compos ops) =  unnormalizedUtil / (length ops)
+  util (Schedule ops) =  unnormalizedUtil / (length ops)
     where unnormalizedUtil = foldl (+) 0 $ map (\op -> op * (space op)) ops
 
 -- For creating the compose ops
