@@ -144,15 +144,15 @@ data MultipleFiringOp = Iter IterParams (Either MultipleFiringOp SingleFiringOp)
 instance SpaceTime MultipleFiringOp where
   -- when mapping over sequence, area is time to count over sequence plus 
   -- area of stuff that is being applied to each element of sequence
-  space (Iter (IterParams {s = seqStreamLen}) (Left op)) = 
-    (counterSpace s) |+| (space op)
-  space (Iter (IterParams {s = seqStreamLen}) (Right op)) = 
-    (counterSpace s) |+| (space op)
+  space (Iter (IterParams numIters) (Left op)) = 
+    (counterSpace numIters) |+| (space op)
+  space (Iter (IterParams numIters) (Right op)) = 
+    (counterSpace numIters) |+| (space op)
 
-  time (Iter (IterParams {s = seqStreamLen}) (Left op)) =
-    replicateTimeOverStream (time op) s
-  time (Iter (IterParams {s = seqStreamLen}) (Right op)) =
-    replicateTimeOverStream (time op) s
+  time (Iter (IterParams numIters) (Left op)) =
+    replicateTimeOverStream (time op) numIters
+  time (Iter (IterParams numIters) (Right op)) =
+    replicateTimeOverStream (time op) numIters
 
   inTokenType (Iter _ (Left op)) = inTokenType op
   outTokenType (Iter _ (Left op)) = outTokenType op
@@ -169,14 +169,11 @@ instance SpaceTime MultipleFiringOp where
 data Schedule = Compose [MultipleFiringOp] deriving (Eq, Show)
 
 instance SpaceTime Schedule where
-  space (Compose op0 op1) = (space op0) |+| (space op1)
-  space (ComposeWrapper op) = space op
-  time (Compose op0 op1) = (time op0) |+| (time op1)
-  time (ComposeWrapper op) = time op
-  inTokenType (Compose op0 _) = inTokenType op0
-  inTokenType (ComposeWrapper op) = inTokenType op
+  space (Compose ops) = foldl (|+|) scTimeZero $ map space ops
+  -- TODO: make this account for pipelining
+  time (Compose ops) = foldl (|+|) scTimeZero $ map time ops
+  inTokenType (Compose (opHd:_)) = inTokenType opHd
   outTokenType (Compose _ op1) = outTokenType op1
-  outTokenType (ComposeWrapper op) = outTokenType op
   -- TODO: This assumes a Schedule is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
   streamLens (Compose )
