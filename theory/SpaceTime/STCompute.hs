@@ -199,6 +199,4 @@ instance SpaceTime Schedule where
 (|.|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
-(|>>=|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
 (|>>=|) op1 op0 = op0 (|.|) op1
-
