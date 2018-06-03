@@ -101,7 +101,7 @@ instance SpaceTime SingleFiringOp where
       -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
       -- clock
-      then reduceTreeSpace |+| (space op) |+| (registerSpace $ tType op)
+      then reduceTreeSpace |+| (space op) |+| (registerSpace $ outTokenType op)
       else reduceTreeSpace
     where reduceTreeSpace = (space op) |* (p-1)
   space (Arithmetic op) = space op
@@ -109,12 +109,12 @@ instance SpaceTime SingleFiringOp where
 
   time (Map ParParams{allClocksInStream = ac} op) =
     replicateTimeOverStream (time op) ac
-  time (Reduce ParParams{utilizedClocks = uc, allClocksInStream = ac} op) = 
-    if uc > 1 
+  time (Reduce (ParParams p uc ac) op) = 
+    if ac > 1 
       -- add 1 op and register for same reason as above 
       then replicateTimeOverStream (reduceTreeTime |+| (time op) |+| registerTime) ac
-      else replicateTimeOverStream reduceTreeTime
-    where reduceTreeTime = (Time op) |* (ceilLog p)
+      else replicateTimeOverStream reduceTreeTime ac
+    where reduceTreeTime = (time op) |* (ceilLog p)
   time (Arithmetic op) = time op
   time (Memory op) = time op
 
@@ -130,10 +130,12 @@ instance SpaceTime SingleFiringOp where
   outTokenType (Arithmetic op) = outTokenType op
   outTokenType (Memory op) = outTokenType op
 
-  streamLens (Map ParParams{utilizedClocks = uc} op) = IOSLens (i * u) (i * o) n
-    where (IOSLens i o n) = streamLens op
-  streamLens (Reduce ParParams{utilizedClocks = uc} op) = IOSLens (i * u) o n
-    where (IOSLens i o n) = streamLens op
+  -- number of firings should be 0 as not wrapped in multiple firings at this 
+  -- point
+  streamLens (Map ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) (o * uc) 0
+    where (IOSLens i o _) = streamLens op
+  streamLens (Reduce ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) o 0
+    where (IOSLens i o _) = streamLens op
   streamLens (Arithmetic op) = streamLens op
   streamLens (Memory op) = streamLens op
 
