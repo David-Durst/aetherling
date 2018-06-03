@@ -67,7 +67,7 @@ instance SpaceTime MemoryOp where
 -- for a single firing
 -- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
 data ParParams = ParParams { parallelism :: Int, utilizedClocks :: Int,
-  allClocksInStream :: Int }
+  allClocksInStream :: Int } deriving (Eq, Show)
 
 -- leaf nodes define what is done for one token in one firing, and 
 -- can scale them up or down across one firing and multiple firings
@@ -137,9 +137,10 @@ instance SpaceTime SingleFiringOp where
 
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
-data IterParams = IterParams { numIterations :: Int }
+data IterParams = IterParams { numIterations :: Int } deriving (Eq, Show)
 
 data MultipleFiringOp = Iter IterParams (Either MultipleFiringOp SingleFiringOp)
+  deriving (Eq, Show)
 
 instance SpaceTime MultipleFiringOp where
   -- when mapping over sequence, area is time to count over sequence plus 
