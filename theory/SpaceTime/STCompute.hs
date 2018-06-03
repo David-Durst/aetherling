@@ -85,18 +85,18 @@ data ParParams = ParParams { parallelism :: Int, utilizedClocks :: Int,
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
 
 data SingleFiringOp = 
-  Map ParParams SingleFiringOp
-  | Reduce ParParams SingleFiringOp
-  | Arithmetic ArithmeticOp
-  | Memory MemoryOp
+  MapSF ParParams SingleFiringOp
+  | ReduceSF ParParams SingleFiringOp
+  | ArithmeticSF ArithmeticOp
+  | MemorySF MemoryOp
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
-  space (Map ParParams{parallelism = p} op) = (space op) |* p
+  space (MapSF ParParams{parallelism = p} op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 clock
-  space (Reduce ParParams{utilizedClocks = uc, parallelism = p} op) =
+  space (ReduceSF ParParams{utilizedClocks = uc, parallelism = p} op) =
     if uc > 1 
       -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
@@ -104,45 +104,45 @@ instance SpaceTime SingleFiringOp where
       then reduceTreeSpace |+| (space op) |+| (registerSpace $ outTokenType op)
       else reduceTreeSpace
     where reduceTreeSpace = (space op) |* (p-1)
-  space (Arithmetic op) = space op
-  space (Memory op) = space op
+  space (ArithmeticSF op) = space op
+  space (MemorySF op) = space op
 
-  time (Map ParParams{allClocksInStream = ac} op) =
+  time (MapSF ParParams{allClocksInStream = ac} op) =
     replicateTimeOverStream (time op) ac
-  time (Reduce (ParParams p uc ac) op) = 
+  time (ReduceSF (ParParams p uc ac) op) = 
     if ac > 1 
       -- add 1 op and register for same reason as above 
       then replicateTimeOverStream (reduceTreeTime |+| (time op) |+| registerTime) ac
       else replicateTimeOverStream reduceTreeTime ac
     where reduceTreeTime = (time op) |* (ceilLog p)
-  time (Arithmetic op) = time op
-  time (Memory op) = time op
+  time (ArithmeticSF op) = time op
+  time (MemorySF op) = time op
 
-  util (Map (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
-  util (Reduce (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
-  util (Arithmetic op) = util op
-  util (Memory op) = util op
+  util (MapSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
+  util (ReduceSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
+  util (ArithmeticSF op) = util op
+  util (MemorySF op) = util op
 
-  inTokenType (Map ParParams{parallelism = p} op) = 
+  inTokenType (MapSF ParParams{parallelism = p} op) = 
     arrayTokenBuilder (inTokenType op) p
-  inTokenType (Reduce ParParams{parallelism = p} op) = 
+  inTokenType (ReduceSF ParParams{parallelism = p} op) = 
     arrayTokenBuilder (inTokenType op) p
-  inTokenType (Arithmetic op) = inTokenType op
-  inTokenType (Memory op) = inTokenType op
-  outTokenType (Map ParParams{parallelism = p} op) = 
+  inTokenType (ArithmeticSF op) = inTokenType op
+  inTokenType (MemorySF op) = inTokenType op
+  outTokenType (MapSF ParParams{parallelism = p} op) = 
     arrayTokenBuilder (outTokenType op) p
-  outTokenType (Reduce _ op) = outTokenType op
-  outTokenType (Arithmetic op) = outTokenType op
-  outTokenType (Memory op) = outTokenType op
+  outTokenType (ReduceSF _ op) = outTokenType op
+  outTokenType (ArithmeticSF op) = outTokenType op
+  outTokenType (MemorySF op) = outTokenType op
 
   -- number of firings should be 0 as not wrapped in multiple firings at this 
   -- point
-  streamLens (Map ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) (o * uc) 0
+  streamLens (MapSF ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) (o * uc) 0
     where (IOSLens i o _) = streamLens op
-  streamLens (Reduce ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) o 0
+  streamLens (ReduceSF ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) o 0
     where (IOSLens i o _) = streamLens op
-  streamLens (Arithmetic op) = streamLens op
-  streamLens (Memory op) = streamLens op
+  streamLens (ArithmeticSF op) = streamLens op
+  streamLens (MemorySF op) = streamLens op
 
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
@@ -182,7 +182,7 @@ instance SpaceTime MultipleFiringOp where
 data Schedule = Schedule [MultipleFiringOp] deriving (Eq, Show)
 
 -- TODO: A constructor with right precedence so can be used with |.| as 
--- sc Iter Map Add |.| sc Iter Map Reduce Add
+-- sc Iter MapSF Add |.| sc Iter MapSF ReduceSF Add
 
 getScheduleOps :: Schedule -> [MultipleFiringOp]
 getScheduleOps (Schedule ops) = ops
