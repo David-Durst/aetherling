@@ -118,6 +118,11 @@ instance SpaceTime SingleFiringOp where
   time (Arithmetic op) = time op
   time (Memory op) = time op
 
+  util (Map (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
+  util (Reduce (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
+  util (Arithmetic op) = util op
+  util (Memory op) = util op
+
   inTokenType (Map ParParams{parallelism = p} op) = 
     arrayTokenBuilder (inTokenType op) p
   inTokenType (Reduce ParParams{parallelism = p} op) = 
@@ -159,6 +164,9 @@ instance SpaceTime MultipleFiringOp where
   time (Iter (IterParams numIters) (Right op)) =
     replicateTimeOverStream (time op) numIters
 
+  util (Iter _ (Left op)) = util op
+  util (Iter _ (Right op)) = util op
+
   inTokenType (Iter _ (Left op)) = inTokenType op
   inTokenType (Iter _ (Right op)) = inTokenType op
   outTokenType (Iter _ (Left op)) = outTokenType op
@@ -170,9 +178,6 @@ instance SpaceTime MultipleFiringOp where
   streamLens (Iter (IterParams numIters) (Right op)) =
     IOSLens i o ((max n 1) * numIters)
     where (IOSLens i o n) = streamLens op
-
-  util (Iter _ (Left op)) = util op
-  util (Iter _ (Right op)) = util op
 
 data Schedule = Schedule [MultipleFiringOp] deriving (Eq, Show)
 
@@ -193,9 +198,10 @@ instance SpaceTime Schedule where
   streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
     where (IOSLens iIn _ nIn) = streamLens $ head ops
           (IOSLens _ oOut nOut) = streamLens $ tail ops
-  -- is there a better utilization than weighted by area average?
-  util (Schedule ops) =  unnormalizedUtil |/ (length ops)
-    where unnormalizedUtil = foldl (|+|) owAreaZero $ map (\op -> (space op) |* (util op)) ops
+  -- is there a better utilization than weighted by operator area
+  util (Schedule ops) =  unnormalizedUtil / (fromIntegral $ length ops)
+    where unnormalizedUtil = foldl (+) 0 $ 
+            map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
 
 -- For creating the compose ops
 (|.|) :: Maybe Schedule -> Maybe Schedule -> Maybe Schedule
