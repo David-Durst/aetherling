@@ -35,6 +35,8 @@ class MergeOrScale a where
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
 
+owAreaZero = OWA 0 0
+
 -- do division and log on ints and return result rounded up to ceiling
 ceilDiv :: Int -> Int -> Int
 ceilDiv dividend divisor = fromIntegral $ toInteger $ ceiling
@@ -63,6 +65,8 @@ registerSpace op = OWA (len op) (len op)
 -- path time 
 data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
 
+scTimeZero = SCTime 0 0
+
 isCombNode :: SeqCombTime -> Bool
 isCombNode (SCTime s _) = s == 0
 
@@ -75,10 +79,10 @@ instance MergeOrScale SeqCombTime where
   (|+|) (SCTime s0 c0) (SCTime s1 c1) = SCTime (s0 + s1) (max c0 c1)
   -- when scaling up/down combinational, combinational time gets longer
   -- otherwise sequential time gets longer
-  (|*) (SCTime s c) i | s == 0 = SCTime 0 (c*i)
-  (|*) (SCTime s _) i == SCTime (s*i) 0
-  (|/) (SCTime s c) i | s == 0 = SCTime 0 (c*i)
-  (|/) (SCTime s _) i == SCTime (s*i) 0
+  (|*) (SCTime s c) i | s == 0 = SCTime 0 (c * i)
+  (|*) (SCTime s _) i == SCTime (s * i) 0
+  (|/) (SCTime s c) i | s == 0 = SCTime 0 (c `ceilDiv` i)
+  (|/) (SCTime s _) i == SCTime (s `ceilDiv` i) 0
 
 registerTime :: SeqCombTime
 registerTime = SCTime {1, 1}
