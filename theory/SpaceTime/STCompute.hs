@@ -168,15 +168,21 @@ instance SpaceTime MultipleFiringOp where
 
 data Schedule = Compose [MultipleFiringOp] deriving (Eq, Show)
 
+-- TODO: A constructor with right precedence so can be used with |.| as 
+-- sc Iter Map Add |.| sc Iter Map Reduce Add
+
+getScheduleOps :: Schedule -> [MultipleFiringOp]
+getScheduleOps (Schedule ops) = ops
+
 instance SpaceTime Schedule where
-  space (Compose ops) = foldl (|+|) owAreaZero $ map space ops
+  space (Schedule ops) = foldl (|+|) owAreaZero $ map space ops
   -- TODO: make this account for pipelining
-  time (Compose ops) = foldl (|+|) scTimeZero $ map time ops
-  inTokenType (Compose (opHd:_)) = inTokenType opHd
-  outTokenType (Compose ops) = outTokenType $ tail ops
+  time (Schedule ops) = foldl (|+|) scTimeZero $ map time ops
+  inTokenType (Schedule (opHd:_)) = inTokenType opHd
+  outTokenType (Schedule ops) = outTokenType $ tail ops
   -- TODO: This assumes a Schedule is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
-  streamLens (Compose ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
+  streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
     where (IOSLens iIn _ nIn) = streamLens $ head ops
           (IOSLens _ oOut nOut) = streamLens $ tail opTl
   -- is there a better utilization than weighted by area average?
@@ -184,9 +190,12 @@ instance SpaceTime Schedule where
     where unnormalizedUtil = foldl (+) 0 $ map (\op => op * (space op)) ops
 
 -- For creating the compose ops
-(|.|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
-(|.|) (Just op0) (Just op1) | (outNumTokens op0) == (inNumTokens op1) &&
-  (outTokenType op0) == (inTokenType op1) = Just (Combine op0 op1)
+(|.|) :: Maybe Schedule -> Maybe Schedule -> Maybe Schedule
+(|.|) (Just ops0) (Just ops1) | outNumTokens ops0tl == inNumTokens ops1hd &&
+  outTokenType ops0tl == inTokenType ops1hd = Just $ Schedule $ ops0 ++ ops1
+  where
+    ops0tl = tail ops0
+    ops1hd = head ops1
 (|.|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
