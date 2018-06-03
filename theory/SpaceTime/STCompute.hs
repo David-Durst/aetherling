@@ -169,14 +169,19 @@ instance SpaceTime MultipleFiringOp where
 data Schedule = Compose [MultipleFiringOp] deriving (Eq, Show)
 
 instance SpaceTime Schedule where
-  space (Compose ops) = foldl (|+|) scTimeZero $ map space ops
+  space (Compose ops) = foldl (|+|) owAreaZero $ map space ops
   -- TODO: make this account for pipelining
   time (Compose ops) = foldl (|+|) scTimeZero $ map time ops
   inTokenType (Compose (opHd:_)) = inTokenType opHd
-  outTokenType (Compose _ op1) = outTokenType op1
+  outTokenType (Compose ops) = outTokenType $ tail ops
   -- TODO: This assumes a Schedule is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
-  streamLens (Compose )
+  streamLens (Compose ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
+    where (IOSLens iIn _ nIn) = streamLens $ head ops
+          (IOSLens _ oOut nOut) = streamLens $ tail opTl
+  -- is there a better utilization than weighted by area average?
+  util (Compos ops) =  unnormalizedUtil / (length ops)
+    where unnormalizedUtil = foldl (+) 0 $ map (\op => op * (space op)) ops
 
 -- For creating the compose ops
 (|.|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
