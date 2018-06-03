@@ -1,8 +1,17 @@
 module SpaceTime.STHelpers where
+-- helpful functions and constants
 -- constant use for scaling operations in space and time
 rwTime = 1
 mulSpaceTimeIncreaser = 5
 divSpaceTimeIncreaser = 5
+
+-- do division and log on ints and return result rounded up to ceiling
+ceilDiv :: Int -> Int -> Int
+ceilDiv dividend divisor = fromIntegral $ toInteger $ ceiling
+  ((fromIntegral dividend) / (fromIntegral divisor))
+
+ceilLog :: Int -> Int
+ceilLog a = fromIntegral $ toInteger $ ceiling $ logBase 2 $ fromIntegral a
 
 -- the types used for tracking data about operators
 data TokenType =
@@ -37,21 +46,6 @@ data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
 
 owAreaZero = OWA 0 0
 
--- do division and log on ints and return result rounded up to ceiling
-ceilDiv :: Int -> Int -> Int
-ceilDiv dividend divisor = fromIntegral $ toInteger $ ceiling
-  ((fromIntegral dividend) / (fromIntegral divisor))
-
-ceilLog :: Int -> Int
-ceilLog a = fromIntegral $ toInteger $ ceiling $ logBase 2 $ fromIntegral a
-
-instance MergeOrScale OpsWireArea where
-  -- Note: need more realistic area approximation
-  (|+|) (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
-  (|*) (OWA o w) i = OWA (o * i) (w * i)
-  -- taking ceiling to be conservative
-  (|/) (OWA o w) i = OWA (o `ceilDiv` i) (w `ceilDiv` i)
-
 -- the space of adding a counter that counts to I, assuming efficient counter
 -- that uses log bits for area and time
 counterSpace :: Int -> OpsWireArea
@@ -61,11 +55,19 @@ counterSpace countTo = OWA numBits numBits
 registerSpace :: TokenType -> OpsWireArea
 registerSpace op = OWA (len op) (len op)
 
+instance MergeOrScale OpsWireArea where
+  -- Note: need more realistic area approximation
+  (|+|) (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
+  (|*) (OWA o w) i = OWA (o * i) (w * i)
+  -- taking ceiling to be conservative
+  (|/) (OWA o w) i = OWA (o `ceilDiv` i) (w `ceilDiv` i)
+
 -- seq time tracks number of clock cycles, comb time tracks max combinational
 -- path time 
 data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
 
 scTimeZero = SCTime 0 0
+registerTime = SCTime 1 1
 
 isCombNode :: SeqCombTime -> Bool
 isCombNode (SCTime s _) = s == 0
@@ -83,9 +85,6 @@ instance MergeOrScale SeqCombTime where
   (|*) (SCTime s c) i = SCTime (s * i) c
   (|/) (SCTime s c) i | s == 0 = SCTime 0 (c `ceilDiv` i)
   (|/) (SCTime s c) i = SCTime (s `ceilDiv` i) c
-
-registerTime :: SeqCombTime
-registerTime = SCTime {1, 1}
 
 -- given a SeqCombTime and a stream length, return its time assuming registers
 -- are at the end of each element of stream
