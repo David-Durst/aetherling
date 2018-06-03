@@ -37,12 +37,12 @@ instance SpaceTime ArithmeticOp where
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
   util _ = 1.0
   inTokenType (Add t) = t
-  outTokenType (Add t) = t
   inTokenType (Sub t) = t
-  outTokenType (Sub t) = t
   inTokenType (Mul t) = t
-  outTokenType (Mul t) = t
   inTokenType (Div t) = t
+  outTokenType (Add t) = t
+  outTokenType (Sub t) = t
+  outTokenType (Mul t) = t
   outTokenType (Div t) = t
   streamLens _ = IOSLens 1 1 0
 
@@ -57,8 +57,8 @@ instance SpaceTime MemoryOp where
   time _ = SCTime 0 rwTime
   util _ = 1.0
   inTokenType (Mem_Read _) = T_Unit
-  outTokenType (Mem_Read t) = t
   inTokenType (Mem_Write t) = t
+  outTokenType (Mem_Read t) = t
   outTokenType (Mem_Write _) = T_Unit
   streamLens (Mem_Read _) = IOSLens 0 1 0
   streamLens (Mem_Write _) = IOSLens 1 0 0
@@ -118,14 +118,14 @@ instance SpaceTime SingleFiringOp where
 
   inTokenType (Map (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (inTokenType op) p
-  outTokenType (Map (ParParams {p = parallelism}) op) = 
-    arrayTokenBuilder (outTokenType op) p
   inTokenType (Reduce (ParParams {p = parallelism}) op) = 
     arrayTokenBuilder (inTokenType op) p
-  outTokenType (Reduce _ op) = outTokenType op
   inTokenType (Arithmetic op) = inTokenType op
-  outTokenType (Arithmetic op) = outTokenType op
   inTokenType (Memory op) = inTokenType op
+  outTokenType (Map (ParParams {p = parallelism}) op) = 
+    arrayTokenBuilder (outTokenType op) p
+  outTokenType (Reduce _ op) = outTokenType op
+  outTokenType (Arithmetic op) = outTokenType op
   outTokenType (Memory op) = outTokenType op
 
   streamLens (Map (ParaParams {u = utilizedClocks}) op) = IOSLens (i * u) (i * o) n
@@ -155,8 +155,8 @@ instance SpaceTime MultipleFiringOp where
     replicateTimeOverStream (time op) numIters
 
   inTokenType (Iter _ (Left op)) = inTokenType op
-  outTokenType (Iter _ (Left op)) = outTokenType op
   inTokenType (Iter _ (Right op)) = inTokenType op
+  outTokenType (Iter _ (Left op)) = outTokenType op
   outTokenType (Iter _ (Right op)) = outTokenType op
 
   streamLens (Iter (IterParams numIters) (Left op)) =
