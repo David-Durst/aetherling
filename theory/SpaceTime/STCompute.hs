@@ -95,9 +95,9 @@ instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
   space (Map ParParams{parallelism = p} op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
-  -- results if a signle firing is more than 1 token
-  space rp@(Reduce ParParams{parallelism = p} op) =
-    if streamLen rp > 1 
+  -- results if a signle firing is more than 1 clock
+  space (Reduce ParParams{utilizedClocks = uc, parallelism = p} op) =
+    if uc > 1 
       -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
       -- clock
@@ -109,8 +109,8 @@ instance SpaceTime SingleFiringOp where
 
   time (Map ParParams{allClocksInStream = ac} op) =
     replicateTimeOverStream (time op) ac
-  time (Reduce ParParams{allClocksInStream = ac} op) = 
-    if streamLen rp > 1 
+  time (Reduce ParParams{utilizedClocks = uc, allClocksInStream = ac} op) = 
+    if uc > 1 
       -- add 1 op and register for same reason as above 
       then replicateTimeOverStream (reduceTreeTime |+| (time op) |+| registerTime) ac
       else replicateTimeOverStream reduceTreeTime
@@ -130,9 +130,9 @@ instance SpaceTime SingleFiringOp where
   outTokenType (Arithmetic op) = outTokenType op
   outTokenType (Memory op) = outTokenType op
 
-  streamLens (Map ParParams{utilizedClocks = u} op) = IOSLens (i * u) (i * o) n
+  streamLens (Map ParParams{utilizedClocks = uc} op) = IOSLens (i * u) (i * o) n
     where (IOSLens i o n) = streamLens op
-  streamLens (Reduce ParParams{utilizedClocks = u} op) = IOSLens (i * u) o n
+  streamLens (Reduce ParParams{utilizedClocks = uc} op) = IOSLens (i * u) o n
     where (IOSLens i o n) = streamLens op
   streamLens (Arithmetic op) = streamLens op
   streamLens (Memory op) = streamLens op
