@@ -91,10 +91,10 @@ data SingleFiringOp =
 
 instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
-  space (Map (ParParams {p = parallelism}) op) = (space op) |* p
+  space (Map ParParams{parallelism = p} op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 token
-  space rp@(Reduce (ParParams {p = parallelism}) op) =
+  space rp@(Reduce ParParams{parallelism = p} op) =
     if streamLen rp > 1 
       -- add 1 op and regster as need register for partial result and need op 
       -- to combine reduceTree results with that register if stream more than 1
@@ -105,9 +105,9 @@ instance SpaceTime SingleFiringOp where
   space (Arithmetic op) = space op
   space (Memory op) = space op
 
-  time (Map (ParParams {ac = allClocksInStream}) op) =
-    replicateTimeOverStream (time op) ace
-  time (Reduce (ParParams {ac = allClocksInStream}) op) = 
+  time (Map ParParams{allClocksInStream = ac} op) =
+    replicateTimeOverStream (time op) ac
+  time (Reduce ParParams{allClocksInStream = ac} op) = 
     if streamLen rp > 1 
       -- add 1 op and register for same reason as above 
       then replicateTimeOverStream (reduceTreeTime |+| (time op) |+| registerTime) ac
@@ -116,21 +116,21 @@ instance SpaceTime SingleFiringOp where
   time (Arithmetic op) = time op
   time (Memory op) = time op
 
-  inTokenType (Map (ParParams {p = parallelism}) op) = 
+  inTokenType (Map ParParams{parallelism = p} op) = 
     arrayTokenBuilder (inTokenType op) p
-  inTokenType (Reduce (ParParams {p = parallelism}) op) = 
+  inTokenType (Reduce ParParams{parallelism = p} op) = 
     arrayTokenBuilder (inTokenType op) p
   inTokenType (Arithmetic op) = inTokenType op
   inTokenType (Memory op) = inTokenType op
-  outTokenType (Map (ParParams {p = parallelism}) op) = 
+  outTokenType (Map ParParams{parallelism = p} op) = 
     arrayTokenBuilder (outTokenType op) p
   outTokenType (Reduce _ op) = outTokenType op
   outTokenType (Arithmetic op) = outTokenType op
   outTokenType (Memory op) = outTokenType op
 
-  streamLens (Map (ParParams {u = utilizedClocks}) op) = IOSLens (i * u) (i * o) n
+  streamLens (Map ParParams{utilizedClocks = u} op) = IOSLens (i * u) (i * o) n
     where (IOSLens i o n) = streamLens op
-  streamLens (Reduce (ParParams {u = utilizedClocks}) op) = IOSLens (i * u) o n
+  streamLens (Reduce ParParams{utilizedClocks = u} op) = IOSLens (i * u) o n
     where (IOSLens i o n) = streamLens op
   streamLens (Arithmetic op) = streamLens op
   streamLens (Memory op) = streamLens op
