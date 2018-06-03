@@ -192,7 +192,7 @@ instance SpaceTime Schedule where
   -- with through ready-valid but not timing. Is that right?
   streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
     where (IOSLens iIn _ nIn) = streamLens $ head ops
-          (IOSLens _ oOut nOut) = streamLens $ tail opTl
+          (IOSLens _ oOut nOut) = streamLens $ tail ops
   -- is there a better utilization than weighted by area average?
   util (Schedule ops) =  unnormalizedUtil |/ (length ops)
     where unnormalizedUtil = foldl (|+|) owAreaZero $ map (\op -> (space op) |* (util op)) ops
