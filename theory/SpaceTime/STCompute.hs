@@ -6,6 +6,7 @@ class SpaceTime a where
   space :: a -> OpsWireArea
   -- this is the time to process one or more firings
   time :: a -> SeqCombTime
+  util :: a -> Float
   inTokenType :: a -> TokenType
   outTokenType :: a -> TokenType
   streamLens :: a -> IOStreamLens
@@ -34,6 +35,7 @@ instance SpaceTime ArithmeticOp where
   time (Sub t) = SCTime 0 1
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
+  util _ = 1.0
   inTokenType (Add t) = t
   outTokenType (Add t) = t
   inTokenType (Sub t) = t
@@ -44,7 +46,6 @@ instance SpaceTime ArithmeticOp where
   outTokenType (Div t) = t
   streamLens _ = IOSLens 1 1 0
 
-
 -- These are leaf nodes that do memory ops, they read and write 
 -- one token
 data MemoryOp = Mem_Read TokenType | Mem_Write TokenType deriving (Eq, Show)
@@ -54,6 +55,7 @@ instance SpaceTime MemoryOp where
   space (Mem_Write t) = space (Mem_Read t)
   -- assuming reads are 
   time _ = SCTime 0 rwTime
+  util _ = 1.0
   inTokenType (Mem_Read _) = T_Unit
   outTokenType (Mem_Read t) = t
   inTokenType (Mem_Write t) = t
@@ -126,11 +128,16 @@ instance SpaceTime SingleFiringOp where
   inTokenType (Memory op) = inTokenType op
   outTokenType (Memory op) = outTokenType op
 
-  streamLens (Map (ParaParams {u = utilizedClocks}) ) = 
+  streamLens (Map (ParaParams {u = utilizedClocks}) op) = IOSLens (i * u) (i * o) n
+    where (IOSLens i o n) = streamLens op
+  streamLens (Reduce (ParaParams {u = utilizedClocks}) op) = IOSLens (i * u) o n
+    where (IOSLens i o n) = streamLens op
+  streamLens (Arithmetic op) = streamLens op
+  streamLens (Memory op) = streamLens op
 
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
-data IterParams = InterParams { seqStreamLen :: Int }
+data IterParams = InterParams { numIterations :: Int }
 
 data MultipleFiringOp = Iter IterParams (Either MultipleFiringOp SingleFiringOp)
 
@@ -141,24 +148,27 @@ instance SpaceTime MultipleFiringOp where
     (counterSpace s) |+| (space op)
   space (Iter (IterParams {s = seqStreamLen}) (Right op)) = 
     (counterSpace s) |+| (space op)
-  -- if this is a combinational node, add clocks to it equal to num cycles
-  -- going to run over
-  -- otherwise just multiply it by stream length as registers going to increase
-  -- with |* operator
+
   time (Iter (IterParams {s = seqStreamLen}) (Left op)) =
     replicateTimeOverStream (time op) s
   time (Iter (IterParams {s = seqStreamLen}) (Right op)) =
     replicateTimeOverStream (time op) s
+
   inTokenType (Iter _ (Left op)) = inTokenType op
   outTokenType (Iter _ (Left op)) = outTokenType op
   inTokenType (Iter _ (Right op)) = inTokenType op
   outTokenType (Iter _ (Right op)) = outTokenType op
 
-data Schedule =
-  ComposeWrapper MultipleFiringOp
-  | Compose ComposeWrapper ComposeWrapper
+  streamLens (Iter (IterParams numIters) (Left op)) =
+    IOSLens i o ((max n 1) * numIters)
+    where (IOSLens i o n) = streamLens op
+  streamLens (Iter (IterParams numIters) (Right op)) =
+    IOSLens i o ((max n 1) * numIters)
+    where (IOSLens i o n) = streamLens op
 
-instance SpaceTime MultipleOps where
+data Schedule = Compose [MultipleFiringOp] deriving (Eq, Show)
+
+instance SpaceTime Schedule where
   space (Compose op0 op1) = (space op0) |+| (space op1)
   space (ComposeWrapper op) = space op
   time (Compose op0 op1) = (time op0) |+| (time op1)
@@ -167,6 +177,9 @@ instance SpaceTime MultipleOps where
   inTokenType (ComposeWrapper op) = inTokenType op
   outTokenType (Compose _ op1) = outTokenType op1
   outTokenType (ComposeWrapper op) = outTokenType op
+  -- TODO: This assumes a Schedule is a unit that other schedules can interface
+  -- with through ready-valid but not timing. Is that right?
+  streamLens (Compose )
 
 -- For creating the compose ops
 (|.|) :: Maybe MultipleOps -> Maybe MultipleOps -> Maybe MultipleOps
