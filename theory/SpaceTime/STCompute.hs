@@ -179,7 +179,18 @@ instance SpaceTime MultipleFiringOp where
     IOSLens i o ((max n 1) * numIters)
     where (IOSLens i o n) = streamLens op
 
-data Schedule = Schedule [MultipleFiringOp] deriving (Eq, Show)
+data Schedule1D = S_0 | S_1D MultipleFiringOp Schedule1D
+
+data Schedule2D = S_2D [Schedule1D] Schedule2D
+
+-- this only allows schedules to be 2 d, shou
+data Schedule = 
+  S_0D
+  | S_1D MultipleFiringOp Schedule
+  -- the first schedule is for multiple schedules the run in parallel
+  -- the second is for the next schedule in the list
+  | S_ND Schedule Schedule
+  deriving (Eq, Show)
 
 -- TODO: A constructor with right precedence so can be used with |.| as 
 -- sc Iter MapSF Add |.| sc Iter MapSF ReduceSF Add
@@ -187,9 +198,21 @@ data Schedule = Schedule [MultipleFiringOp] deriving (Eq, Show)
 getScheduleOps :: Schedule -> [MultipleFiringOp]
 getScheduleOps (Schedule ops) = ops
 
+instance HasLen Schedule where
+  len S_0D = 0
+  len (S_1D op sNext) = 1 + len sNext
+  len (S_ND sPar sNext) = len sPar + len sNext
+
 instance SpaceTime Schedule where
-  space (Schedule ops) = foldl (|+|) owAreaZero $ map space ops
+  space EmptySchedule = owAreaZero
+  space (S_1D op sNext) = space op |+| space sNext
+  space (S_ND sPar sNext) = space sPar |+| space sNext
   -- TODO: make this account for pipelining
+  time EmptySchedule = scTimeZero
+  time (S_1D op sNext) = time op |+| time sNext
+  -- all schedules in parallel must take same time, constructor will 
+  -- require this
+  time (S_ND sPar sNext) = time sPar |+| 
   time (Schedule ops) = foldl (|+|) scTimeZero $ map time ops
   inPortsType (Schedule ops) = inPortsType $ head ops
   outPortsType (Schedule ops) = outPortsType $ last ops
