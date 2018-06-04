@@ -45,31 +45,18 @@ instance HasLen TokensType where
 
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
-data PortsType = T_Ports [([Char], TokensType)] deriving (Show)
+data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokensType}
 
-instance Eq PortsType where
+instance Eq PortType where
   -- ignore names for equality, just check that all same
-  (==) (T_Ports ports0) (T_Ports ports1) = 
-    (length ports0 == length ports1) && 
-    (foldl (&&) True $ zipWith (\port0 port1 -> (port0 == port1)) ports0 ports1)
+  (==) (T_Port _ len0 tType0) (T_Port _ len1 tType1) = 
+    len0 == len1 && tType0 == tType1
   (/=) pt0 pt1 = not $ pt0 == pt1
 
-instance HasLen PortsType where
-  len (T_Ports ports) = foldl (+) 0 $ map (len . snd) ports
-
-instance MergeOrScale PortsType where
-  addId = T_Ports []
-  (|+|) (T_Ports ports0) (T_Ports ports1) = T_Ports $ ports0 ++ ports1
-  (|*) (T_Ports ports) i = T_Ports $ map mulArrayLen ports
-    where mulArrayLen (portName, T_Array tType arrLen) =
-            (portName, T_Array tType (arrLen * i))
-  (|/) (T_Ports ports) i = T_Ports $ map divArrayLen ports
-    where divArrayLen (portName, T_Array tType arrLen) =
-            (portName, T_Array tType (arrLen `ceilDiv` i))
-
-portsFromTokens :: [([Char], Int, TokenType)] -> PortsType
-portsFromTokens ts = T_Ports $ map makeTokens ts
-  where makeTokens (tName, tNum, tType) = (tName, T_Array tType tNum)
+-- first int is stream length, second is array length
+portsFromTokens :: [([Char], Int, Int, TokenType)] -> [PortType]
+portsFromTokens ts = map makeTokens ts
+  where makeTokens (n, sLen, tNum, tType) = T_Port n sLen (T_Array tType tNum)
 
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
@@ -80,8 +67,9 @@ counterSpace :: Int -> OpsWireArea
 counterSpace countTo = OWA numBits numBits
   where numBits = ceilLog countTo
 
-registerSpace :: PortsType -> OpsWireArea
-registerSpace op = OWA (len op) (len op)
+registerSpace :: [PortType] -> OpsWireArea
+registerSpace op = OWA portsLen portsLen
+  where portsLen = foldl (+) 0 $ map (len . pTType) op
 
 instance MergeOrScale OpsWireArea where
   addId = OWA 0 0
