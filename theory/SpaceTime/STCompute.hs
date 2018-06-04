@@ -181,6 +181,29 @@ instance SpaceTime MultipleFiringOp where
 
 data Schedule1D = S_0 | S_1D MultipleFiringOp Schedule1D
 
+instance SpaceTime Schedule where
+  space S_0 = owAreaZero
+  space (S_1D op sNext) = space op |+| space sNext
+  -- TODO: make this account for pipelining
+  time S_0 = scTimeZero
+  time (S_1D op sNext) = time op |+| time sNext
+  -- all schedules in parallel must take same time, constructor will 
+  -- require this
+  inPortsType S_0 = portsFromTokens []
+  inPortsType (S_1D op sNext) = inPortsType op
+  outPortsType S_0 = portsFromTokens []
+  outPortsType (S_1D op S_0) = outPortsType op
+  outPortsType (S_1D _ sNext) = outPortsType sNext
+  -- TODO: This assumes a Schedule is a unit that other schedules can interface
+  -- with through ready-valid but not timing. Is that right?
+  streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
+    where (IOSLens iIn _ nIn) = streamLens $ head ops
+          (IOSLens _ oOut nOut) = streamLens $ last ops
+  -- is there a better utilization than weighted by operator area
+  util (Schedule ops) =  unnormalizedUtil / (fromIntegral $ length ops)
+    where unnormalizedUtil = foldl (+) 0 $ 
+            map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
+
 data Schedule2D = S_2D [Schedule1D] Schedule2D
 
 -- this only allows schedules to be 2 d, shou
@@ -197,11 +220,6 @@ data Schedule =
 
 getScheduleOps :: Schedule -> [MultipleFiringOp]
 getScheduleOps (Schedule ops) = ops
-
-instance HasLen Schedule where
-  len S_0D = 0
-  len (S_1D op sNext) = 1 + len sNext
-  len (S_ND sPar sNext) = len sPar + len sNext
 
 instance SpaceTime Schedule where
   space EmptySchedule = owAreaZero
