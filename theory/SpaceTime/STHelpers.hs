@@ -44,7 +44,14 @@ instance HasLen TokensType where
 
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
-data PortsType = T_Ports [([Char], TokensType)] deriving (Eq, Show)
+data PortsType = T_Ports [([Char], TokensType)] deriving (Show)
+
+instance Eq PortsType where
+  -- ignore names for equality, just check that all same
+  (==) (T_Ports ports0) (T_Ports ports1) = 
+    (length ports0 == length ports1) && 
+    (foldl (&&) True $ zipWith (\port0 port1 -> (port0 == port1)) ports0 ports1)
+  (/=) pt0 pt1 = not $ pt0 == pt1
 
 instance HasLen PortsType where
   len (T_Ports ports) = foldl (+) 0 $ map (len . snd) ports
