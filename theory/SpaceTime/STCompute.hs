@@ -6,10 +6,19 @@ class SpaceTime a where
   space :: a -> OpsWireArea
   -- this is the time to process one or more firings
   time :: a -> SeqCombTime
+  -- local vs global utilization? - I think this handles both well enough 
+  -- for now, can revisit later
   util :: a -> Float
-  inPortsType :: a -> PortsType
-  outPortsType :: a -> PortsType
-  streamLens :: a -> IOStreamLens
+  inPortsType :: a -> [PortType]
+  outPortsType :: a -> [PortType]
+
+class Composable a where
+  (|.|) :: Maybe a -> Maybe a -> Maybe a
+
+-- This is in same spirit as Monad's >>=, kinda abusing notation
+-- It's |.| in reverse so that can create pipelines in right order
+(|>>=|) :: (Composable a) -> Maybe a -> Maybe a -> Maybe a 
+(|>>=|) op1 op0 = op0 (|.|) op1
 
 inNumTokens :: (SpaceTime a) => a -> Int
 inNumTokens op = tokensInOneFiring * n
@@ -87,11 +96,13 @@ data ParParams = ParParams { parallelism :: Int, utilizedClocks :: Int,
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
 
+-- add a compose here, maybe later
 data SingleFiringOp = 
   MapSF ParParams SingleFiringOp
   | ReduceSF ParParams SingleFiringOp
   | ArithmeticSF ArithmeticOp
   | MemorySF MemoryOp
+  | ComposeParSF []
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
@@ -181,7 +192,7 @@ instance SpaceTime MultipleFiringOp where
 
 data Schedule1D = S_1D [MultipleFiringOp]
 
-instance SpaceTime Schedule where
+instance SpaceTime Schedule1D where
   space (S_1D ops) = foldl (|+|) owAreaZero $ map space ops
   -- TODO: make this account for pipelining
   -- all schedules in parallel must take same time, constructor will 
@@ -204,24 +215,21 @@ data Schedule2D = S_2D [[Schedule1D]]
 -- TODO: A constructor with right precedence so can be used with |.| as 
 -- sc Iter MapSF Add |.| sc Iter MapSF ReduceSF Add
 
-getScheduleOps :: Schedule -> [MultipleFiringOp]
-getScheduleOps (Schedule ops) = ops
+getSchedule1DOps :: Schedule1D -> [MultipleFiringOp]
+getSchedule1DOps (S_1D ops) = ops
 
 instance SpaceTime Schedule2D where
   space (S_2D opss) = sumSpace $ sumSpace $ map (map space) opss
-    where sumSpace = fold (|+|) owAreaZero 
+    where sumSpace = foldl (|+|) owAreaZero 
   -- TODO: make this account for pipelining
-  time (S_2D opss) = sumTime $ sumTime $ map (map time) opss
-    where sumTime = fold (|+|) scTimeZero
-  -- all schedules in parallel must take same time, constructor will 
-  -- require this
-  time (S_ND sPar sNext) = time sPar |+| 
-  time (Schedule ops) = foldl (|+|) scTimeZero $ map time ops
-  inPortsType (Schedule ops) = inPortsType $ head ops
-  outPortsType (Schedule ops) = outPortsType $ last ops
+  -- all inner shcedules run in parallel, so only need time for one
+  time (S_2D opss) = sumTime $ sumTime $ map (time $ head) opss
+    where sumTime = foldl (|+|) scTimeZero
+  inPortsType (S_2D opss) = foldl (|+|) addId $ map inPortsType $ head opss
+  outPortsType (S_2D opss) = foldl (|+|) addId $ map inPortsType $ tail opss
   -- TODO: This assumes a Schedule is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
-  streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
+  streamLens (S_2D opss) = IOSLens (iIn * nIn) (oOut * nOut) 1
     where (IOSLens iIn _ nIn) = streamLens $ head ops
           (IOSLens _ oOut nOut) = streamLens $ last ops
   -- is there a better utilization than weighted by operator area
