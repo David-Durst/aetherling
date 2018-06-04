@@ -61,7 +61,7 @@ instance SpaceTime MemoryOp where
   -- assuming reads are 
   time _ = SCTime 0 rwTime
   util _ = 1.0
-  inPortsType (Mem_Read _) = T_Unit
+  inPortsType (Mem_Read _) = T_Ports []
   inPortsType (Mem_Write t) = oneOutPort t
   outPortsType (Mem_Read t) = portsFromTokens [("I", 1, t)]
   outPortsType (Mem_Write _) = T_Ports []
@@ -126,14 +126,11 @@ instance SpaceTime SingleFiringOp where
   util (ArithmeticSF op) = util op
   util (MemorySF op) = util op
 
-  inPortsType (MapSF ParParams{parallelism = p} op) = 
-    arrayTokenBuilder (inPortsType op) p
-  inPortsType (ReduceSF ParParams{parallelism = p} op) = 
-    arrayTokenBuilder (inPortsType op) p
+  inPortsType (MapSF ParParams{parallelism = p} op) = (inPortsType op) |* p
+  inPortsType (ReduceSF ParParams{parallelism = p} op) = (inPortsType op) |* p
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
-  outPortsType (MapSF ParParams{parallelism = p} op) = 
-    arrayTokenBuilder (outPortsType op) p
+  outPortsType (MapSF ParParams{parallelism = p} op) = (outPortsType op) |* p
   outPortsType (ReduceSF _ op) = outPortsType op
   outPortsType (ArithmeticSF op) = outPortsType op
   outPortsType (MemorySF op) = outPortsType op

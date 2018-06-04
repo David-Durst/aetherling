@@ -16,6 +16,11 @@ ceilDiv dividend divisor = fromIntegral $ toInteger $ ceiling
 ceilLog :: Int -> Int
 ceilLog a = fromIntegral $ toInteger $ ceiling $ logBase 2 $ fromIntegral a
 
+class MergeOrScale a where
+  (|+|) :: a -> a -> a
+  (|*) :: a -> Int -> a
+  (|/) :: a -> Int -> a
+
 class HasLen a where
   len :: a -> Int
 
@@ -44,19 +49,18 @@ data PortsType = T_Ports [([Char], TokensType)] deriving (Eq, Show)
 instance HasLen PortsType where
   len (T_Ports ports) = foldl (+) 0 $ map (len . snd) ports
 
-mergePorts :: PortsType -> PortsType -> PortsType
-mergePorts (T_Ports ports0) (T_Ports ports1) = T_Ports $ ports0 ++ ports1
+instance MergeOrScale PortsType where
+  (|+|) (T_Ports ports0) (T_Ports ports1) = T_Ports $ ports0 ++ ports1
+  (|*) (T_Ports ports) i = T_Ports $ map mulArrayLen ports
+    where mulArrayLen (portName, T_Array tType arrLen) =
+            (portName, T_Array tType (arrLen * i))
+  (|/) (T_Ports ports) i = T_Ports $ map divArrayLen ports
+    where divArrayLen (portName, T_Array tType arrLen) =
+            (portName, T_Array tType (arrLen `ceilDiv` i))
 
 portsFromTokens :: [([Char], Int, TokenType)] -> PortsType
 portsFromTokens ts = T_Ports $ map makeTokens ts
   where makeTokens (tName, tNum, tType) = (tName, T_Array tType tNum)
-
-
-class MergeOrScale a where
-  (|+|) :: a -> a -> a
-  (|*) :: a -> Int -> a
-  (|/) :: a -> Int -> a
-
 
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
@@ -69,7 +73,7 @@ counterSpace :: Int -> OpsWireArea
 counterSpace countTo = OWA numBits numBits
   where numBits = ceilLog countTo
 
-registerSpace :: TokenType -> OpsWireArea
+registerSpace :: PortsType -> OpsWireArea
 registerSpace op = OWA (len op) (len op)
 
 instance MergeOrScale OpsWireArea where
