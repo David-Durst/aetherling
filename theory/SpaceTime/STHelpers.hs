@@ -17,6 +17,7 @@ ceilLog :: Int -> Int
 ceilLog a = fromIntegral $ toInteger $ ceiling $ logBase 2 $ fromIntegral a
 
 class MergeOrScale a where
+  addId :: a
   (|+|) :: a -> a -> a
   (|*) :: a -> Int -> a
   (|/) :: a -> Int -> a
@@ -57,6 +58,7 @@ instance HasLen PortsType where
   len (T_Ports ports) = foldl (+) 0 $ map (len . snd) ports
 
 instance MergeOrScale PortsType where
+  addId = T_Ports []
   (|+|) (T_Ports ports0) (T_Ports ports1) = T_Ports $ ports0 ++ ports1
   (|*) (T_Ports ports) i = T_Ports $ map mulArrayLen ports
     where mulArrayLen (portName, T_Array tType arrLen) =
@@ -72,8 +74,6 @@ portsFromTokens ts = T_Ports $ map makeTokens ts
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
 
-owAreaZero = OWA 0 0
-
 -- the space of adding a counter that counts to I, assuming efficient counter
 -- that uses log bits for area and time
 counterSpace :: Int -> OpsWireArea
@@ -84,6 +84,7 @@ registerSpace :: PortsType -> OpsWireArea
 registerSpace op = OWA (len op) (len op)
 
 instance MergeOrScale OpsWireArea where
+  addId = OWA 0 0
   -- Note: need more realistic area approximation
   (|+|) (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
   (|*) (OWA o w) i = OWA (o * i) (w * i)
@@ -94,13 +95,13 @@ instance MergeOrScale OpsWireArea where
 -- path time 
 data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
 
-scTimeZero = SCTime 0 0
 registerTime = SCTime 1 1
 
 isCombNode :: SeqCombTime -> Bool
 isCombNode (SCTime s _) = s == 0
 
 instance MergeOrScale SeqCombTime where
+  addId = SCTime 0 0
   -- if either is just a combinational element, combinational time increases
   -- and num cycles is constant
   (|+|) (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 || s1 == 0 =
