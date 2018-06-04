@@ -179,41 +179,27 @@ instance SpaceTime MultipleFiringOp where
     IOSLens i o ((max n 1) * numIters)
     where (IOSLens i o n) = streamLens op
 
-data Schedule1D = S_0 | S_1D MultipleFiringOp Schedule1D
+data Schedule1D = S_1D [MultipleFiringOp]
 
 instance SpaceTime Schedule where
-  space S_0 = owAreaZero
-  space (S_1D op sNext) = space op |+| space sNext
+  space (S_1D ops) = foldl (|+|) owAreaZero $ map space ops
   -- TODO: make this account for pipelining
-  time S_0 = scTimeZero
-  time (S_1D op sNext) = time op |+| time sNext
   -- all schedules in parallel must take same time, constructor will 
   -- require this
-  inPortsType S_0 = portsFromTokens []
-  inPortsType (S_1D op sNext) = inPortsType op
-  outPortsType S_0 = portsFromTokens []
-  outPortsType (S_1D op S_0) = outPortsType op
-  outPortsType (S_1D _ sNext) = outPortsType sNext
-  -- TODO: This assumes a Schedule is a unit that other schedules can interface
+  time (S_1D ops) = foldl (|+|) scTimeZero $ map time ops
+  inPortsType (S_1D ops) = inPortsType $ head ops
+  outPortsType (S_1D ops) = outPortsType $ last ops
+  -- TODO: This assumes a S_1D is a unit that other schedules can interface
   -- with through ready-valid but not timing. Is that right?
-  streamLens (Schedule ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
+  streamLens (S_1D ops) = IOSLens (iIn * nIn) (oOut * nOut) 1
     where (IOSLens iIn _ nIn) = streamLens $ head ops
           (IOSLens _ oOut nOut) = streamLens $ last ops
   -- is there a better utilization than weighted by operator area
-  util (Schedule ops) =  unnormalizedUtil / (fromIntegral $ length ops)
+  util (S_1D ops) =  unnormalizedUtil / (fromIntegral $ length ops)
     where unnormalizedUtil = foldl (+) 0 $ 
             map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
 
-data Schedule2D = S_2D [Schedule1D] Schedule2D
-
--- this only allows schedules to be 2 d, shou
-data Schedule = 
-  S_0D
-  | S_1D MultipleFiringOp Schedule
-  -- the first schedule is for multiple schedules the run in parallel
-  -- the second is for the next schedule in the list
-  | S_ND Schedule Schedule
-  deriving (Eq, Show)
+data Schedule2D = S_2D [[Schedule1D]]
 
 -- TODO: A constructor with right precedence so can be used with |.| as 
 -- sc Iter MapSF Add |.| sc Iter MapSF ReduceSF Add
@@ -221,13 +207,12 @@ data Schedule =
 getScheduleOps :: Schedule -> [MultipleFiringOp]
 getScheduleOps (Schedule ops) = ops
 
-instance SpaceTime Schedule where
-  space EmptySchedule = owAreaZero
-  space (S_1D op sNext) = space op |+| space sNext
-  space (S_ND sPar sNext) = space sPar |+| space sNext
+instance SpaceTime Schedule2D where
+  space (S_2D opss) = sumSpace $ sumSpace $ map (map space) opss
+    where sumSpace = fold (|+|) owAreaZero 
   -- TODO: make this account for pipelining
-  time EmptySchedule = scTimeZero
-  time (S_1D op sNext) = time op |+| time sNext
+  time (S_2D opss) = sumTime $ sumTime $ map (map time) opss
+    where sumTime = fold (|+|) scTimeZero
   -- all schedules in parallel must take same time, constructor will 
   -- require this
   time (S_ND sPar sNext) = time sPar |+| 
