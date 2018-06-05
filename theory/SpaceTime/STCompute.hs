@@ -141,14 +141,10 @@ instance SpaceTime SingleFiringOp where
   space (MapSF ParParams{parallelism = p} op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
   -- results if a signle firing is more than 1 clock
-  space (ReduceSF ParParams{utilizedClocks = uc, parallelism = p} op) =
-    if uc > 1 
-      -- add 1 op and regster as need register for partial result and need op 
-      -- to combine reduceTree results with that register if stream more than 1
-      -- clock
-      then reduceTreeSpace |+| (space op) |+| (registerSpace $ outPortsType op)
-      else reduceTreeSpace
-    where reduceTreeSpace = (space op) |* (p-1)
+  space (ReduceSF (ParParams p uc _) op) | uc == 1 = (space op) |* (p-1)
+  space (ReduceSF (ParParams p uc _) op) =
+    reduceTreeSpace |+| (space op) |+| (registerSpace $ outPortsType op)
+    where reduceTreeSpace = space (ReduceSF (ParParams p 1 1) op)
   space (ArithmeticSF op) = space op
   space (MemorySF op) = space op
   space (ComposeParSF ops) = spaceCompose ops
