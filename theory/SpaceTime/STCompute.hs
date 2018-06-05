@@ -255,3 +255,23 @@ instance SpaceTime MultipleFiringOp where
   numFirings (Iter n op) = n * (numFirings op)
   numFirings (ComposeParMF _) = 1
   numFirings (ComposeSeqMF _) = 1
+
+-- Is there a way to get rid of this duplicate code?
+instance Composable MultipleFiringOp where 
+  (|.|) (Just op0@(ComposeSeqMF ops0)) op1@(ComposeSeqMF ops1) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqMF $ ops0 ++ ops1
+  (|.|) (Just op0@(ComposeSeqMF ops0)) op1 | canComposeSeq op0 op1 =
+    Just $ ComposeSeqMF $ ops0 ++ [op1]
+  (|.|) (Just op0) op1@(ComposeSeqMF ops1) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqMF $ [op0] ++ ops1
+  (|.|) (Just op0) op1 | canComposeSeq op0 op1 = Just $ ComposeSeqMF [op0, op1]
+  (|.|) _ _ = Nothing
+
+  (|&|) (Just op0@(ComposeParMF ops0)) op1@(ComposeParMF ops1) | canComposePar op0 op1 =
+    Just $ ComposeParMF $ ops0 ++ ops1
+  (|&|) (Just op0@(ComposeParMF ops0)) op1 | canComposePar op0 op1 =
+    Just $ ComposeParMF $ ops0 ++ [op1]
+  (|&|) (Just op0) op1@(ComposeParMF ops1) | canComposePar op0 op1 =
+    Just $ ComposeParMF $ [op0] ++ ops1
+  (|&|) (Just op0) op1 | canComposePar op0 op1 = Just $ ComposeParMF [op0, op1]
+  (|&|) _ _ = Nothing
