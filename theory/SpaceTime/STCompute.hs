@@ -14,7 +14,7 @@ class SpaceTime a where
   numFirings :: a -> Int
 
 -- is there a better utilization than weighted by operator area
-utilWeightedByArea :: (SpaceTime a) => [a] -> Int
+utilWeightedByArea :: (SpaceTime a) => [a] -> Float
 utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
     where unnormalizedUtil = foldl (+) 0 $
             map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
@@ -48,12 +48,12 @@ canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1
 -- it should be fine to just check clocks and return max combuinational. The stream lenghts don't matter as long as total time the same.
 -- can have different stream lengths as long as streams take same amount of time to finish
 -- space time helpers for compose that are used for all implementations
-spaceCompose :: (SpaceTime a) => [a] -> Int
+spaceCompose :: (SpaceTime a) => [a] -> OpsWireArea
 spaceCompose ops = foldl (|+|) addId $ map space ops
 
-timeComposeSeq :: (SpaceTime a) => [a] -> Int
+timeComposeSeq :: (SpaceTime a) => [a] -> SeqCombTime
 timeComposeSeq ops = foldl (|+|) addId $ map time ops
-timeComposePar :: (SpaceTime a) => [a] -> Int
+timeComposePar :: (SpaceTime a) => [a] -> SeqCombTime
 timeComposePar ops = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
 
@@ -82,7 +82,7 @@ data ArithmeticOp =
   deriving (Eq, Show)
 
 twoInSimplePorts t = portsFromTokens [("I0", 1, 1, t), ("I1", 1, 1, t)]
-oneOutSimplePort t = portsFromTokens [("O", 1, t)]
+oneOutSimplePort t = portsFromTokens [("O", 1, 1, t)]
 
 instance SpaceTime ArithmeticOp where
   space (Add t) = OWA (len t) (2 * len t)
@@ -186,7 +186,7 @@ instance SpaceTime SingleFiringOp where
 
   inPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
     scalePortsStreamLens uc (inPortsType op)
-  inPortsType (ReduceSF ParParams{parallelism = p} op) = duplicatePorts p $
+  inPortsType (ReduceSF (ParParams p uc _) op) = duplicatePorts p $
     scalePortsStreamLens uc (inPortsType op)
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
@@ -241,8 +241,8 @@ instance SpaceTime MultipleFiringOp where
   time (ComposeSeqMF ops) = timeComposeSeq ops
 
   util (Iter _ op) = util op
-  util (ComposeParSF ops) = utilWeightedByArea ops
-  util (ComposeSeqSF ops) = utilWeightedByArea ops
+  util (ComposeParMF ops) = utilWeightedByArea ops
+  util (ComposeSeqMF ops) = utilWeightedByArea ops
 
   inPortsType (Iter _ op) = inPortsType op
   inPortsType (ComposeParMF ops) = inPortsTypeComposePar ops
