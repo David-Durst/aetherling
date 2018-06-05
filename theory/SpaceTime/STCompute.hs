@@ -57,6 +57,17 @@ timeComposePar :: (SpaceTime a) => [a] -> Int
 timeComposePar ops = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
 
+inPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
+-- need to replicate ports over firings
+inPortsTypeComposeSeq ops = foldl (++) [] $ map inPortsType ops
+inPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
+inPortsTypeComposePar ops = inPortsType $ head ops
+
+outPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
+outPortsTypeComposeSeq ops = foldl (++) [] $ map outPortsType ops
+outPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
+outPortsTypeComposePar ops = outPortsType $ last ops
+
 -- These are leaf nodes for Op that do math
 data ArithmeticOp =
   Add TokenType
@@ -174,15 +185,16 @@ instance SpaceTime SingleFiringOp where
     increasePortsStreamLens uc (inPortsType op)
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
-  inPortsType (ComposeParSF ops) = foldl (++) [] $ map inPortsType ops
-  inPortsType (ComposeSeqSF ops) = inPortsType $ head ops
+  inPortsType (ComposeParSF ops) = inPortsTypeComposePar ops
+  inPortsType (ComposeSeqSF ops) = inPortsTypeComposeSeq ops
+
   outPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
     increasePortsStreamLens uc (outPortsType op)
   outPortsType (ReduceSF _ op) = outPortsType op
   outPortsType (ArithmeticSF op) = outPortsType op
   outPortsType (MemorySF op) = outPortsType op
-  outPortsType (ComposeParSF ops) = foldl (++) [] $ map outPortsType ops
-  outPortsType (ComposeSeqSF ops) = outPortsType $ last ops
+  outPortsType (ComposeParSF ops) = outPortsTypeComposePar ops
+  outPortsType (ComposeSeqSF ops) = outPortsTypeComposeSeq ops
 
   numFirings _ = 1
 
@@ -223,15 +235,17 @@ instance SpaceTime MultipleFiringOp where
   time (ComposeParMF ops) = timeComposePar ops
   time (ComposeSeqMF ops) = timeComposeSeq ops
 
-  util (Iter _ (Left op)) = util op
-  util (Iter _ (Right op)) = util op
+  util (Iter _ op) = util op
   util (ComposeParSF ops) = utilWeightedByArea ops
   util (ComposeSeqSF ops) = utilWeightedByArea ops
 
-  inPortsType (Iter _ (Left op)) = inPortsType op
-  inPortsType (Iter _ (Right op)) = inPortsType op
-  outPortsType (Iter _ (Left op)) = outPortsType op
-  outPortsType (Iter _ (Right op)) = outPortsType op
+  inPortsType (Iter _ op) = inPortsType op
+  inPortsType (ComposeParMF ops) = inPortsTypeComposePar ops
+  inPortsType (ComposeSeqMF ops) = inPortsTypeComposeSeq ops
+
+  outPortsType (Iter _ op) = outPortsType op
+  outPortsType (ComposeParMF ops) = outPortsTypeComposePar ops
+  outPortsType (ComposeSeqMF ops) = outPortsTypeComposeSeq ops
 
   numFirings (Iter (IterParams n) (Left op)) = n * (numFirings op)
   numFirings (Iter (IterParams n) (Right op)) = n * (numFirings op)
