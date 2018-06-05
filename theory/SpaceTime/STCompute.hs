@@ -36,7 +36,7 @@ canComposeSeq op0 op1 =
   -- this checks both token types and numTokens over all firing/stream combos
   portsScaledByFirings op0 == portsScaledByFirings op1 &&
   (seqTime . time) op0 == (seqTime . time) op1
-  where portsScaledByFirings op = increasePortsStreamLens (numFirings op) $ outPortsType op
+  where portsScaledByFirings op = scalePortsStreamLens (numFirings op) $ outPortsType op
 
 canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes in parallel if same number of clocks
@@ -180,16 +180,16 @@ instance SpaceTime SingleFiringOp where
   util (ComposeSeqSF ops) = utilWeightedByArea ops
 
   inPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
-    increasePortsStreamLens uc (inPortsType op)
+    scalePortsStreamLens uc (inPortsType op)
   inPortsType (ReduceSF ParParams{parallelism = p} op) = duplicatePorts p $
-    increasePortsStreamLens uc (inPortsType op)
+    scalePortsStreamLens uc (inPortsType op)
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
   inPortsType (ComposeParSF ops) = inPortsTypeComposePar ops
   inPortsType (ComposeSeqSF ops) = inPortsTypeComposeSeq ops
 
   outPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
-    increasePortsStreamLens uc (outPortsType op)
+    scalePortsStreamLens uc (outPortsType op)
   outPortsType (ReduceSF _ op) = outPortsType op
   outPortsType (ArithmeticSF op) = outPortsType op
   outPortsType (MemorySF op) = outPortsType op
