@@ -134,22 +134,22 @@ instance SpaceTime SingleFiringOp where
   numFirings _ = 1
 
 instance Composable SingleFiringOp where 
-  (|.|) (Just op0@(ComposeSeqSF ops0)) op1@(ComposeSeqSF ops1) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqSF $ ops0 ++ ops1
-  (|.|) (Just op0@(ComposeSeqSF ops0)) op1 | canComposeSeq op0 op1 =
-    Just $ ComposeSeqSF $ ops0 ++ [op1]
-  (|.|) (Just op0) op1@(ComposeSeqSF ops1) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqSF $ [op0] ++ ops1
-  (|.|) (Just op0) op1 | canComposeSeq op0 op1 = Just $ ComposeSeqSF [op0, op1]
+  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ ops1 ++ ops0
+  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ [op1] ++ ops0
+  (|.|) (Just op0) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ ops1 ++ [op0]
+  (|.|) (Just op0) (Just op1) | canComposeSeq op0 op1 = Just $ ComposeSeqSF [op1, op0]
   (|.|) _ _ = Nothing
 
-  (|&|) (Just op0@(ComposeParSF ops0)) op1@(ComposeParSF ops1) | canComposePar op0 op1 =
+  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParSF $ ops0 ++ ops1
-  (|&|) (Just op0@(ComposeParSF ops0)) op1 | canComposePar op0 op1 =
+  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1) | canComposePar op0 op1 =
     Just $ ComposeParSF $ ops0 ++ [op1]
-  (|&|) (Just op0) op1@(ComposeParSF ops1) | canComposePar op0 op1 =
+  (|&|) (Just op0) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParSF $ [op0] ++ ops1
-  (|&|) (Just op0) op1 | canComposePar op0 op1 = Just $ ComposeParSF [op0, op1]
+  (|&|) (Just op0) (Just op1) | canComposePar op0 op1 = Just $ ComposeParSF [op0, op1]
   (|&|) _ _ = Nothing
 
 data MultipleFiringOp = 
@@ -188,20 +188,20 @@ instance SpaceTime MultipleFiringOp where
 
 -- Is there a way to get rid of this duplicate code?
 instance Composable MultipleFiringOp where 
-  (|.|) (Just op0@(ComposeSeqMF ops0)) op1@(ComposeSeqMF ops1) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqMF $ ops0 ++ ops1
-  (|.|) (Just op0@(ComposeSeqMF ops0)) op1 | canComposeSeq op0 op1 =
-    Just $ ComposeSeqMF $ ops0 ++ [op1]
-  (|.|) (Just op0) op1@(ComposeSeqMF ops1) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqMF $ [op0] ++ ops1
-  (|.|) (Just op0) op1 | canComposeSeq op0 op1 = Just $ ComposeSeqMF [op0, op1]
+  (|.|) (Just op0@(ComposeSeqMF ops0)) (Just op1@(ComposeSeqMF ops1)) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqMF $ ops1 ++ ops0
+  (|.|) (Just op0@(ComposeSeqMF ops0)) (Just op1) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqMF $ [op1] ++ ops0
+  (|.|) (Just op0) (Just op1@(ComposeSeqMF ops1)) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqMF $ ops1 ++ [op0]
+  (|.|) (Just op0) (Just op1) | canComposeSeq op0 op1 = Just $ ComposeSeqMF [op1, op0]
   (|.|) _ _ = Nothing
 
-  (|&|) (Just op0@(ComposeParMF ops0)) op1@(ComposeParMF ops1) | canComposePar op0 op1 =
+  (|&|) (Just op0@(ComposeParMF ops0)) (Just op1@(ComposeParMF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParMF $ ops0 ++ ops1
-  (|&|) (Just op0@(ComposeParMF ops0)) op1 | canComposePar op0 op1 =
+  (|&|) (Just op0@(ComposeParMF ops0)) (Just op1) | canComposePar op0 op1 =
     Just $ ComposeParMF $ ops0 ++ [op1]
-  (|&|) (Just op0) op1@(ComposeParMF ops1) | canComposePar op0 op1 =
+  (|&|) (Just op0) (Just op1@(ComposeParMF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParMF $ [op0] ++ ops1
-  (|&|) (Just op0) op1 | canComposePar op0 op1 = Just $ ComposeParMF [op0, op1]
+  (|&|) (Just op0) (Just op1) | canComposePar op0 op1 = Just $ ComposeParMF [op0, op1]
   (|&|) _ _ = Nothing

@@ -22,12 +22,13 @@ utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
 
 class Composable a where
   -- This is for making ComposeSeq
-  (|.|) :: Maybe a -> a -> Maybe a
+  (|.|) :: Maybe a -> Maybe a -> Maybe a
   -- This is for making ComposePar
-  (|&|) :: Maybe a -> a -> Maybe a
+  (|&|) :: Maybe a -> Maybe a -> Maybe a
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
+(|>>=|) :: Composable a => Maybe a -> Maybe a -> Maybe a
 (|>>=|) op1 op0 = op0 (|.|) op1
 
 canComposeSeq :: (SpaceTime a) => a -> a -> Bool
