@@ -13,11 +13,31 @@ class SpaceTime a where
   outPortsType :: a -> [PortType]
   numFirings :: a -> Int
 
+-- is there a better utilization than weighted by operator area
+utilWeightedByArea :: (SpaceTime a) => [a] -> Int
+utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
+    where unnormalizedUtil = foldl (+) 0 $
+            map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
+
 class Composable a where
   -- This is for making ComposeSeq
   (|.|) :: Maybe a -> a -> Maybe a
   -- This is for making ComposePar
   (|&|) :: Maybe a -> a -> Maybe a
+
+canComposeSeq :: (SpaceTime a) => a -> a -> Bool
+-- only join two nodes if token types match, ports do same number of tokens
+-- over all firings and streams per firing, and if same number of clock cycles
+canComposeSeq op0 op1 = 
+  -- this checks both token types and numTokens over all firing/stream combos
+  portsScaledByFirings op0 == portsScaledByFirings op1 &&
+  (seqTime . time) op0 == (seqTime . time) op1
+  where portsScaledByFirings op = increasePortsStreamLens (numFirings op) $ outPortsType op
+
+canComposePar :: (SpaceTime a) => a -> a -> Bool
+-- only join two nodes in parallel if same number of clocks
+canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1
+
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
@@ -136,12 +156,14 @@ instance SpaceTime SingleFiringOp where
   -- can have different stream lengths as long as streams take same amount of time to finish
   time (ComposeParSF ops) = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
-   time (ComposeSeqSF ops) = foldl (|+|) addId $ map time ops
+  time (ComposeSeqSF ops) = foldl (|+|) addId $ map time ops
 
   util (MapSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
   util (ReduceSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
   util (ArithmeticSF op) = util op
   util (MemorySF op) = util op
+  util (ComposeParSF ops) = utilWeightedByArea ops
+  util (ComposeSeqSF ops) = utilWeightedByArea ops
 
   inPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
     increasePortsStreamLens uc (inPortsType op)
@@ -161,6 +183,36 @@ instance SpaceTime SingleFiringOp where
 
   numFirings _ = 1
 
+instance Composable SingleFiringOp where 
+  (|.|) (Just op0@(ComposeSeqSF ops0)) op1@(ComposeSeqSF ops1) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ ops0 ++ ops1
+  (|.|) (Just op0@(ComposeSeqSF ops0)) op1 | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ ops0 ++ [op1]
+  (|.|) (Just op0) op1@(ComposeSeqSF ops1) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ [op0] ++ ops1
+  (|.|) (Just op0) op1 | canComposeSeq op0 op1 = Just $ ComposeSeqSF [op0, op1]
+  (|.|) _ _ = Nothing
+
+  (|&|) (Just op0@(ComposeParSF ops0)) op1@(ComposeParSF ops1) | canComposePar op0 op1 =
+    Just $ ComposeParSF $ ops0 ++ ops1
+  (|&|) (Just op0@(ComposeParSF ops0)) op1 | canComposePar op0 op1 =
+    Just $ ComposeParSF $ ops0 ++ [op1]
+  (|&|) (Just op0) op1@(ComposeParSF ops1) | canComposePar op0 op1 =
+    Just $ ComposeParSF $ [op0] ++ ops1
+  (|&|) (Just op0) op1 | canComposePar op0 op1 = Just $ ComposeParSF [op0, op1]
+  (|&|) _ _ = Nothing
+
+
+canComposeSeq :: (SpaceTime a) => a -> a -> Bool
+-- only join two nodes if token types match, ports do same number of tokens
+-- over all firings and streams per firing, and if same number of clock cycles
+canComposeSeq op0 op1 = 
+  -- this checks both token types and numTokens over all firing/stream combos
+  portsScaledByFirings op0 == portsScaledByFirings op1 &&
+  (seqTime . time) op0 == (seqTime . time) op1
+  where portsScaledByFirings op = increasePortsStreamLens (numFirings op) $ outPortsType op
+
+canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
 data IterParams = IterParams { numIterations :: Int } deriving (Eq, Show)
