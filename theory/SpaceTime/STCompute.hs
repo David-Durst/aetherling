@@ -60,16 +60,19 @@ timeComposePar ops = SCTime (seqTime $ time $ head ops) maxCombTime
 -- Since can compose things with different numbers of firings as long as total 
 -- numbers of tokens and time, need composes to each have 1 firing and put
 -- children ops' firings in its stream lengths
+portsScaledByFiringPerOp :: (SpaceTime a) => (a -> [PortType]) -> [a] -> [[PortType]]
 portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
   where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
 
 inPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
-inPortsTypeComposeSeq ops = portsScaledByFiringPerOp inPortsType $ head ops
+inPortsTypeComposeSeq ops = scalePortsStreamLens (numFirings opHd) (inPortsType opHd)
+  where opHd = head ops
 inPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
 inPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp inPortsType ops
 
 outPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
-outPortsTypeComposeSeq ops = portsScaledByFiringPerOp outPortsType $ last ops
+outPortsTypeComposeSeq ops = scalePortsStreamLens (numFirings opLst) (inPortsType opLst)
+  where opLst = last ops
 outPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
 outPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp outPortsType ops
 
