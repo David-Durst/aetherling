@@ -53,9 +53,8 @@ instance Eq PortType where
     len0 == len1 && tType0 == tType1
   (/=) pt0 pt1 = not $ pt0 == pt1
 
-duplicatePorts :: [PortType] -> Int -> [PortType]
-duplicatePorts ports n = map indexName $ zipWith [0..(n-1)] $ concat $ replicate n ports
-  where indexName (T_Port name sLen tType) i = T_Port (name ++ (show i)) sLen tType
+duplicatePorts :: Int -> [PortType] ->  [PortType]
+duplicatePorts n ports = concat $ replicate n ports
 
 -- first int is stream length, second is array length
 portsFromTokens :: [([Char], Int, Int, TokenType)] -> [PortType]

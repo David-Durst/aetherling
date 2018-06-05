@@ -143,11 +143,11 @@ instance SpaceTime SingleFiringOp where
   util (ArithmeticSF op) = util op
   util (MemorySF op) = util op
 
-  inPortsType (MapSF ParParams{parallelism = p} op) = (inPortsType op) |* p
-  inPortsType (ReduceSF ParParams{parallelism = p} op) = (inPortsType op) |* p
+  inPortsType (MapSF ParParams{parallelism = p} op) = duplicatePorts p (inPortsType op)
+  inPortsType (ReduceSF ParParams{parallelism = p} op) = duplicatePorts p (inPortsType op)
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
-  outPortsType (MapSF ParParams{parallelism = p} op) = (outPortsType op) |* p
+  outPortsType (MapSF ParParams{parallelism = p} op) = duplicatePorts p (outPortsType op)
   outPortsType (ReduceSF _ op) = outPortsType op
   outPortsType (ArithmeticSF op) = outPortsType op
   outPortsType (MemorySF op) = outPortsType op
