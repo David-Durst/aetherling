@@ -11,13 +11,19 @@ class SpaceTime a where
   util :: a -> Float
   inPortsType :: a -> [PortType]
   outPortsType :: a -> [PortType]
+  numFirings :: a -> Int
+
+newtype ComposeSeq a = ComposeSeq (Maybe [a])
+newtype ComposePar a = ComposePar (Maybe [a])
 
 class Composable a where
-  (|.|) :: Maybe a -> Maybe a -> Maybe a
+  -- This is for making ComposeSeq
+  (|.|) :: ComposeSeq -> a -> ComposeSeq
+  -- This is for making ComposePar
+  (|&|) :: ComposePar -> a -> ComposePar
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
-(|>>=|) :: (Composable a) -> Maybe a -> Maybe a -> Maybe a 
 (|>>=|) op1 op0 = op0 (|.|) op1
 
 inNumTokens :: (SpaceTime a) => a -> Int
@@ -35,8 +41,8 @@ data ArithmeticOp =
   | Div TokenType
   deriving (Eq, Show)
 
-twoInPorts t = portsFromTokens [("I0", 1, t), ("I1", 1, t)]
-oneOutPort t = portsFromTokens [("O", 1, t)]
+twoInSimplePorts t = portsFromTokens [("I0", 1, 1, t), ("I1", 1, 1, t)]
+oneOutSimplePort t = portsFromTokens [("O", 1, t)]
 
 instance SpaceTime ArithmeticOp where
   space (Add t) = OWA (len t) (2 * len t)
@@ -50,15 +56,15 @@ instance SpaceTime ArithmeticOp where
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
   util _ = 1.0
-  inPortsType (Add t) = twoInPorts t
-  inPortsType (Sub t) = twoInPorts t
-  inPortsType (Mul t) = twoInPorts t
-  inPortsType (Div t) = twoInPorts t
-  outPortsType (Add t) = oneOutPort t
-  outPortsType (Sub t) = oneOutPort t
-  outPortsType (Mul t) = oneOutPort t
-  outPortsType (Div t) = oneOutPort t
-  streamLens _ = IOSLens 1 1 0
+  inPortsType (Add t) = twoInSimplePorts t
+  inPortsType (Sub t) = twoInSimplePorts t
+  inPortsType (Mul t) = twoInSimplePorts t
+  inPortsType (Div t) = twoInSimplePorts t
+  outPortsType (Add t) = oneOutSimplePort t
+  outPortsType (Sub t) = oneOutSimplePort t
+  outPortsType (Mul t) = oneOutSimplePort t
+  outPortsType (Div t) = oneOutSimplePort t
+  numFirings _ = 1
 
 -- These are leaf nodes that do memory ops, they read and write 
 -- one token
@@ -70,12 +76,11 @@ instance SpaceTime MemoryOp where
   -- assuming reads are 
   time _ = SCTime 0 rwTime
   util _ = 1.0
-  inPortsType (Mem_Read _) = T_Ports []
-  inPortsType (Mem_Write t) = oneOutPort t
-  outPortsType (Mem_Read t) = portsFromTokens [("I", 1, t)]
-  outPortsType (Mem_Write _) = T_Ports []
-  streamLens (Mem_Read _) = IOSLens 0 1 0
-  streamLens (Mem_Write _) = IOSLens 1 0 0
+  inPortsType (Mem_Read _) = []
+  inPortsType (Mem_Write t) = oneOutSimplePort t
+  outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
+  outPortsType (Mem_Write _) = []
+  numFirings _ = 1
 
 -- ParParams handles parallelism and inverse parallelism (aka underutilization)
 -- for a single firing
@@ -103,6 +108,7 @@ data SingleFiringOp =
   | ArithmeticSF ArithmeticOp
   | MemorySF MemoryOp
   | ComposeParSF []
+  | ComposeSeqSF []
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
