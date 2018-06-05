@@ -13,14 +13,11 @@ class SpaceTime a where
   outPortsType :: a -> [PortType]
   numFirings :: a -> Int
 
-newtype ComposeSeq a = ComposeSeq (Maybe [a])
-newtype ComposePar a = ComposePar (Maybe [a])
-
 class Composable a where
   -- This is for making ComposeSeq
-  (|.|) :: ComposeSeq -> a -> ComposeSeq
+  (|.|) :: Maybe a -> a -> Maybe a
   -- This is for making ComposePar
-  (|&|) :: ComposePar -> a -> ComposePar
+  (|&|) :: Maybe a -> a -> Maybe a
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
@@ -100,8 +97,8 @@ data SingleFiringOp =
   | ReduceSF ParParams SingleFiringOp
   | ArithmeticSF ArithmeticOp
   | MemorySF MemoryOp
-  | ComposeParSF (ComposePar SingleFiringOp)
-  | ComposeSeqSF (ComposeSeq SingleFiringOp)
+  | ComposeParSF [SingleFiringOp]
+  | ComposeSeqSF [SingleFiringOp]
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
@@ -119,6 +116,8 @@ instance SpaceTime SingleFiringOp where
     where reduceTreeSpace = (space op) |* (p-1)
   space (ArithmeticSF op) = space op
   space (MemorySF op) = space op
+  space (ComposeParSF ops) = foldl (|+|) addId $ map space ops
+  space (ComposeSeqSF ops) = foldl (|+|) addId $ map space ops
 
   time (MapSF ParParams{allClocksInStream = ac} op) =
     replicateTimeOverStream (time op) ac
@@ -130,6 +129,14 @@ instance SpaceTime SingleFiringOp where
     where reduceTreeTime = (time op) |* (ceilLog p)
   time (ArithmeticSF op) = time op
   time (MemorySF op) = time op
+  -- this depends the constructors verifying that only composing in parallel
+  -- things that take same amount of time
+  -- should this be equal clocks and max combinational? Should this depend on stream length?
+  -- it should be fine to just check clocks and return max combuinational. The stream lenghts don't matter as long as total time the same.
+  -- can have different stream lengths as long as streams take same amount of time to finish
+  time (ComposeParSF ops) = SCTime (seqTime $ time $ head ops) maxCombTime
+    where maxCombTime = maximum $ map (combTime . time) ops
+   time (ComposeSeqSF ops) = foldl (|+|) addId $ map time ops
 
   util (MapSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
   util (ReduceSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
@@ -142,11 +149,15 @@ instance SpaceTime SingleFiringOp where
     increasePortsStreamLens uc (inPortsType op)
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
+  inPortsType (ComposeParSF ops) = foldl (++) [] $ map inPortsType ops
+  inPortsType (ComposeSeqSF ops) = inPortsType $ head ops
   outPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
     increasePortsStreamLens uc (outPortsType op)
   outPortsType (ReduceSF _ op) = outPortsType op
   outPortsType (ArithmeticSF op) = outPortsType op
   outPortsType (MemorySF op) = outPortsType op
+  outPortsType (ComposeParSF ops) = foldl (++) [] $ map outPortsType ops
+  outPortsType (ComposeSeqSF ops) = outPortsType $ last ops
 
   numFirings _ = 1
 
