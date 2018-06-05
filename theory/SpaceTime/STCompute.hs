@@ -57,16 +57,21 @@ timeComposePar :: (SpaceTime a) => [a] -> Int
 timeComposePar ops = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
 
+-- Since can compose things with different numbers of firings as long as total 
+-- numbers of tokens and time, need composes to each have 1 firing and put
+-- children ops' firings in its stream lengths
+portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
+  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
+
 inPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
--- need to replicate ports over firings
-inPortsTypeComposeSeq ops = foldl (++) [] $ map inPortsType ops
+inPortsTypeComposeSeq ops = portsScaledByFiringPerOp inPortsType $ head ops
 inPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
-inPortsTypeComposePar ops = inPortsType $ head ops
+inPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp inPortsType ops
 
 outPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
-outPortsTypeComposeSeq ops = foldl (++) [] $ map outPortsType ops
+outPortsTypeComposeSeq ops = portsScaledByFiringPerOp outPortsType $ last ops
 outPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
-outPortsTypeComposePar ops = outPortsType $ last ops
+outPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp outPortsType ops
 
 -- These are leaf nodes for Op that do math
 data ArithmeticOp =
@@ -247,8 +252,9 @@ instance SpaceTime MultipleFiringOp where
   outPortsType (ComposeParMF ops) = outPortsTypeComposePar ops
   outPortsType (ComposeSeqMF ops) = outPortsTypeComposeSeq ops
 
-  numFirings (Iter (IterParams n) (Left op)) = n * (numFirings op)
-  numFirings (Iter (IterParams n) (Right op)) = n * (numFirings op)
+  numFirings (Iter n op) = n * (numFirings op)
+  numFirings (ComposeParMF _) = 1
+  numFirings (ComposeSeqMF _) = 1
 
 data Schedule1D = S_1D [MultipleFiringOp]
 
