@@ -108,10 +108,3 @@ instance MergeOrScale SeqCombTime where
 replicateTimeOverStream :: SeqCombTime -> Int -> SeqCombTime
 replicateTimeOverStream t@(SCTime s _) i | s == 0 = t |+| (registerTime |* i)
 replicateTimeOverStream t@(SCTime s _) i = t |* i
-
--- This tracks both the input and output streams to an op
--- numFiring is 0 means streams are part of an op that aren't wrapped in an
--- iterate
-data IOStreamLens = IOSLens { inOneFiringLen :: Int, outOneFiringLen :: Int,
-  numFirings :: Int } deriving (Eq, Show)
-
