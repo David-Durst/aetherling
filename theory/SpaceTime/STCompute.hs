@@ -42,11 +42,14 @@ canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes in parallel if same number of clocks
 canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1
 
+-- this depends the constructors verifying that only composing in parallel
+-- things that take same amount of time
+-- should this be equal clocks and max combinational? Should this depend on stream length?
+-- it should be fine to just check clocks and return max combuinational. The stream lenghts don't matter as long as total time the same.
+-- can have different stream lengths as long as streams take same amount of time to finish
 -- space time helpers for compose that are used for all implementations
-spaceComposeSeq :: (SpaceTime a) => [a] -> Int
-spaceComposeSeq ops = foldl (|+|) addId $ map space ops
-spaceComposePar :: (SpaceTime a) => [a] -> Int
-spaceComposePar ops = foldl (|+|) addId $ map space ops
+spaceCompose :: (SpaceTime a) => [a] -> Int
+spaceCompose ops = foldl (|+|) addId $ map space ops
 
 timeComposeSeq :: (SpaceTime a) => [a] -> Int
 timeComposeSeq ops = foldl (|+|) addId $ map time ops
@@ -148,27 +151,19 @@ instance SpaceTime SingleFiringOp where
     where reduceTreeSpace = (space op) |* (p-1)
   space (ArithmeticSF op) = space op
   space (MemorySF op) = space op
-  space (ComposeParSF ops) = foldl (|+|) addId $ map space ops
-  space (ComposeSeqSF ops) = foldl (|+|) addId $ map space ops
+  space (ComposeParSF ops) = spaceCompose ops
+  space (ComposeSeqSF ops) = spaceCompose ops
 
   time (MapSF ParParams{allClocksInStream = ac} op) =
-    replicateTimeOverStream (time op) ac
-  time (ReduceSF (ParParams p uc ac) op) = 
-    if ac > 1 
-      -- add 1 op and register for same reason as above 
-      then replicateTimeOverStream (reduceTreeTime |+| (time op) |+| registerTime) ac
-      else replicateTimeOverStream reduceTreeTime ac
-    where reduceTreeTime = (time op) |* (ceilLog p)
+    replicateTimeOverStream ac (time op)
+  time (ReduceSF (ParParams p _ ac) op) | ac == 1 = (time op) |* (ceilLog p)
+  time (ReduceSF (ParParams p _ ac) op) =
+    replicateTimeOverStream ac (reduceTreeTime |+| (time op) |+| registerTime)
+    where reduceTreeTime = time (ReduceSF (ParParams p 1 1) op)
   time (ArithmeticSF op) = time op
   time (MemorySF op) = time op
-  -- this depends the constructors verifying that only composing in parallel
-  -- things that take same amount of time
-  -- should this be equal clocks and max combinational? Should this depend on stream length?
-  -- it should be fine to just check clocks and return max combuinational. The stream lenghts don't matter as long as total time the same.
-  -- can have different stream lengths as long as streams take same amount of time to finish
-  time (ComposeParSF ops) = SCTime (seqTime $ time $ head ops) maxCombTime
-    where maxCombTime = maximum $ map (combTime . time) ops
-  time (ComposeSeqSF ops) = foldl (|+|) addId $ map time ops
+  time (ComposeParSF ops) = timeComposePar ops
+  time (ComposeSeqSF ops) = timeComposeSeq ops
 
   util (MapSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
   util (ReduceSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
@@ -225,14 +220,17 @@ instance SpaceTime MultipleFiringOp where
   -- when mapping over sequence, area is time to count over sequence plus 
   -- area of stuff that is being applied to each element of sequence
   space (Iter numIters op) = (counterSpace numIters) |+| (space op)
+  space (ComposeParMF ops) = spaceCompose ops
+  space (ComposeSeqMF ops) = spaceCompose ops
 
-  time (Iter (IterParams numIters) (Left op)) =
-    replicateTimeOverStream (time op) numIters
-  time (Iter (IterParams numIters) (Right op)) =
-    replicateTimeOverStream (time op) numIters
+  time (Iter numIters op) = replicateTimeOverStream numIters (time op)
+  time (ComposeParMF ops) = timeComposePar ops
+  time (ComposeSeqMF ops) = timeComposeSeq ops
 
   util (Iter _ (Left op)) = util op
   util (Iter _ (Right op)) = util op
+  util (ComposeParSF ops) = utilWeightedByArea ops
+  util (ComposeSeqSF ops) = utilWeightedByArea ops
 
   inPortsType (Iter _ (Left op)) = inPortsType op
   inPortsType (Iter _ (Right op)) = inPortsType op
