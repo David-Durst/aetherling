@@ -56,6 +56,10 @@ instance Eq PortType where
 duplicatePorts :: Int -> [PortType] ->  [PortType]
 duplicatePorts n ports = concat $ replicate n ports
 
+increasePortsStreamLens :: Int -> [PortType] -> [PortType]
+increasePortsStreamLens n ports = map mulPortStreamLen ports 
+  where mulPortStreamLen (T_Port pName pSLen tType) = T_Port pName (n*pSLen) tType
+
 -- first int is stream length, second is array length
 portsFromTokens :: [([Char], Int, Int, TokenType)] -> [PortType]
 portsFromTokens ts = map makeTokens ts

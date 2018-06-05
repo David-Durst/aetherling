@@ -26,13 +26,6 @@ class Composable a where
 -- It's |.| in reverse so that can create pipelines in right order
 (|>>=|) op1 op0 = op0 (|.|) op1
 
-inNumTokens :: (SpaceTime a) => a -> Int
-inNumTokens op = tokensInOneFiring * n
-  where (IOSLens tokensInOneFiring _ n) = streamLens op
-outNumTokens :: (SpaceTime a) => a -> Int
-outNumTokens op = tokensOutOneFiring * n
-  where (IOSLens _ tokensOutOneFiring n) = streamLens op
-
 -- These are leaf nodes for Op that do math
 data ArithmeticOp =
   Add TokenType
@@ -107,8 +100,8 @@ data SingleFiringOp =
   | ReduceSF ParParams SingleFiringOp
   | ArithmeticSF ArithmeticOp
   | MemorySF MemoryOp
-  | ComposeParSF []
-  | ComposeSeqSF []
+  | ComposeParSF (ComposePar SingleFiringOp)
+  | ComposeSeqSF (ComposeSeq SingleFiringOp)
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
@@ -143,23 +136,19 @@ instance SpaceTime SingleFiringOp where
   util (ArithmeticSF op) = util op
   util (MemorySF op) = util op
 
-  inPortsType (MapSF ParParams{parallelism = p} op) = duplicatePorts p (inPortsType op)
-  inPortsType (ReduceSF ParParams{parallelism = p} op) = duplicatePorts p (inPortsType op)
+  inPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
+    increasePortsStreamLens uc (inPortsType op)
+  inPortsType (ReduceSF ParParams{parallelism = p} op) = duplicatePorts p $
+    increasePortsStreamLens uc (inPortsType op)
   inPortsType (ArithmeticSF op) = inPortsType op
   inPortsType (MemorySF op) = inPortsType op
-  outPortsType (MapSF ParParams{parallelism = p} op) = duplicatePorts p (outPortsType op)
+  outPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
+    increasePortsStreamLens uc (outPortsType op)
   outPortsType (ReduceSF _ op) = outPortsType op
   outPortsType (ArithmeticSF op) = outPortsType op
   outPortsType (MemorySF op) = outPortsType op
 
-  -- number of firings should be 0 as not wrapped in multiple firings at this 
-  -- point
-  streamLens (MapSF ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) (o * uc) 0
-    where (IOSLens i o _) = streamLens op
-  streamLens (ReduceSF ParParams{utilizedClocks = uc} op) = IOSLens (i * uc) o 0
-    where (IOSLens i o _) = streamLens op
-  streamLens (ArithmeticSF op) = streamLens op
-  streamLens (MemorySF op) = streamLens op
+  numFirings _ = 1
 
 -- Iter handles mapping in multiple firing dimension
 -- min length is 0 and there is no max
@@ -189,12 +178,15 @@ instance SpaceTime MultipleFiringOp where
   outPortsType (Iter _ (Left op)) = outPortsType op
   outPortsType (Iter _ (Right op)) = outPortsType op
 
-  streamLens (Iter (IterParams numIters) (Left op)) =
-    IOSLens i o ((max n 1) * numIters)
-    where (IOSLens i o n) = streamLens op
-  streamLens (Iter (IterParams numIters) (Right op)) =
-    IOSLens i o ((max n 1) * numIters)
-    where (IOSLens i o n) = streamLens op
+  numFirings (Iter (IterParams n) (Left op)) = n * (numFirings op)
+  numFirings (Iter (IterParams n) (Right op)) = n * (numFirings op)
+
+-- inNumTokens :: (SpaceTime a) => a -> Int
+-- inNumTokens op = tokensInOneFiring * n
+--   where (IOSLens tokensInOneFiring _ n) = streamLens op
+-- outNumTokens :: (SpaceTime a) => a -> Int
+-- outNumTokens op = tokensOutOneFiring * n
+--   where (IOSLens _ tokensOutOneFiring n) = streamLens op
 
 data Schedule1D = S_1D [MultipleFiringOp]
 
