@@ -3,42 +3,61 @@ import SpaceTime.STTypes
 import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 
--- These are leaf nodes for Op that do math
-data ArithmeticOp =
+-- These are leaf nodes that can be used in a higher order operator
+data LeafOp =
   Add TokenType
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
+  -- Array is constant produced, int is stream length
+  | Constant_Int [Int] Int 
+  -- Array is constant produced, int is stream length
+  | Constant_Bit [Bool] Int
   deriving (Eq, Show)
 
 twoInSimplePorts t = portsFromTokens [("I0", 1, 1, t), ("I1", 1, 1, t)]
 oneOutSimplePort t = portsFromTokens [("O", 1, 1, t)]
 
-instance SpaceTime ArithmeticOp where
+instance SpaceTime LeafOp where
   space (Add t) = OWA (len t) (2 * len t)
   space (Sub t) = space (Add t)
   space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
     where OWA _ wireArea = space (Add t)
   space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
     where OWA _ wireArea = space (Add t)
+  space (Constant_Int consts n) = len (T_Array T_Int n)
+  space (Constant_Bit consts n) = len (T_Array T_Bit n)
+
   time (Add t) = SCTime 0 1
   time (Sub t) = SCTime 0 1
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
+  time (Constant_Int _ _) = SCTime 0 1
+  time (Constant_Bit _ _) = SCTime 0 1
+
   util _ = 1.0
+
   inPortsType (Add t) = twoInSimplePorts t
   inPortsType (Sub t) = twoInSimplePorts t
   inPortsType (Mul t) = twoInSimplePorts t
   inPortsType (Div t) = twoInSimplePorts t
+  inPortsType (Constant_Int _ _) = []
+  inPortsType (Constant_Bit _ _) = []
+
   outPortsType (Add t) = oneOutSimplePort t
   outPortsType (Sub t) = oneOutSimplePort t
   outPortsType (Mul t) = oneOutSimplePort t
   outPortsType (Div t) = oneOutSimplePort t
+  outPortsType (Constant_Int ints n) = [("O", n, length ints, T_Int)]
+  outPortsType (Constant_Bit bits n) = [("O", n, length bits, T_Bit)]
+  
   numFirings _ = 1
 
 -- These are leaf nodes that do memory ops, they read and write 
 -- one token
-data MemoryOp = Mem_Read TokenType | Mem_Write TokenType deriving (Eq, Show)
+data MemoryOp = 
+  Mem_Read TokenType 
+  | Mem_Write TokenType deriving (Eq, Show)
 
 instance SpaceTime MemoryOp where
   space (Mem_Read t) = OWA (len t) (len t)
@@ -52,6 +71,24 @@ instance SpaceTime MemoryOp where
   outPortsType (Mem_Write _) = []
   numFirings _ = 1
 
+data HelperOp = 
+  -- first Int is pixels per clock, second is window width
+  LineBuffer Int Int TokenType 
+  -- first T_Port is input type, second is output type
+  | StreamArrayController T_Port T_Port
+  | Constant T_Port (Either [Int] [Bool])
+
+instance SpaceTime HelperOp where
+  space (LineBuffer p w t) = counterSpace (p / w) OWA ((p + w - 1) * len t) (p * len t)
+  space (Mem_Write t) = space (Mem_Read t)
+  -- assuming reads are 
+  time _ = SCTime 0 rwTime
+  util _ = 1.0
+  inPortsType (Mem_Read _) = []
+  inPortsType (Mem_Write t) = oneOutSimplePort t
+  outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
+  outPortsType (Mem_Write _) = []
+  numFirings _ = 1
 -- ParParams handles parallelism and inverse parallelism (aka underutilization)
 -- for a single firing
 -- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized

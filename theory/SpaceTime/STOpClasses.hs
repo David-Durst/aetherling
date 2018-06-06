@@ -29,7 +29,7 @@ class Composable a where
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
 (|>>=|) :: Composable a => Maybe a -> Maybe a -> Maybe a
-(|>>=|) op1 op0 = op0 (|.|) op1
+(|>>=|) op1 op0 = op0 |.| op1
 
 canComposeSeq :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes if token types match, ports do same number of tokens
