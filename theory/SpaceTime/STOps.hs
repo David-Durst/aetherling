@@ -97,20 +97,6 @@ instance SpaceTime NonMappableLeafOp where
 
   numFirings _ = 1
 
-data HelperOp = 
-  | Constant T_Port (Either [Int] [Bool])
-
-instance SpaceTime HelperOp where
-  space (LineBuffer p w t) = counterSpace (p / w) OWA ((p + w - 1) * len t) (p * len t)
-  space (Mem_Write t) = space (Mem_Read t)
-  -- assuming reads are 
-  time _ = SCTime 0 rwTime
-  util _ = 1.0
-  inPortsType (Mem_Read _) = []
-  inPortsType (Mem_Write t) = oneOutSimplePort t
-  outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
-  outPortsType (Mem_Write _) = []
-  numFirings _ = 1
 -- ParParams handles parallelism and inverse parallelism (aka underutilization)
 -- for a single firing
 -- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
