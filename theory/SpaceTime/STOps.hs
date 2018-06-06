@@ -4,15 +4,11 @@ import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 
 -- These are leaf nodes that can be used in a higher order operator
-data LeafOp =
+data MappableLeafOp =
   Add TokenType
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
-  -- Array is constant produced, int is stream length
-  | Constant_Int [Int] Int 
-  -- Array is constant produced, int is stream length
-  | Constant_Bit [Bool] Int
   deriving (Eq, Show)
 
 twoInSimplePorts t = portsFromTokens [("I0", 1, 1, t), ("I1", 1, 1, t)]
@@ -25,15 +21,11 @@ instance SpaceTime LeafOp where
     where OWA _ wireArea = space (Add t)
   space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
     where OWA _ wireArea = space (Add t)
-  space (Constant_Int consts n) = len (T_Array T_Int n)
-  space (Constant_Bit consts n) = len (T_Array T_Bit n)
 
   time (Add t) = SCTime 0 1
   time (Sub t) = SCTime 0 1
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
-  time (Constant_Int _ _) = SCTime 0 1
-  time (Constant_Bit _ _) = SCTime 0 1
 
   util _ = 1.0
 
@@ -41,41 +33,71 @@ instance SpaceTime LeafOp where
   inPortsType (Sub t) = twoInSimplePorts t
   inPortsType (Mul t) = twoInSimplePorts t
   inPortsType (Div t) = twoInSimplePorts t
-  inPortsType (Constant_Int _ _) = []
-  inPortsType (Constant_Bit _ _) = []
 
   outPortsType (Add t) = oneOutSimplePort t
   outPortsType (Sub t) = oneOutSimplePort t
   outPortsType (Mul t) = oneOutSimplePort t
   outPortsType (Div t) = oneOutSimplePort t
-  outPortsType (Constant_Int ints n) = [("O", n, length ints, T_Int)]
-  outPortsType (Constant_Bit bits n) = [("O", n, length bits, T_Bit)]
   
   numFirings _ = 1
 
--- These are leaf nodes that do memory ops, they read and write 
--- one token
-data MemoryOp = 
-  Mem_Read TokenType 
+-- These are leaf nodes that need a custom implementation to be parallelized
+-- and cannot be used in a map, reduce, or iterate
+data NonMappableLeafOp =
+  Mem_Read TokenType
   | Mem_Write TokenType deriving (Eq, Show)
+  -- Array is constant produced, int is stream length
+  | Constant_Int [Int] Int
+  -- Array is constant produced, int is stream length
+  | Constant_Bit [Bool] Int
+  -- first Int is pixels per clock, second is window width
+  | LineBuffer Int Int TokenType
+  -- first T_Port is input type, second is output type
+  | StreamArrayController T_Port T_Port
 
-instance SpaceTime MemoryOp where
+instance SpaceTime NonMappableLeafOp where
   space (Mem_Read t) = OWA (len t) (len t)
   space (Mem_Write t) = space (Mem_Read t)
+  space (Constant_Int consts n) = OWA (len (T_Array n T_Int)) 0
+  space (Constant_Bit consts n) = OWA (len (T_Array n T_Bit)) 0
+  -- need counter for warmup, and registers for storing intermediate values
+  -- registers account for wiring as some registers receive input wires,
+  -- others get wires from other registers
+  space (LineBuffer p w t) = counterSpace (p / w) |+| 
+    registerSpace [T_Array (p + w - 1) t]
+  -- may need a more accurate approximate, but most conservative is storing
+  -- entire input
+  space StreamArrayController inPort _ = registerSpace [pTType inPort] |*
+    pStreamLen inPort
+
   -- assuming reads are 
-  time _ = SCTime 0 rwTime
+  time (Mem_Read _) = SCTime rwTime rwTime
+  time (Mem_Write _) = SCTime rwTime rwTime
+  time (Constant_Int _ _) = SCTime 0 1
+  time (Constant_Bit _ _) = SCTime 0 1
+  time (LineBuffer _ _ _) = registerTime
+  time (StreamArrayController inPort outPort) = registerTime |* 
+    lcm (pStreamLen inPort) (pStreamLen outPort)
+
   util _ = 1.0
+
   inPortsType (Mem_Read _) = []
   inPortsType (Mem_Write t) = oneOutSimplePort t
+  inPortsType (Constant_Int _ _) = []
+  inPortsType (Constant_Bit _ _) = []
+  inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
+  inPortsType (StreamArrayController inPort _) = [inPort]
+
   outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
   outPortsType (Mem_Write _) = []
+  outPortsType (Constant_Int ints n) = [T_Port "O" n (length ints) T_Int]
+  outPortsType (Constant_Bit bits n) = [T_Port "O" n (length bits) T_Bit]
+  outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
+  outPortsType (StreamArrayController _ outPort) = [outPort]
+
   numFirings _ = 1
 
 data HelperOp = 
-  -- first Int is pixels per clock, second is window width
-  LineBuffer Int Int TokenType 
-  -- first T_Port is input type, second is output type
-  | StreamArrayController T_Port T_Port
   | Constant T_Port (Either [Int] [Bool])
 
 instance SpaceTime HelperOp where
@@ -126,7 +148,7 @@ instance SpaceTime SingleFiringOp where
   -- results if a signle firing is more than 1 clock
   space (ReduceSF (ParParams p uc _) op) | uc == 1 = (space op) |* (p-1)
   space (ReduceSF (ParParams p uc _) op) =
-    reduceTreeSpace |+| (space op) |+| (registerSpace $ outPortsType op)
+    reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
     where reduceTreeSpace = space (ReduceSF (ParParams p 1 1) op)
   space (ArithmeticSF op) = space op
   space (MemorySF op) = space op

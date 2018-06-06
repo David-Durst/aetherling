@@ -33,9 +33,10 @@ counterSpace :: Int -> OpsWireArea
 counterSpace countTo = OWA numBits numBits
   where numBits = ceilLog countTo
 
-registerSpace :: [PortType] -> OpsWireArea
-registerSpace op = OWA portsLen portsLen
-  where portsLen = foldl (+) 0 $ map (len . pTType) op
+-- The amount of space necessary to store tokens
+registerSpace :: [TokensType] -> OpsWireArea
+registerSpace ts = OWA portsLen portsLen
+  where portsLen = foldl (+) 0 $ map len ts
 
 instance MergeOrScale OpsWireArea where
   addId = OWA 0 0
