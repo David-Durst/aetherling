@@ -4,6 +4,8 @@ import SpaceTime.STMetrics
 
 -- the typeclasses that all the elements of the IR must implement
 class SpaceTime a where
+  -- for wire space, only counting input wires, not outputs. This avoids
+  -- double counting
   space :: a -> OpsWireArea
   -- this is the time to process one or more firings
   time :: a -> SeqCombTime
@@ -32,13 +34,19 @@ class Composable a where
 (|>>=|) op1 op0 = op0 |.| op1
 
 canComposeSeq :: (SpaceTime a) => a -> a -> Bool
--- only join two nodes if token types match, ports do same number of tokens
+
+-- only join two sequential nodes if token types match, ports do same number of tokens
 -- over all firings and streams per firing, and if same number of clock cycles
-canComposeSeq op0 op1 = 
+canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
   -- this checks both token types and numTokens over all firing/stream combos
   portsScaledByFirings op0 == portsScaledByFirings op1 &&
   (seqTime . time) op0 == (seqTime . time) op1
   where portsScaledByFirings op = scalePortsStreamLens (numFirings op) $ outPortsType op
+
+-- can join a combinational node with another node if they do the same amount
+-- every clock cycle
+canComposeSeq op0 op1 = ((map pTType) . outPortsType) op0 ==
+  ((map pTType) . inPortsType) op1
 
 canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes in parallel if same number of clocks
