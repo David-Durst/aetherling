@@ -23,7 +23,8 @@ instance HasLen TokensType where
 
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
-data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokensType}
+data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokensType} 
+  deriving (Show)
 
 instance Eq PortType where
   -- ignore names for equality, just check that all same
