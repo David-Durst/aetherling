@@ -182,23 +182,29 @@ instance SpaceTime UtilizationOp where
   numFirings _ = 1
 
 data SingleFiringOpComposition =
-  ComposeParSF [HigherOrderOp]
-  | ComposeSeqSF [HigherOrderOp]
+  ComposeContainerSF UtilizationOp
+  | ComposeParSF [SingleFiringOpComposition]
+  | ComposeSeqSF [SingleFiringOpComposition]
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOpComposition where
+  space (ComposeContainerSF op) = space op
   space (ComposeParSF ops) = spaceCompose ops
   space (ComposeSeqSF ops) = spaceCompose ops
 
+  time (ComposeContainerSF op) = time op
   time (ComposeParSF ops) = timeComposePar ops
   time (ComposeSeqSF ops) = timeComposeSeq ops
 
+  util (ComposeContainerSF op) = util op
   util (ComposeParSF ops) = utilWeightedByArea ops
   util (ComposeSeqSF ops) = utilWeightedByArea ops
 
+  inPortsType (ComposeContainerSF op) = inPortsType op
   inPortsType (ComposeParSF ops) = inPortsTypeComposePar ops
   inPortsType (ComposeSeqSF ops) = inPortsTypeComposeSeq ops
 
+  outPortsType (ComposeContainerSF op) = outPortsType op
   outPortsType (ComposeParSF ops) = outPortsTypeComposePar ops
   outPortsType (ComposeSeqSF ops) = outPortsTypeComposeSeq ops
 
@@ -207,10 +213,18 @@ instance SpaceTime SingleFiringOpComposition where
 instance Composable SingleFiringOpComposition where 
   (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
     Just $ ComposeSeqSF $ ops1 ++ ops0
+  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1@(ComposeContainerSF _)) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ [op1] ++ ops0
+  (|.|) (Just op0@(ComposeContainerSF _)) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
+    Just $ ComposeSeqSF $ ops1 ++ [op0]
   (|.|) _ _ = Nothing
 
   (|&|) (Just op0@(ComposeParSF ops0)) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParSF $ ops0 ++ ops1
+  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1@(ComposeContainerSF _)) | canComposePar op0 op1 =
+    Just $ ComposeParSF $ [op1] ++ ops0
+  (|&|) (Just op0@(ComposeContainerSF _)) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
+    Just $ ComposeParSF $ ops1 ++ [op0]
   (|&|) _ _ = Nothing
 
 -- Int here is numIterations, min is 1 and no max
