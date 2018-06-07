@@ -217,7 +217,7 @@ instance Composable SingleFiringOpComposition where
     Just $ ComposeSeqSF $ [op1] ++ ops0
   (|.|) (Just op0) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op1 op0 =
     Just $ ComposeSeqSF $ ops1 ++ [op0]
-  (|.|) (Just op0) (Just op1)) | canComposeSeq op1 op0 =
+  (|.|) (Just op0) (Just op1) | canComposeSeq op1 op0 =
     Just $ ComposeSeqSF $ [op1] ++ [op0]
   (|.|) _ _ = Nothing
 
@@ -227,7 +227,7 @@ instance Composable SingleFiringOpComposition where
     Just $ ComposeParSF $ [op1] ++ ops0
   (|&|) (Just op0) (Just op1@(ComposeParSF ops1)) | canComposePar op1 op0 =
     Just $ ComposeParSF $ ops1 ++ [op0]
-  (|.|) (Just op0) (Just op1)) | canComposePar op1 op0 =
+  (|&|) (Just op0) (Just op1) | canComposePar op1 op0 =
     Just $ ComposeParSF $ [op1] ++ [op0]
   (|&|) _ _ = Nothing
 
