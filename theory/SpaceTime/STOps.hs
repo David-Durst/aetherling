@@ -52,6 +52,10 @@ data NonMappableLeafOp =
   | Constant_Bit Int [Bool]
   -- first Int is pixels per clock, second is window width
   | LineBuffer Int Int TokenType
+  -- flattens an array of tokens
+  | Flatten TokensType
+  -- Split an array of tokens into arrays of length p over a stream
+  | Partition Int TokensType
   -- first pair is input stream length and tokens per stream element, second is output
   | StreamArrayController (Int, TokensType) (Int, TokensType)
   deriving (Eq, Show)
@@ -66,6 +70,10 @@ instance SpaceTime NonMappableLeafOp where
   -- others get wires from other registers
   space (LineBuffer p w t) = counterSpace (p `ceilDiv` w) |+| 
     registerSpace [T_Array (p + w - 1) t]
+  space (Flatten _) = OWA 0 0
+  -- need to come back and make this more accurate later
+  -- as the first part of partition is pass through, no need for registers
+  space (Partition _ t) = registerSpace [t]
   -- may need a more accurate approximate, but most conservative is storing
   -- entire input
   space (StreamArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
@@ -76,6 +84,8 @@ instance SpaceTime NonMappableLeafOp where
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
   time (LineBuffer _ _ _) = registerTime
+  time (Flatten _) = SCTime 0 1
+  time (Partition p (T_Array arrLen _)) = registerTime |* (p / arrLen)
   time (StreamArrayController (inSLen, _) (outSLen, _)) = registerTime |* 
     lcm inSLen outSLen
 
