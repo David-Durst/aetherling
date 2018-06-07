@@ -47,19 +47,19 @@ data NonMappableLeafOp =
   Mem_Read TokenType
   | Mem_Write TokenType deriving (Eq, Show)
   -- Array is constant produced, int is stream length
-  | Constant_Int [Int] Int
+  | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
-  | Constant_Bit [Bool] Int
+  | Constant_Bit Int [Bool]
   -- first Int is pixels per clock, second is window width
   | LineBuffer Int Int TokenType
-  -- first T_Port is input type, second is output type
-  | StreamArrayController T_Port T_Port
+  -- first pair is input stream length and tokens per stream element, second is output
+  | StreamArrayController (Int, TokensType) (Int, TokensType)
 
 instance SpaceTime NonMappableLeafOp where
   space (Mem_Read t) = OWA (len t) (len t)
   space (Mem_Write t) = space (Mem_Read t)
-  space (Constant_Int consts n) = OWA (len (T_Array n T_Int)) 0
-  space (Constant_Bit consts n) = OWA (len (T_Array n T_Bit)) 0
+  space (Constant_Int n consts) = OWA (len (T_Array n T_Int)) 0
+  space (Constant_Bit n consts) = OWA (len (T_Array n T_Bit)) 0
   -- need counter for warmup, and registers for storing intermediate values
   -- registers account for wiring as some registers receive input wires,
   -- others get wires from other registers
@@ -67,8 +67,7 @@ instance SpaceTime NonMappableLeafOp where
     registerSpace [T_Array (p + w - 1) t]
   -- may need a more accurate approximate, but most conservative is storing
   -- entire input
-  space StreamArrayController inPort _ = registerSpace [pTType inPort] |*
-    pStreamLen inPort
+  space StreamArrayController (inSLen, inType) _ = registerSpace [inType] |* inSLen
 
   -- assuming reads are 
   time (Mem_Read _) = SCTime rwTime rwTime
@@ -76,8 +75,8 @@ instance SpaceTime NonMappableLeafOp where
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
   time (LineBuffer _ _ _) = registerTime
-  time (StreamArrayController inPort outPort) = registerTime |* 
-    lcm (pStreamLen inPort) (pStreamLen outPort)
+  time (StreamArrayController (inSLen _) (outSLen _)) = registerTime |* 
+    lcm inSLen outSLen
 
   util _ = 1.0
 
@@ -86,14 +85,14 @@ instance SpaceTime NonMappableLeafOp where
   inPortsType (Constant_Int _ _) = []
   inPortsType (Constant_Bit _ _) = []
   inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
-  inPortsType (StreamArrayController inPort _) = [inPort]
+  inPortsType (StreamArrayController (inSLen inType) _) = [T_Port "I" inSLen inType]
 
   outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
   outPortsType (Mem_Write _) = []
-  outPortsType (Constant_Int ints n) = [T_Port "O" n (length ints) T_Int]
-  outPortsType (Constant_Bit bits n) = [T_Port "O" n (length bits) T_Bit]
+  outPortsType (Constant_Int n ints) = [T_Port "O" n (length ints) T_Int]
+  outPortsType (Constant_Bit n bits) = [T_Port "O" n (length bits) T_Bit]
   outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
-  outPortsType (StreamArrayController _ outPort) = [outPort]
+  outPortsType (StreamArrayController _ (outSLen outType)) = [T_Port "O" outSLen outType]
 
   numFirings _ = 1
 
