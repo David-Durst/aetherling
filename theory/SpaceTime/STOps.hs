@@ -175,7 +175,7 @@ data SingleFiringOp =
   | ComposeSeqSF [HigherOrderOp]
   deriving (Eq, Show)
 
-instance SpaceTime SingleFiringOp where
+instance SpaceTime SingleFiringOpComposition where
   space (ComposeParSF ops) = spaceCompose ops
   space (ComposeSeqSF ops) = spaceCompose ops
 
@@ -193,75 +193,57 @@ instance SpaceTime SingleFiringOp where
 
   numFirings _ = 1
 
-instance Composable SingleFiringOp where 
+instance Composable SingleFiringOpComposition where 
   (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
     Just $ ComposeSeqSF $ ops1 ++ ops0
-  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqSF $ [op1] ++ ops0
-  (|.|) (Just op0) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqSF $ ops1 ++ [op0]
-  (|.|) (Just op0) (Just op1) | canComposeSeq op0 op1 = Just $ ComposeSeqSF [op1, op0]
   (|.|) _ _ = Nothing
 
   (|&|) (Just op0@(ComposeParSF ops0)) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParSF $ ops0 ++ ops1
-  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1) | canComposePar op0 op1 =
-    Just $ ComposeParSF $ ops0 ++ [op1]
-  (|&|) (Just op0) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
-    Just $ ComposeParSF $ [op0] ++ ops1
-  (|&|) (Just op0) (Just op1) | canComposePar op0 op1 = Just $ ComposeParSF [op0, op1]
   (|&|) _ _ = Nothing
 
-data MultipleFiringOp = 
-  -- Int here is numIterations, min is 1 and no max
-  Iter Int SingleFiringOp
-  | ComposeParMF [MultipleFiringOp]
-  | ComposeSeqMF [MultipleFiringOp]
+-- Int here is numIterations, min is 1 and no max
+data MultipleFiringOps = Iter Int SingleFiringOpComposition
   deriving (Eq, Show)
 
-instance SpaceTime MultipleFiringOp where
-  -- when mapping over sequence, area is time to count over sequence plus 
-  -- area of stuff that is being applied to each element of sequence
+instance SpaceTime MultipleFiringOps where
   space (Iter numIters op) = (counterSpace numIters) |+| (space op)
+  time (Iter numIters op) = replicateTimeOverStream numIters (time op)
+  util (Iter _ op) = util op
+  inPortsType (Iter _ op) = inPortsType op
+  outPortsType (Iter _ op) = outPortsType op
+  numFirings (Iter n op) = n * (numFirings op)
+
+data MultipleFiringOpsComposition =
+  ComposeParMF [MultipleFiringOps]
+  | ComposeSeqMF [MultipleFiringOps]
+  deriving (Eq, Show)
+
+instance SpaceTime MultipleFiringOpsComposition where
   space (ComposeParMF ops) = spaceCompose ops
   space (ComposeSeqMF ops) = spaceCompose ops
 
-  time (Iter numIters op) = replicateTimeOverStream numIters (time op)
   time (ComposeParMF ops) = timeComposePar ops
   time (ComposeSeqMF ops) = timeComposeSeq ops
 
-  util (Iter _ op) = util op
   util (ComposeParMF ops) = utilWeightedByArea ops
   util (ComposeSeqMF ops) = utilWeightedByArea ops
 
-  inPortsType (Iter _ op) = inPortsType op
   inPortsType (ComposeParMF ops) = inPortsTypeComposePar ops
   inPortsType (ComposeSeqMF ops) = inPortsTypeComposeSeq ops
 
-  outPortsType (Iter _ op) = outPortsType op
   outPortsType (ComposeParMF ops) = outPortsTypeComposePar ops
   outPortsType (ComposeSeqMF ops) = outPortsTypeComposeSeq ops
 
-  numFirings (Iter n op) = n * (numFirings op)
   numFirings (ComposeParMF _) = 1
   numFirings (ComposeSeqMF _) = 1
 
 -- Is there a way to get rid of this duplicate code?
-instance Composable MultipleFiringOp where 
+instance Composable MultipleFiringOpComposition where 
   (|.|) (Just op0@(ComposeSeqMF ops0)) (Just op1@(ComposeSeqMF ops1)) | canComposeSeq op0 op1 =
     Just $ ComposeSeqMF $ ops1 ++ ops0
-  (|.|) (Just op0@(ComposeSeqMF ops0)) (Just op1) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqMF $ [op1] ++ ops0
-  (|.|) (Just op0) (Just op1@(ComposeSeqMF ops1)) | canComposeSeq op0 op1 =
-    Just $ ComposeSeqMF $ ops1 ++ [op0]
-  (|.|) (Just op0) (Just op1) | canComposeSeq op0 op1 = Just $ ComposeSeqMF [op1, op0]
   (|.|) _ _ = Nothing
 
   (|&|) (Just op0@(ComposeParMF ops0)) (Just op1@(ComposeParMF ops1)) | canComposePar op0 op1 =
     Just $ ComposeParMF $ ops0 ++ ops1
-  (|&|) (Just op0@(ComposeParMF ops0)) (Just op1) | canComposePar op0 op1 =
-    Just $ ComposeParMF $ ops0 ++ [op1]
-  (|&|) (Just op0) (Just op1@(ComposeParMF ops1)) | canComposePar op0 op1 =
-    Just $ ComposeParMF $ [op0] ++ ops1
-  (|&|) (Just op0) (Just op1) | canComposePar op0 op1 = Just $ ComposeParMF [op0, op1]
   (|&|) _ _ = Nothing

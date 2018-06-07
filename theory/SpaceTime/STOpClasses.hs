@@ -22,7 +22,7 @@ utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
     where unnormalizedUtil = foldl (+) 0 $
             map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
 
-class Composable a where
+class (SpaceTime a) => Composable a where
   -- This is for making ComposeSeq
   (|.|) :: Maybe a -> Maybe a -> Maybe a
   -- This is for making ComposePar
