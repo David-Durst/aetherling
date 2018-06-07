@@ -64,11 +64,11 @@ instance SpaceTime NonMappableLeafOp where
   -- need counter for warmup, and registers for storing intermediate values
   -- registers account for wiring as some registers receive input wires,
   -- others get wires from other registers
-  space (LineBuffer p w t) = counterSpace (p / w) |+| 
+  space (LineBuffer p w t) = counterSpace (p `ceilDiv` w) |+| 
     registerSpace [T_Array (p + w - 1) t]
   -- may need a more accurate approximate, but most conservative is storing
   -- entire input
-  space StreamArrayController (inSLen, inType) _ = registerSpace [inType] |* inSLen
+  space (StreamArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
 
   -- assuming reads are 
   time (Mem_Read _) = SCTime rwTime rwTime
@@ -90,8 +90,8 @@ instance SpaceTime NonMappableLeafOp where
 
   outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
   outPortsType (Mem_Write _) = []
-  outPortsType (Constant_Int n ints) = [T_Port "O" n (length ints) T_Int]
-  outPortsType (Constant_Bit n bits) = [T_Port "O" n (length bits) T_Bit]
+  outPortsType (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int)]
+  outPortsType (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit)]
   outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
   outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
 
@@ -99,7 +99,7 @@ instance SpaceTime NonMappableLeafOp where
 
 data HigherOrderOp = 
   -- First Int is parallelism, second is total number elements reducing
-  MapOp Int HigherOrderOp
+  MapOp Int Int HigherOrderOp
   -- First Int is parallelism, second is total number elements reducing
   | ReduceOp Int Int HigherOrderOp
   | LeafOp MappableLeafOp
@@ -119,23 +119,23 @@ instance SpaceTime HigherOrderOp where
   space (LeafOp op) = space op
 
   time (MapOp pEl totEl op) = replicateTimeOverStream (totEl `ceilDiv` pEl) (time op)
-  time (ReduceOp pEl totEl op) | pEl == totEl = (time op) |* (ceilLog p)
+  time (ReduceOp pEl totEl op) | pEl == totEl = (time op) |* (ceilLog pEl)
   time (ReduceOp pEl totEl op) =
-    replicateTimeOverStream ac (reduceTreeTime |+| (time op) |+| registerTime)
+    replicateTimeOverStream (totEl `ceilDiv` pEl) (reduceTreeTime |+| (time op) |+| registerTime)
     where reduceTreeTime = time (ReduceOp pEl pEl op)
   time (LeafOp op) = time op
 
   util _ = 1
 
-  inPortsType (MapOp pEl totEl op) = duplicatePorts p $
+  inPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
-  inPortsType (ReduceOp pEl totEl op) = duplicatePorts p $
+  inPortsType (ReduceOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
   inPortsType (LeafOp op) = inPortsType op
 
-  outPortsType (MapOp pEl totEl op) = duplicatePorts p $
+  outPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (outPortsType op)
-  outPortsType (ReduceOp _ op) = outPortsType op
+  outPortsType (ReduceOp _ _ op) = outPortsType op
   outPortsType (LeafOp op) = outPortsType op
 
   numFirings _ = 1
@@ -156,9 +156,12 @@ instance SpaceTime UtilizationOp where
   time (UtilNonMapLeaf clocks op) = time op |+| SCTime clocks 0
   time (UtilHigherOrder clocks op) = time op |+| SCTime clocks 0
 
-  util (UtilMapLeaf clocks op) = (seqTime op + clocks) / clocks
-  util (UtilNonMapLeaf clocks op) = (seqTime op + clocks) / clocks
-  util (UtilHigherOrder clocks op) = (seqTime op + clocks) / clocks
+  util (UtilMapLeaf clocks op) = fromIntegral ((seqTime . time) op + clocks) /
+    fromIntegral clocks
+  util (UtilNonMapLeaf clocks op) = fromIntegral ((seqTime . time) op + clocks) /
+    fromIntegral clocks
+  util (UtilHigherOrder clocks op) = fromIntegral ((seqTime . time) op + clocks) /
+    fromIntegral clocks
 
   inPortsType (UtilMapLeaf _ op) = inPortsType op
   inPortsType (UtilNonMapLeaf _ op) = inPortsType op
