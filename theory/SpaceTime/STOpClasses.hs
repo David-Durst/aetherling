@@ -39,9 +39,8 @@ canComposeSeq :: (SpaceTime a) => a -> a -> Bool
 -- over all firings and streams per firing, and if same number of clock cycles
 canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
   -- this checks both token types and numTokens over all firing/stream combos
-  portsScaledByFirings op0 == portsScaledByFirings op1 &&
+  portsScaledByFiringPerOp outPortsType [op0] == portsScaledByFiringPerOp inPortsType [op1] &&
   (seqTime . time) op0 == (seqTime . time) op1
-  where portsScaledByFirings op = scalePortsStreamLens (numFirings op) $ outPortsType op
 
 -- can join a combinational node with another node if they do the same amount
 -- every clock cycle
