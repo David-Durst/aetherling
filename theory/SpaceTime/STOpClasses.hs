@@ -81,7 +81,7 @@ inPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType]
 inPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp inPortsType ops
 
 outPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
-outPortsTypeComposeSeq ops = scalePortsStreamLens (numFirings opLst) (inPortsType opLst)
+outPortsTypeComposeSeq ops = scalePortsStreamLens (numFirings opLst) (outPortsType opLst)
   where opLst = last ops
 outPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
 outPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp outPortsType ops
