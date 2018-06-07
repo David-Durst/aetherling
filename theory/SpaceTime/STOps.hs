@@ -141,25 +141,10 @@ instance SpaceTime HigherOrderOp where
 
   numFirings _ = 1
 
--- Int is number of unutilized clocks
-data UtilOp a = UtilOp Int a deriving (Eq, Show)
-
-floatUsedClocks :: (SpaceTime a) => a -> Float
-floatUsedClocks = fromIntegral . seqTime . time
-
-instance (SpaceTime a) => SpaceTime (UtilOp a) where
-  space (UtilOp _ op) = space op
-  time (UtilOp unusedClocks op) = time op |+| SCTime unusedClocks 0
-  util (UtilOp unusedClocks op) = floatUsedClocks op /
-    (floatUsedClocks op + fromIntegral unusedClocks)
-  inPortsType (UtilOp _ op) = inPortsType op
-  outPortsType (UtilOp _ op) = outPortsType op
-  numFirings _ = 1
-
 data SingleFiringOp =
-  SFHigherOrder (UtilOp HigherOrderOp)
-  | SFMappable (UtilOp MappableLeafOp)
-  | SFNonMappable (UtilOp NonMappableLeafOp)
+  SFHigherOrder HigherOrderOp
+  | SFMappable MappableLeafOp
+  | SFNonMappable NonMappableLeafOp
   deriving (Eq, Show)
 
 instance SpaceTime SingleFiringOp where
@@ -185,44 +170,62 @@ instance SpaceTime SingleFiringOp where
 
   numFirings _ = 1
 
+
 -- These are ops that require knowing the full stream length, cannot be 
 -- iterated
 data FixedFiringOp
-  Mem_Read PortType
-  | Mem_Write PortType
-  -- first Int is pixels per clock, second is window width
-  | LineBuffer Int Int TokenType
+  MemRead {mrStreamLen :: Int, mrT :: PortType}
+  | MemWrite {mwStreamLen :: Int, mwT :: PortType}
+  -- first Int is pixels per clock, second is window width, third int is 
+  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInStreamLen :: Int,
+    lbInT :: TokenType}
 
 instance SpaceTime FixedFiringOp where
-  space (Mem_Read t) = OWA (len t) (len t)
-  space (Mem_Write t) = space (Mem_Read t)
+  space (Mem_Read _ t) = OWA (len t) (len t)
+  space (Mem_Write _ t) = space (Mem_Read t)
   -- need counter for warmup, and registers for storing intermediate values
   -- registers account for wiring as some registers receive input wires,
   -- others get wires from other registers
-  space (LineBuffer p w t) = counterSpace (p `ceilDiv` w) |+| 
+  space (LineBuffer p w _ t) = counterSpace (p `ceilDiv` w) |+| 
     registerSpace [T_Array (p + w - 1) t]
 
   -- assuming reads are 
-  time (Mem_Read _) = SCTime rwTime rwTime
-  time (Mem_Write _) = SCTime rwTime rwTime
-  time (LineBuffer _ _ _) = registerTime
+  time (Mem_Read sLen _) = SCTime rwTime rwTime |* sLen
+  time (Mem_Write sLen _) = SCTime rwTime rwTime |* sLen
+  time (LineBuffer _ _ sLen _) = registerTime |* sLen
 
   util _ = 1.0
 
-  inPortsType (Mem_Read _) = []
-  inPortsType (Mem_Write t) = [T_Port "I" 1 t]
-  inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
+  inPortsType (Mem_Read _ _) = []
+  inPortsType (Mem_Write sLen t) = [T_Port "I" sLen t]
+  inPortsType (LineBuffer p _ sLen t) = [T_Port "I" sLen (T_Array p t)]
 
-  outPortsType (Mem_Read t) = [T_Port "O" 1 t]
-  outPortsType (Mem_Write _) = []
-  outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
+  outPortsType (Mem_Read sLen t) = [T_Port "O" sLen t]
+  outPortsType (Mem_Write _ _) = []
+  outPortsType (LineBuffer p w sLen t) =
+    [T_Port "O" (sLen - ((w `ceilDiv` p) - 1)) (T_Array p (T_Array w t))]
 
+  numFirings _ = 1
+
+-- Int is number of unutilized clocks
+data UtilOp a = UtilOp Int a deriving (Eq, Show)
+
+floatUsedClocks :: (SpaceTime a) => a -> Float
+floatUsedClocks = fromIntegral . seqTime . time
+
+instance (SpaceTime a) => SpaceTime (UtilOp a) where
+  space (UtilOp _ op) = space op
+  time (UtilOp unusedClocks op) = time op |+| SCTime unusedClocks 0
+  util (UtilOp unusedClocks op) = floatUsedClocks op /
+    (floatUsedClocks op + fromIntegral unusedClocks)
+  inPortsType (UtilOp _ op) = inPortsType op
+  outPortsType (UtilOp _ op) = outPortsType op
   numFirings _ = 1
 
 -- Int here is numIterations, min is 1 and no max
 data MultipleFiringOp = 
-  IterOp Int (Compose SingleFiringOp)
-  | FixedOp FixedFiringOp
+  IterOp Int (Compose UtilOp (SingleFiringOp))
+  | FixedOp (UtilOp (FixedFiringOp))
   deriving (Eq, Show)
 
 instance SpaceTime FixedFiringOp where
