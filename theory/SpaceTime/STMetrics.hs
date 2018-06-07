@@ -34,7 +34,7 @@ counterSpace countTo = OWA numBits numBits
   where numBits = ceilLog countTo
 
 -- The amount of space necessary to store tokens
-registerSpace :: [TokensType] -> OpsWireArea
+registerSpace :: [TokenType] -> OpsWireArea
 registerSpace ts = OWA portsLen portsLen
   where portsLen = foldl (+) 0 $ map len ts
 

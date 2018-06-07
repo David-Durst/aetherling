@@ -8,22 +8,19 @@ data TokenType =
   T_Unit
   | T_Int
   | T_Bit
+  -- Int here is the length
+  | T_Array Int TokenType
   deriving (Eq, Show)
 
 instance HasLen TokenType where
   len T_Unit = 0
   len T_Int = 8
   len T_Bit = 1
-
--- Int here is the length
-data TokensType = T_Array Int TokenType deriving (Eq, Show)
-
-instance HasLen TokensType where
   len (T_Array i t) = i * len t
 
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
-data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokensType} 
+data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokenType} 
   deriving (Show)
 
 instance Eq PortType where

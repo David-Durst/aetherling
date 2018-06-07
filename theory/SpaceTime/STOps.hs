@@ -44,16 +44,16 @@ instance SpaceTime MappableLeafOp where
 -- These are leaf nodes that need a custom implementation to be parallelized
 -- and cannot be used in a map, reduce, or iterate
 data NonMappableLeafOp =
-  Mem_Read TokensType
-  | Mem_Write TokensType
+  Mem_Read TokenType
+  | Mem_Write TokenType
   -- Array is constant produced, int is stream length
   | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
   | Constant_Bit Int [Bool]
   -- first Int is pixels per clock, second is window width
-  | LineBuffer Int Int TokensType
+  | LineBuffer Int Int TokenType
   -- first pair is input stream length and tokens per stream element, second is output
-  | StreamArrayController (Int, TokensType) (Int, TokensType)
+  | StreamArrayController (Int, TokenType) (Int, TokenType)
   deriving (Eq, Show)
 
 instance SpaceTime NonMappableLeafOp where
@@ -67,7 +67,7 @@ instance SpaceTime NonMappableLeafOp where
   space (LineBuffer p w t) = counterSpace (p `ceilDiv` w) |+| 
     registerSpace [T_Array (p + w - 1) t]
   -- just a pass through, so will get removed by CoreIR
-  space (StreamArrayController (inSlen, _) (outSLen, _)) | 
+  space (StreamArrayController (inSLen, _) (outSLen, _)) | 
     inSLen == 1 && outSLen == 1 = addId
   -- may need a more accurate approximate, but most conservative is storing
   -- entire input
@@ -79,7 +79,6 @@ instance SpaceTime NonMappableLeafOp where
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
   time (LineBuffer _ _ _) = registerTime
-  time (Flatten _) = SCTime 0 1
   time (StreamArrayController (inSLen, _) (outSLen, _)) | 
     inSLen == 1 && outSLen == 1 = addId
   time (StreamArrayController (inSLen, _) (outSLen, _)) = registerTime |* 
