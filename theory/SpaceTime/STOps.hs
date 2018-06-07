@@ -14,7 +14,7 @@ data MappableLeafOp =
 twoInSimplePorts t = portsFromTokens [("I0", 1, 1, t), ("I1", 1, 1, t)]
 oneOutSimplePort t = portsFromTokens [("O", 1, 1, t)]
 
-instance SpaceTime LeafOp where
+instance SpaceTime MappableLeafOp where
   space (Add t) = OWA (len t) (2 * len t)
   space (Sub t) = space (Add t)
   space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
@@ -45,7 +45,7 @@ instance SpaceTime LeafOp where
 -- and cannot be used in a map, reduce, or iterate
 data NonMappableLeafOp =
   Mem_Read TokenType
-  | Mem_Write TokenType deriving (Eq, Show)
+  | Mem_Write TokenType
   -- Array is constant produced, int is stream length
   | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
@@ -54,6 +54,7 @@ data NonMappableLeafOp =
   | LineBuffer Int Int TokenType
   -- first pair is input stream length and tokens per stream element, second is output
   | StreamArrayController (Int, TokensType) (Int, TokensType)
+  deriving (Eq, Show)
 
 instance SpaceTime NonMappableLeafOp where
   space (Mem_Read t) = OWA (len t) (len t)
@@ -75,7 +76,7 @@ instance SpaceTime NonMappableLeafOp where
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
   time (LineBuffer _ _ _) = registerTime
-  time (StreamArrayController (inSLen _) (outSLen _)) = registerTime |* 
+  time (StreamArrayController (inSLen, _) (outSLen, _)) = registerTime |* 
     lcm inSLen outSLen
 
   util _ = 1.0
@@ -85,14 +86,14 @@ instance SpaceTime NonMappableLeafOp where
   inPortsType (Constant_Int _ _) = []
   inPortsType (Constant_Bit _ _) = []
   inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
-  inPortsType (StreamArrayController (inSLen inType) _) = [T_Port "I" inSLen inType]
+  inPortsType (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType]
 
   outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
   outPortsType (Mem_Write _) = []
   outPortsType (Constant_Int n ints) = [T_Port "O" n (length ints) T_Int]
   outPortsType (Constant_Bit n bits) = [T_Port "O" n (length bits) T_Bit]
   outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
-  outPortsType (StreamArrayController _ (outSLen outType)) = [T_Port "O" outSLen outType]
+  outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
 
   numFirings _ = 1
 
