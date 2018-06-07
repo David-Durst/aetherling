@@ -4,13 +4,13 @@ import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 import SpaceTime.STOps
 
-exMemRead = Just (ComposeContainerSF $ UtilNonMapLeaf 0 $ Mem_Read $ T_Array 3 T_Int)
-exPart = Just (ComposeContainerSF $ UtilNonMapLeaf 0 $ StreamArrayController
+exMemRead = Just (ComposeContainer $ UtilNonMapLeaf 0 $ Mem_Read $ T_Array 3 T_Int)
+exPart = Just (ComposeContainer $ UtilNonMapLeaf 0 $ StreamArrayController
   (1, T_Array 3 T_Int) (1, T_Array 1 (T_Array 3 T_Int)))
-exLB = Just (ComposeContainerSF $ UtilNonMapLeaf 0 $ LineBuffer 1 3 (T_Array 3 T_Int))
-exFlat = Just (ComposeContainerSF $ UtilNonMapLeaf 0 $ StreamArrayController
+exLB = Just (ComposeContainer $ UtilNonMapLeaf 0 $ LineBuffer 1 3 (T_Array 3 T_Int))
+exFlat = Just (ComposeContainer $ UtilNonMapLeaf 0 $ StreamArrayController
   (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
-exConst = Just (ComposeContainerSF $ UtilNonMapLeaf 2 $ Constant_Int 1 [1, 1, 1])
+exConst = Just (ComposeContainer $ UtilNonMapLeaf 2 $ Constant_Int 1 [1, 1, 1])
 
 conv1PxPerClock = 
   (
@@ -22,6 +22,6 @@ conv1PxPerClock =
     ) |&|
     exConst
   ) |>>=|
-  Just (ComposeContainerSF $ UtilHigherOrder 0 $ MapOp 3 3 $ LeafOp $ Add T_Int) |>>=|
-  Just (ComposeContainerSF $ UtilHigherOrder 0 $ ReduceOp 3 3 $ LeafOp $ Add T_Int) |>>=|
-  Just (ComposeContainerSF $ UtilNonMapLeaf 0 $ Mem_Write T_Int)
+  Just (ComposeContainer $ UtilHigherOrder 0 $ MapOp 3 3 $ LeafOp $ Add T_Int) |>>=|
+  Just (ComposeContainer $ UtilHigherOrder 0 $ ReduceOp 3 3 $ LeafOp $ Add T_Int) |>>=|
+  Just (ComposeContainer $ UtilNonMapLeaf 0 $ Mem_Write T_Int)

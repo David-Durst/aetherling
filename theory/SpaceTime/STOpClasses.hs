@@ -1,4 +1,3 @@
-{-# LANGUAGE GADTS #-}
 module SpaceTime.STOpClasses where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
@@ -24,7 +23,7 @@ utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
             map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
 
 data Compose a =
-  ComposeContainer a :: 
+  ComposeContainer a
   | ComposePar [Compose a]
   | ComposeSeq [Compose a]
   deriving (Eq, Show)
@@ -64,13 +63,13 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
 (|.|) (Just op0@(ComposeSeq ops0)) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
-Just $ ComposeSeq $ ops1 ++ ops0
+  Just $ ComposeSeq $ ops1 ++ ops0
 (|.|) (Just op0@(ComposeSeq ops0)) (Just op1) | canComposeSeq op1 op0 =
-Just $ ComposeSeq $ [op1] ++ ops0
+  Just $ ComposeSeq $ [op1] ++ ops0
 (|.|) (Just op0) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
-Just $ ComposeSeq $ ops1 ++ [op0]
+  Just $ ComposeSeq $ ops1 ++ [op0]
 (|.|) (Just op0) (Just op1) | canComposeSeq op1 op0 =
-Just $ ComposeSeq $ [op1] ++ [op0]
+  Just $ ComposeSeq $ [op1] ++ [op0]
 (|.|) _ _ = Nothing
 
 -- This is for making ComposePar
@@ -87,7 +86,7 @@ Just $ ComposeSeq $ [op1] ++ [op0]
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
-(|>>=|) :: Composable a => Maybe a -> Maybe a -> Maybe a
+(|>>=|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
 (|>>=|) op0 op1 = op1 |.| op0
 
 canComposeSeq :: (SpaceTime a) => a -> a -> Bool
