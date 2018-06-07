@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTS #-}
 module SpaceTime.STOpClasses where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
@@ -22,11 +23,67 @@ utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
     where unnormalizedUtil = foldl (+) 0 $
             map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
 
-class (SpaceTime a) => Composable a where
-  -- This is for making ComposeSeq
-  (|.|) :: Maybe a -> Maybe a -> Maybe a
-  -- This is for making ComposePar
-  (|&|) :: Maybe a -> Maybe a -> Maybe a
+data Compose a =
+  ComposeContainer a :: 
+  | ComposePar [Compose a]
+  | ComposeSeq [Compose a]
+  deriving (Eq, Show)
+
+instance (SpaceTime a) => SpaceTime (Compose a) where
+  space (ComposeContainer op) = space op
+  space (ComposePar ops) = foldl (|+|) addId $ map space ops
+  space (ComposeSeq ops) = foldl (|+|) addId $ map space ops
+
+  time (ComposeContainer op) = time op
+  -- this depends the constructors verifying that only composing in parallel
+  -- things that take same amount of time
+  -- should this be equal clocks and max combinational? Should this depend on stream length?
+  -- it should be fine to just check clocks and return max combuinational. The stream lenghts don't matter as long as total time the same.
+  -- can have different stream lengths as long as streams take same amount of time to finish
+  -- space time helpers for compose that are used for all implementations
+  time (ComposePar ops) = SCTime (seqTime $ time $ head ops) maxCombTime
+    where maxCombTime = maximum $ map (combTime . time) ops
+  time (ComposeSeq ops) = foldl (|+|) addId $ map time ops
+
+  util (ComposeContainer op) = util op
+  util (ComposePar ops) = utilWeightedByArea ops
+  util (ComposeSeq ops) = utilWeightedByArea ops
+
+  inPortsType (ComposeContainer op) = inPortsType op
+  inPortsType (ComposePar ops) = foldl (++) [] $ portsScaledByFiringPerOp inPortsType ops
+  inPortsType (ComposeSeq ops) = scalePortsStreamLens (numFirings opHd) (inPortsType opHd)
+    where opHd = head ops
+
+  outPortsType (ComposeContainer op) = outPortsType op
+  outPortsType (ComposePar ops) = foldl (++) [] $ portsScaledByFiringPerOp outPortsType ops
+  outPortsType (ComposeSeq ops) = scalePortsStreamLens (numFirings opLst) (outPortsType opLst)
+    where opLst = last ops
+
+  numFirings _ = 1
+
+-- This is for making ComposeSeq
+(|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
+(|.|) (Just op0@(ComposeSeq ops0)) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
+Just $ ComposeSeq $ ops1 ++ ops0
+(|.|) (Just op0@(ComposeSeq ops0)) (Just op1) | canComposeSeq op1 op0 =
+Just $ ComposeSeq $ [op1] ++ ops0
+(|.|) (Just op0) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
+Just $ ComposeSeq $ ops1 ++ [op0]
+(|.|) (Just op0) (Just op1) | canComposeSeq op1 op0 =
+Just $ ComposeSeq $ [op1] ++ [op0]
+(|.|) _ _ = Nothing
+
+-- This is for making ComposePar
+(|&|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
+(|&|) (Just op0@(ComposePar ops0)) (Just op1@(ComposePar ops1)) | canComposePar op1 op0 =
+  Just $ ComposePar $ ops0 ++ ops1
+(|&|) (Just op0@(ComposePar ops0)) (Just op1) | canComposePar op1 op0 =
+  Just $ ComposePar $ [op1] ++ ops0
+(|&|) (Just op0) (Just op1@(ComposePar ops1)) | canComposePar op1 op0 =
+  Just $ ComposePar $ ops1 ++ [op0]
+(|&|) (Just op0) (Just op1) | canComposePar op1 op0 =
+  Just $ ComposePar $ [op1] ++ [op0]
+(|&|) _ _ = Nothing
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
@@ -51,36 +108,9 @@ canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes in parallel if same number of clocks
 canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1
 
--- this depends the constructors verifying that only composing in parallel
--- things that take same amount of time
--- should this be equal clocks and max combinational? Should this depend on stream length?
--- it should be fine to just check clocks and return max combuinational. The stream lenghts don't matter as long as total time the same.
--- can have different stream lengths as long as streams take same amount of time to finish
--- space time helpers for compose that are used for all implementations
-spaceCompose :: (SpaceTime a) => [a] -> OpsWireArea
-spaceCompose ops = foldl (|+|) addId $ map space ops
-
-timeComposeSeq :: (SpaceTime a) => [a] -> SeqCombTime
-timeComposeSeq ops = foldl (|+|) addId $ map time ops
-timeComposePar :: (SpaceTime a) => [a] -> SeqCombTime
-timeComposePar ops = SCTime (seqTime $ time $ head ops) maxCombTime
-    where maxCombTime = maximum $ map (combTime . time) ops
-
 -- Since can compose things with different numbers of firings as long as total 
 -- numbers of tokens and time, need composes to each have 1 firing and put
 -- children ops' firings in its stream lengths
 portsScaledByFiringPerOp :: (SpaceTime a) => (a -> [PortType]) -> [a] -> [[PortType]]
 portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
   where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
-
-inPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
-inPortsTypeComposeSeq ops = scalePortsStreamLens (numFirings opHd) (inPortsType opHd)
-  where opHd = head ops
-inPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
-inPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp inPortsType ops
-
-outPortsTypeComposeSeq :: (SpaceTime a) => [a] -> [PortType] 
-outPortsTypeComposeSeq ops = scalePortsStreamLens (numFirings opLst) (outPortsType opLst)
-  where opLst = last ops
-outPortsTypeComposePar :: (SpaceTime a) => [a] -> [PortType] 
-outPortsTypeComposePar ops = foldl (++) [] $ portsScaledByFiringPerOp outPortsType ops
