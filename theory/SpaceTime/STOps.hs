@@ -145,6 +145,7 @@ data UtilizationOp =
   UtilMapLeaf Int MappableLeafOp
   | UtilNonMapLeaf Int NonMappableLeafOp
   | UtilHigherOrder Int HigherOrderOp
+  deriving (Eq, Show)
 
 instance SpaceTime HigherOrderOp where
   space (UtilMapLeaf _ op) = space op
@@ -172,8 +173,9 @@ instance SpaceTime HigherOrderOp where
 data SingleFiringOp =
   ComposeParSF [HigherOrderOp]
   | ComposeSeqSF [HigherOrderOp]
+  deriving (Eq, Show)
 
-instance SpaceTime HigherOrderOp where
+instance SpaceTime SingleFiringOp where
   space (ComposeParSF ops) = spaceCompose ops
   space (ComposeSeqSF ops) = spaceCompose ops
 
