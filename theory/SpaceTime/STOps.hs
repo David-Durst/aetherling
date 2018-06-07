@@ -97,25 +97,6 @@ instance SpaceTime NonMappableLeafOp where
 
   numFirings _ = 1
 
--- ParParams handles parallelism and inverse parallelism (aka underutilization)
--- for a single firing
--- utilizedClocks / allClocksInStream = pct of a firing that this op is utilized
-data ParParams = ParParams { parallelism :: Int, utilizedClocks :: Int,
-  allClocksInStream :: Int } deriving (Eq, Show)
-
--- leaf nodes define what is done for one token in one firing, and 
--- can scale them up or down across one firing and multiple firings
---
--- These are the scheduling ops for building types of pipelines in the lower, 
--- scheduled IR. 
--- Can schedule in two dimenions - over multiple firings (for handling more tokens)
--- and a single firing (for doing wider or narrower tokens over different
--- numbers of clocks)
--- iter handles scaling all operations over multiple firings
--- map, reduce, and fold handle scaling operations in single firing
--- Must handle 0 or more tokens so the min of stream dimension is 0
--- Must handle 0 or more tokens per clock so the min of token dimension is 0
-
 data HigherOrderOp = 
   -- Int is for parallelism
   MapOp Int HigherOrderOp
