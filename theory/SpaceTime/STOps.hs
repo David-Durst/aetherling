@@ -116,18 +116,16 @@ data ParParams = ParParams { parallelism :: Int, utilizedClocks :: Int,
 -- Must handle 0 or more tokens so the min of stream dimension is 0
 -- Must handle 0 or more tokens per clock so the min of token dimension is 0
 
--- add a compose here, maybe later
-data SingleFiringOp = 
-  MapSF ParParams SingleFiringOp
-  | ReduceSF ParParams SingleFiringOp
-  | ArithmeticSF ArithmeticOp
-  | MemorySF MemoryOp
-  | ComposeParSF [SingleFiringOp]
-  | ComposeSeqSF [SingleFiringOp]
+data HigherOrderOp = 
+  -- Int is for parallelism
+  MapOp Int HigherOrderOp
+  -- First Int is parallelism, second is total number elements reducing
+  | ReduceOp Int Int HigherOrderOp
+  | LeafOp MappableLeafOp
   deriving (Eq, Show)
 
 
-instance SpaceTime SingleFiringOp where
+instance SpaceTime HigherOrderOp where
   -- area of parallel map is area of all the copies
   space (MapSF ParParams{parallelism = p} op) = (space op) |* p
   -- area of reduce is area of reduce tree, with area for register for partial
@@ -136,10 +134,7 @@ instance SpaceTime SingleFiringOp where
   space (ReduceSF (ParParams p uc _) op) =
     reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
     where reduceTreeSpace = space (ReduceSF (ParParams p 1 1) op)
-  space (ArithmeticSF op) = space op
-  space (MemorySF op) = space op
-  space (ComposeParSF ops) = spaceCompose ops
-  space (ComposeSeqSF ops) = spaceCompose ops
+  space (LeafOp op) = space op
 
   time (MapSF ParParams{allClocksInStream = ac} op) =
     replicateTimeOverStream ac (time op)
@@ -147,32 +142,71 @@ instance SpaceTime SingleFiringOp where
   time (ReduceSF (ParParams p _ ac) op) =
     replicateTimeOverStream ac (reduceTreeTime |+| (time op) |+| registerTime)
     where reduceTreeTime = time (ReduceSF (ParParams p 1 1) op)
-  time (ArithmeticSF op) = time op
-  time (MemorySF op) = time op
-  time (ComposeParSF ops) = timeComposePar ops
-  time (ComposeSeqSF ops) = timeComposeSeq ops
+  time (LeafOp op) = time op
 
   util (MapSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
   util (ReduceSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
-  util (ArithmeticSF op) = util op
-  util (MemorySF op) = util op
-  util (ComposeParSF ops) = utilWeightedByArea ops
-  util (ComposeSeqSF ops) = utilWeightedByArea ops
+  util (LeafOp op) = util op
 
   inPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
     scalePortsStreamLens uc (inPortsType op)
   inPortsType (ReduceSF (ParParams p uc _) op) = duplicatePorts p $
     scalePortsStreamLens uc (inPortsType op)
-  inPortsType (ArithmeticSF op) = inPortsType op
-  inPortsType (MemorySF op) = inPortsType op
-  inPortsType (ComposeParSF ops) = inPortsTypeComposePar ops
-  inPortsType (ComposeSeqSF ops) = inPortsTypeComposeSeq ops
+  inPortsType (LeafOp op) = inPortsType op
 
   outPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
     scalePortsStreamLens uc (outPortsType op)
   outPortsType (ReduceSF _ op) = outPortsType op
-  outPortsType (ArithmeticSF op) = outPortsType op
-  outPortsType (MemorySF op) = outPortsType op
+  outPortsType (LeafOp op) = outPortsType op
+
+  numFirings _ = 1
+
+-- Int is number of unutilized clocks
+data UtilizationOp =
+  UtilMapLeaf Int MappableLeafOp
+  | UtilNonMapLeaf Int NonMappableLeafOp
+  | UtilHigherOrder Int HigherOrderOp
+
+instance SpaceTime HigherOrderOp where
+  space (UtilMapLeaf _ op) = space op
+  space (UtilNonMapLeaf _ op) = space op
+  space (UtilHigherOrder _ op) = space op
+
+  time (UtilMapLeaf clocks op) = time op |+| SCTime clocks 0
+  time (UtilNonMapLeaf clocks op) = time op |+| SCTime clocks 0
+  time (UtilHigherOrder clocks op) = time op |+| SCTime clocks 0
+
+  util (UtilMapLeaf clocks op) = (seqTime op + clocks) / clocks
+  util (UtilNonMapLeaf clocks op) = (seqTime op + clocks) / clocks
+  util (UtilHigherOrder clocks op) = (seqTime op + clocks) / clocks
+
+  inPortsType (UtilMapLeaf _ op) = inPortsType op
+  inPortsType (UtilNonMapLeaf _ op) = inPortsType op
+  inPortsType (UtilHigherOrder _ op) = inPortsType op
+
+  outPortsType (UtilMapLeaf _ op) = outPortsType op
+  outPortsType (UtilNonMapLeaf _ op) = outPortsType op
+  outPortsType (UtilHigherOrder _ op) = outPortsType op
+
+  numFirings _ = 1
+
+data SingleFiringOp =
+  ComposeParSF [HigherOrderOp]
+  | ComposeSeqSF [HigherOrderOp]
+
+instance SpaceTime HigherOrderOp where
+  space (ComposeParSF ops) = spaceCompose ops
+  space (ComposeSeqSF ops) = spaceCompose ops
+
+  time (ComposeParSF ops) = timeComposePar ops
+  time (ComposeSeqSF ops) = timeComposeSeq ops
+
+  util (ComposeParSF ops) = utilWeightedByArea ops
+  util (ComposeSeqSF ops) = utilWeightedByArea ops
+
+  inPortsType (ComposeParSF ops) = inPortsTypeComposePar ops
+  inPortsType (ComposeSeqSF ops) = inPortsTypeComposeSeq ops
+
   outPortsType (ComposeParSF ops) = outPortsTypeComposePar ops
   outPortsType (ComposeSeqSF ops) = outPortsTypeComposeSeq ops
 
