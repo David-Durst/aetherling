@@ -11,8 +11,8 @@ data MappableLeafOp =
   | Div TokenType
   deriving (Eq, Show)
 
-twoInSimplePorts t = [T_Port "I0" 1 (T_Array 1 t), T_Port "I1" 1 (T_Array 1 t)]
-oneOutSimplePort t = [T_Port "O" 1 (T_Array 1 t)]
+twoInSimplePorts t = [T_Port "I0" 1 t, T_Port "I1" 1 t]
+oneOutSimplePort t = [T_Port "O" 1 t]
 
 instance SpaceTime MappableLeafOp where
   space (Add t) = OWA (len t) (2 * len t)

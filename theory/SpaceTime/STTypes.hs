@@ -29,8 +29,9 @@ instance Eq PortType where
     len0 == len1 && tType0 == tType1
   (/=) pt0 pt1 = not $ pt0 == pt1
 
-duplicatePorts :: Int -> [PortType] ->  [PortType]
-duplicatePorts n ports = concat $ replicate n ports
+duplicatePorts :: Int -> [PortType] -> [PortType]
+duplicatePorts n ports = map wrapInArray ports
+  where wrapInArray (T_Port name sLen t) = T_Port name sLen (T_Array n t)
 
 scalePortsStreamLens :: Int -> [PortType] -> [PortType]
 scalePortsStreamLens n ports = map mulPortStreamLen ports 
