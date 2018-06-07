@@ -10,7 +10,7 @@ exPart = ComposeContainerSF $ UtilNonMapLeaf 0 $ StreamArrayController
 exLB = ComposeContainerSF $ UtilNonMapLeaf 0 $ LineBuffer 1 3 (T_Array 3 T_Int)
 exFlat = ComposeContainerSF $ UtilNonMapLeaf 0 $ StreamArrayController
   (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int)
-exConst = ComposeContainerSF $ UtilNonMapLeaf 0 $ Constant_Int 1 [1, 1, 1])
+exConst = ComposeContainerSF $ UtilNonMapLeaf 0 $ Constant_Int 1 [1, 1, 1]
 
 conv1PxPerClock = 
   (

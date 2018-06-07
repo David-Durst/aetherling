@@ -211,20 +211,24 @@ instance SpaceTime SingleFiringOpComposition where
   numFirings _ = 1
 
 instance Composable SingleFiringOpComposition where 
-  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
+  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op1 op0 =
     Just $ ComposeSeqSF $ ops1 ++ ops0
-  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1) | canComposeSeq op0 op1 =
+  (|.|) (Just op0@(ComposeSeqSF ops0)) (Just op1) | canComposeSeq op1 op0 =
     Just $ ComposeSeqSF $ [op1] ++ ops0
-  (|.|) (Just op0) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op0 op1 =
+  (|.|) (Just op0) (Just op1@(ComposeSeqSF ops1)) | canComposeSeq op1 op0 =
     Just $ ComposeSeqSF $ ops1 ++ [op0]
+  (|.|) (Just op0) (Just op1)) | canComposeSeq op1 op0 =
+    Just $ ComposeSeqSF $ [op1] ++ [op0]
   (|.|) _ _ = Nothing
 
-  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
+  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1@(ComposeParSF ops1)) | canComposePar op1 op0 =
     Just $ ComposeParSF $ ops0 ++ ops1
-  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1) | canComposePar op0 op1 =
+  (|&|) (Just op0@(ComposeParSF ops0)) (Just op1) | canComposePar op1 op0 =
     Just $ ComposeParSF $ [op1] ++ ops0
-  (|&|) (Just op0) (Just op1@(ComposeParSF ops1)) | canComposePar op0 op1 =
+  (|&|) (Just op0) (Just op1@(ComposeParSF ops1)) | canComposePar op1 op0 =
     Just $ ComposeParSF $ ops1 ++ [op0]
+  (|.|) (Just op0) (Just op1)) | canComposePar op1 op0 =
+    Just $ ComposeParSF $ [op1] ++ [op0]
   (|&|) _ _ = Nothing
 
 -- Int here is numIterations, min is 1 and no max
