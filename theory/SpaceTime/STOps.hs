@@ -98,46 +98,44 @@ instance SpaceTime NonMappableLeafOp where
   numFirings _ = 1
 
 data HigherOrderOp = 
-  -- Int is for parallelism
+  -- First Int is parallelism, second is total number elements reducing
   MapOp Int HigherOrderOp
   -- First Int is parallelism, second is total number elements reducing
   | ReduceOp Int Int HigherOrderOp
   | LeafOp MappableLeafOp
   deriving (Eq, Show)
 
-
 instance SpaceTime HigherOrderOp where
   -- area of parallel map is area of all the copies
-  space (MapSF ParParams{parallelism = p} op) = (space op) |* p
+  space (MapOp pEl _ op) = (space op) |* pEl
   -- area of reduce is area of reduce tree, with area for register for partial
-  -- results if a signle firing is more than 1 clock
-  space (ReduceSF (ParParams p uc _) op) | uc == 1 = (space op) |* (p-1)
-  space (ReduceSF (ParParams p uc _) op) =
+  -- results and counter for tracking iteration time if input is stream of more
+  -- than what is passed in one clock
+  space (ReduceOp pEl totEl op) | pEl == totEl = (space op) |* (pEl - 1)
+  space rOp@(ReduceOp pEl _ op) =
     reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
-    where reduceTreeSpace = space (ReduceSF (ParParams p 1 1) op)
+    |+| (counterSpace $ seqTime $ time rOp)
+    where reduceTreeSpace = space (ReduceOp pEl pEl op)
   space (LeafOp op) = space op
 
-  time (MapSF ParParams{allClocksInStream = ac} op) =
-    replicateTimeOverStream ac (time op)
-  time (ReduceSF (ParParams p _ ac) op) | ac == 1 = (time op) |* (ceilLog p)
-  time (ReduceSF (ParParams p _ ac) op) =
+  time (MapOp pEl totEl op) = replicateTimeOverStream (totEl `ceilDiv` pEl) (time op)
+  time (ReduceOp pEl totEl op) | pEl == totEl = (time op) |* (ceilLog p)
+  time (ReduceOp pEl totEl op) =
     replicateTimeOverStream ac (reduceTreeTime |+| (time op) |+| registerTime)
-    where reduceTreeTime = time (ReduceSF (ParParams p 1 1) op)
+    where reduceTreeTime = time (ReduceOp pEl pEl op)
   time (LeafOp op) = time op
 
-  util (MapSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
-  util (ReduceSF (ParParams _ uc ac) op) = (util op) * (fromIntegral uc) / (fromIntegral ac)
-  util (LeafOp op) = util op
+  util _ = 1
 
-  inPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
-    scalePortsStreamLens uc (inPortsType op)
-  inPortsType (ReduceSF (ParParams p uc _) op) = duplicatePorts p $
-    scalePortsStreamLens uc (inPortsType op)
+  inPortsType (MapOp pEl totEl op) = duplicatePorts p $
+    scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
+  inPortsType (ReduceOp pEl totEl op) = duplicatePorts p $
+    scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
   inPortsType (LeafOp op) = inPortsType op
 
-  outPortsType (MapSF (ParParams p uc _) op) = duplicatePorts p $
-    scalePortsStreamLens uc (outPortsType op)
-  outPortsType (ReduceSF _ op) = outPortsType op
+  outPortsType (MapOp pEl totEl op) = duplicatePorts p $
+    scalePortsStreamLens (totEl `ceilDiv` pEl) (outPortsType op)
+  outPortsType (ReduceOp _ op) = outPortsType op
   outPortsType (LeafOp op) = outPortsType op
 
   numFirings _ = 1
