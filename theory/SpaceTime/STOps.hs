@@ -44,14 +44,10 @@ instance SpaceTime MappableLeafOp where
 -- These are leaf nodes that need a custom implementation to be parallelized
 -- and cannot be used in a map, reduce, or iterate
 data NonMappableLeafOp =
-  Mem_Read TokenType
-  | Mem_Write TokenType
   -- Array is constant produced, int is stream length
   | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
   | Constant_Bit Int [Bool]
-  -- first Int is pixels per clock, second is window width
-  | LineBuffer Int Int TokenType
   -- first pair is input stream length and tokens per stream element, second is output
   | StreamArrayController (Int, TokenType) (Int, TokenType)
   deriving (Eq, Show)
@@ -146,54 +142,104 @@ instance SpaceTime HigherOrderOp where
   numFirings _ = 1
 
 -- Int is number of unutilized clocks
-data UtilizationOp =
-  UtilMapLeaf Int MappableLeafOp
-  | UtilNonMapLeaf Int NonMappableLeafOp
-  | UtilHigherOrder Int HigherOrderOp
-  deriving (Eq, Show)
+data UtilOp a = UtilOp Int a deriving (Eq, Show)
 
 floatUsedClocks :: (SpaceTime a) => a -> Float
 floatUsedClocks = fromIntegral . seqTime . time
 
-instance SpaceTime UtilizationOp where
-  space (UtilMapLeaf _ op) = space op
-  space (UtilNonMapLeaf _ op) = space op
-  space (UtilHigherOrder _ op) = space op
-
-  time (UtilMapLeaf unusedClocks op) = time op |+| SCTime unusedClocks 0
-  time (UtilNonMapLeaf unusedClocks op) = time op |+| SCTime unusedClocks 0
-  time (UtilHigherOrder unusedClocks op) = time op |+| SCTime unusedClocks 0
-
-  util (UtilMapLeaf unusedClocks op) = floatUsedClocks op / 
+instance (SpaceTime a) => SpaceTime (UtilOp a) where
+  space (UtilOp _ op) = space op
+  time (UtilOp unusedClocks op) = time op |+| SCTime unusedClocks 0
+  util (UtilOp unusedClocks op) = floatUsedClocks op /
     (floatUsedClocks op + fromIntegral unusedClocks)
-  util (UtilNonMapLeaf unusedClocks op) = floatUsedClocks op / 
-    (floatUsedClocks op + fromIntegral unusedClocks)
-  util (UtilHigherOrder unusedClocks op) = floatUsedClocks op / 
-    (floatUsedClocks op + fromIntegral unusedClocks)
+  inPortsType (UtilOp _ op) = inPortsType op
+  outPortsType (UtilOp _ op) = outPortsType op
+  numFirings _ = 1
 
-  inPortsType (UtilMapLeaf _ op) = inPortsType op
-  inPortsType (UtilNonMapLeaf _ op) = inPortsType op
-  inPortsType (UtilHigherOrder _ op) = inPortsType op
+data SingleFiringOp =
+  SFHigherOrder (UtilOp HigherOrderOp)
+  | SFMappable (UtilOp MappableLeafOp)
+  | SFNonMappable (UtilOp NonMappableLeafOp)
+  deriving (Eq, Show)
 
-  outPortsType (UtilMapLeaf _ op) = outPortsType op
-  outPortsType (UtilNonMapLeaf _ op) = outPortsType op
-  outPortsType (UtilHigherOrder _ op) = outPortsType op
+instance SpaceTime SingleFiringOp where
+  space (SFHigherOrder op) = space op
+  space (SFMappable op) = space op
+  space (SFNonMappable op) = space op
+
+  time (SFHigherOrder op) = time op
+  time (SFMappable op) = time op
+  time (SFNonMappable op) = time op
+
+  util (SFHigherOrder op) = util op
+  util (SFMappable op) = util op
+  util (SFNonMappable op) = util op
+
+  inPortsType (SFHigherOrder op) = inPortsType op
+  inPortsType (SFMappable op) = inPortsType op
+  inPortsType (SFNonMappable op) = inPortsType op
+
+  outPortsType (SFHigherOrder op) = outPortsType op
+  outPortsType (SFMappable op) = outPortsType op
+  outPortsType (SFNonMappable op) = outPortsType op
+
+  numFirings _ = 1
+
+-- These are ops that require knowing the full stream length, cannot be 
+-- iterated
+data FixedFiringOp
+  Mem_Read PortType
+  | Mem_Write PortType
+  -- first Int is pixels per clock, second is window width
+  | LineBuffer Int Int TokenType
+
+instance SpaceTime FixedFiringOp where
+  space (Mem_Read t) = OWA (len t) (len t)
+  space (Mem_Write t) = space (Mem_Read t)
+  -- need counter for warmup, and registers for storing intermediate values
+  -- registers account for wiring as some registers receive input wires,
+  -- others get wires from other registers
+  space (LineBuffer p w t) = counterSpace (p `ceilDiv` w) |+| 
+    registerSpace [T_Array (p + w - 1) t]
+
+  -- assuming reads are 
+  time (Mem_Read _) = SCTime rwTime rwTime
+  time (Mem_Write _) = SCTime rwTime rwTime
+  time (LineBuffer _ _ _) = registerTime
+
+  util _ = 1.0
+
+  inPortsType (Mem_Read _) = []
+  inPortsType (Mem_Write t) = [T_Port "I" 1 t]
+  inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
+
+  outPortsType (Mem_Read t) = [T_Port "O" 1 t]
+  outPortsType (Mem_Write _) = []
+  outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
 
   numFirings _ = 1
 
 -- Int here is numIterations, min is 1 and no max
-data MultipleFiringOps = Iter Int (Compose UtilizationOp)
+data MultipleFiringOp = 
+  IterOp Int (Compose SingleFiringOp)
+  | FixedOp FixedFiringOp
   deriving (Eq, Show)
 
-instance SpaceTime MultipleFiringOps where
+instance SpaceTime FixedFiringOp where
   space (Iter numIters op) = (counterSpace numIters) |+| (space op)
-  time (Iter numIters op) = replicateTimeOverStream numIters (time op)
-  util (Iter _ op) = util op
-  inPortsType (Iter _ op) = inPortsType op
-  outPortsType (Iter _ op) = outPortsType op
-  numFirings (Iter n op) = n * (numFirings op)
+  space (FixedOp op) = space op
 
-data MultipleFiringOpsComposition =
-  ComposeParMF [MultipleFiringOps]
-  | ComposeSeqMF [MultipleFiringOps]
-  deriving (Eq, Show)
+  time (Iter numIters op) = replicateTimeOverStream numIters (time op)
+  time (fixedOp op) = time op
+
+  util (Iter _ op) = util op
+  util (FixedOp op) = util op
+
+  inPortsType (Iter _ op) = inPortsType op
+  inPortsType (FixedOp op) = inPortsType op
+
+  outPortsType (Iter _ op) = outPortsType op
+  outPortsType (FixedOp op) = outPortsType op
+
+  numFirings (Iter n op) = n * (numFirings op)
+  numFirings (FixedOp op) = numFirings op
