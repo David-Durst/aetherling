@@ -16,10 +16,10 @@ instance HasLen TokenType where
   len T_Bit = 1
 
 -- Int here is the length
-data TokensType = T_Array TokenType Int deriving (Eq, Show)
+data TokensType = T_Array Int TokenType deriving (Eq, Show)
 
 instance HasLen TokensType where
-  len (T_Array t i) = i * len t
+  len (T_Array i t) = i * len t
 
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
@@ -42,5 +42,5 @@ scalePortsStreamLens n ports = map mulPortStreamLen ports
 -- first int is stream length, second is array length
 portsFromTokens :: [([Char], Int, Int, TokenType)] -> [PortType]
 portsFromTokens ts = map makeTokens ts
-  where makeTokens (n, sLen, tNum, tType) = T_Port n sLen (T_Array tType tNum)
+  where makeTokens (n, sLen, tNum, tType) = T_Port n sLen (T_Array tNum tType)
 
