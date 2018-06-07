@@ -147,7 +147,7 @@ data UtilizationOp =
   | UtilHigherOrder Int HigherOrderOp
   deriving (Eq, Show)
 
-instance SpaceTime HigherOrderOp where
+instance SpaceTime UtilizationOp where
   space (UtilMapLeaf _ op) = space op
   space (UtilNonMapLeaf _ op) = space op
   space (UtilHigherOrder _ op) = space op
@@ -170,7 +170,7 @@ instance SpaceTime HigherOrderOp where
 
   numFirings _ = 1
 
-data SingleFiringOp =
+data SingleFiringOpComposition =
   ComposeParSF [HigherOrderOp]
   | ComposeSeqSF [HigherOrderOp]
   deriving (Eq, Show)
@@ -239,7 +239,7 @@ instance SpaceTime MultipleFiringOpsComposition where
   numFirings (ComposeSeqMF _) = 1
 
 -- Is there a way to get rid of this duplicate code?
-instance Composable MultipleFiringOpComposition where 
+instance Composable MultipleFiringOpsComposition where 
   (|.|) (Just op0@(ComposeSeqMF ops0)) (Just op1@(ComposeSeqMF ops1)) | canComposeSeq op0 op1 =
     Just $ ComposeSeqMF $ ops1 ++ ops0
   (|.|) _ _ = Nothing
