@@ -45,7 +45,7 @@ instance SpaceTime MappableLeafOp where
 -- and cannot be used in a map, reduce, or iterate
 data NonMappableLeafOp =
   -- Array is constant produced, int is stream length
-  | Constant_Int Int [Int]
+  Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
   | Constant_Bit Int [Bool]
   -- first pair is input stream length and tokens per stream element, second is output
@@ -53,15 +53,8 @@ data NonMappableLeafOp =
   deriving (Eq, Show)
 
 instance SpaceTime NonMappableLeafOp where
-  space (Mem_Read t) = OWA (len t) (len t)
-  space (Mem_Write t) = space (Mem_Read t)
   space (Constant_Int n consts) = OWA (len (T_Array n T_Int)) 0
   space (Constant_Bit n consts) = OWA (len (T_Array n T_Bit)) 0
-  -- need counter for warmup, and registers for storing intermediate values
-  -- registers account for wiring as some registers receive input wires,
-  -- others get wires from other registers
-  space (LineBuffer p w t) = counterSpace (p `ceilDiv` w) |+| 
-    registerSpace [T_Array (p + w - 1) t]
   -- just a pass through, so will get removed by CoreIR
   space (StreamArrayController (inSLen, _) (outSLen, _)) | 
     inSLen == 1 && outSLen == 1 = addId
@@ -70,11 +63,8 @@ instance SpaceTime NonMappableLeafOp where
   space (StreamArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
 
   -- assuming reads are 
-  time (Mem_Read _) = SCTime rwTime rwTime
-  time (Mem_Write _) = SCTime rwTime rwTime
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
-  time (LineBuffer _ _ _) = registerTime
   time (StreamArrayController (inSLen, _) (outSLen, _)) | 
     inSLen == 1 && outSLen == 1 = addId
   time (StreamArrayController (inSLen, _) (outSLen, _)) = registerTime |* 
@@ -82,18 +72,12 @@ instance SpaceTime NonMappableLeafOp where
 
   util _ = 1.0
 
-  inPortsType (Mem_Read _) = []
-  inPortsType (Mem_Write t) = [T_Port "I" 1 t]
   inPortsType (Constant_Int _ _) = []
   inPortsType (Constant_Bit _ _) = []
-  inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
   inPortsType (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType]
 
-  outPortsType (Mem_Read t) = [T_Port "O" 1 t]
-  outPortsType (Mem_Write _) = []
   outPortsType (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int)]
   outPortsType (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit)]
-  outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p t)]
   outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
 
   numFirings _ = 1
