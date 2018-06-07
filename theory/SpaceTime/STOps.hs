@@ -147,21 +147,24 @@ data UtilizationOp =
   | UtilHigherOrder Int HigherOrderOp
   deriving (Eq, Show)
 
+floatUsedClocks :: (SpaceTime a) => a -> Float
+floatUsedClocks = fromIntegral . seqTime . time
+
 instance SpaceTime UtilizationOp where
   space (UtilMapLeaf _ op) = space op
   space (UtilNonMapLeaf _ op) = space op
   space (UtilHigherOrder _ op) = space op
 
-  time (UtilMapLeaf clocks op) = time op |+| SCTime clocks 0
-  time (UtilNonMapLeaf clocks op) = time op |+| SCTime clocks 0
-  time (UtilHigherOrder clocks op) = time op |+| SCTime clocks 0
+  time (UtilMapLeaf unusedClocks op) = time op |+| SCTime unusedClocks 0
+  time (UtilNonMapLeaf unusedClocks op) = time op |+| SCTime unusedClocks 0
+  time (UtilHigherOrder unusedClocks op) = time op |+| SCTime unusedClocks 0
 
-  util (UtilMapLeaf clocks op) = fromIntegral ((seqTime . time) op + clocks) /
-    fromIntegral clocks
-  util (UtilNonMapLeaf clocks op) = fromIntegral ((seqTime . time) op + clocks) /
-    fromIntegral clocks
-  util (UtilHigherOrder clocks op) = fromIntegral ((seqTime . time) op + clocks) /
-    fromIntegral clocks
+  util (UtilMapLeaf unusedClocks op) = floatUsedClocks op / 
+    (floatUsedClocks op + fromIntegral unusedClocks)
+  util (UtilNonMapLeaf unusedClocks op) = floatUsedClocks op / 
+    (floatUsedClocks op + fromIntegral unusedClocks)
+  util (UtilHigherOrder unusedClocks op) = floatUsedClocks op / 
+    (floatUsedClocks op + fromIntegral unusedClocks)
 
   inPortsType (UtilMapLeaf _ op) = inPortsType op
   inPortsType (UtilNonMapLeaf _ op) = inPortsType op
