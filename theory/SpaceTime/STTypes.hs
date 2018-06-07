@@ -38,9 +38,3 @@ duplicatePorts n ports = concat $ replicate n ports
 scalePortsStreamLens :: Int -> [PortType] -> [PortType]
 scalePortsStreamLens n ports = map mulPortStreamLen ports 
   where mulPortStreamLen (T_Port pName pSLen tType) = T_Port pName (n*pSLen) tType
-
--- first int is stream length, second is array length
-portsFromTokens :: [([Char], Int, Int, TokenType)] -> [PortType]
-portsFromTokens ts = map makeTokens ts
-  where makeTokens (n, sLen, tNum, tType) = T_Port n sLen (T_Array tNum tType)
-

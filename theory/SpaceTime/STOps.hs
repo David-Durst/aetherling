@@ -11,8 +11,8 @@ data MappableLeafOp =
   | Div TokenType
   deriving (Eq, Show)
 
-twoInSimplePorts t = portsFromTokens [("I0", 1, 1, t), ("I1", 1, 1, t)]
-oneOutSimplePort t = portsFromTokens [("O", 1, 1, t)]
+twoInSimplePorts t = [T_Port "I0" 1 (T_Array 1 t), T_Port "I1" 1 (T_Array 1 t)]
+oneOutSimplePort t = [T_Port "O" 1 (T_Array 1 t)]
 
 instance SpaceTime MappableLeafOp where
   space (Add t) = OWA (len t) (2 * len t)
@@ -44,8 +44,8 @@ instance SpaceTime MappableLeafOp where
 -- These are leaf nodes that need a custom implementation to be parallelized
 -- and cannot be used in a map, reduce, or iterate
 data NonMappableLeafOp =
-  Mem_Read TokenType
-  | Mem_Write TokenType
+  Mem_Read TokensType
+  | Mem_Write TokensType
   -- Array is constant produced, int is stream length
   | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
@@ -82,13 +82,13 @@ instance SpaceTime NonMappableLeafOp where
   util _ = 1.0
 
   inPortsType (Mem_Read _) = []
-  inPortsType (Mem_Write t) = oneOutSimplePort t
+  inPortsType (Mem_Write t) = [T_Port "I" 1 t]
   inPortsType (Constant_Int _ _) = []
   inPortsType (Constant_Bit _ _) = []
   inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
   inPortsType (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType]
 
-  outPortsType (Mem_Read t) = portsFromTokens [("I", 1, 1, t)]
+  outPortsType (Mem_Read t) = [T_Port "O" 1 t]
   outPortsType (Mem_Write _) = []
   outPortsType (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int)]
   outPortsType (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit)]
