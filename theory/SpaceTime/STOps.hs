@@ -157,16 +157,17 @@ instance SpaceTime SingleFiringOp where
 
 -- These are ops that require knowing the full stream length, cannot be 
 -- iterated
-data FixedFiringOp
-  MemRead {mrStreamLen :: Int, mrT :: PortType}
-  | MemWrite {mwStreamLen :: Int, mwT :: PortType}
+data FixedFiringOp =
+  MemRead {mrStreamLen :: Int, mrT :: TokenType}
+  | MemWrite {mwStreamLen :: Int, mwT :: TokenType}
   -- first Int is pixels per clock, second is window width, third int is 
   | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInStreamLen :: Int,
     lbInT :: TokenType}
+  deriving (Eq, Show)
 
 instance SpaceTime FixedFiringOp where
-  space (Mem_Read _ t) = OWA (len t) (len t)
-  space (Mem_Write _ t) = space (Mem_Read t)
+  space (MemRead _ t) = OWA (len t) (len t)
+  space (MemWrite n t) = space (MemRead n t)
   -- need counter for warmup, and registers for storing intermediate values
   -- registers account for wiring as some registers receive input wires,
   -- others get wires from other registers
@@ -174,18 +175,18 @@ instance SpaceTime FixedFiringOp where
     registerSpace [T_Array (p + w - 1) t]
 
   -- assuming reads are 
-  time (Mem_Read sLen _) = SCTime rwTime rwTime |* sLen
-  time (Mem_Write sLen _) = SCTime rwTime rwTime |* sLen
+  time (MemRead sLen _) = SCTime rwTime rwTime |* sLen
+  time (MemWrite sLen _) = SCTime rwTime rwTime |* sLen
   time (LineBuffer _ _ sLen _) = registerTime |* sLen
 
   util _ = 1.0
 
-  inPortsType (Mem_Read _ _) = []
-  inPortsType (Mem_Write sLen t) = [T_Port "I" sLen t]
+  inPortsType (MemRead _ _) = []
+  inPortsType (MemWrite sLen t) = [T_Port "I" sLen t]
   inPortsType (LineBuffer p _ sLen t) = [T_Port "I" sLen (T_Array p t)]
 
-  outPortsType (Mem_Read sLen t) = [T_Port "O" sLen t]
-  outPortsType (Mem_Write _ _) = []
+  outPortsType (MemRead sLen t) = [T_Port "O" sLen t]
+  outPortsType (MemWrite _ _) = []
   outPortsType (LineBuffer p w sLen t) =
     [T_Port "O" (sLen - ((w `ceilDiv` p) - 1)) (T_Array p (T_Array w t))]
 
@@ -208,25 +209,25 @@ instance (SpaceTime a) => SpaceTime (UtilOp a) where
 
 -- Int here is numIterations, min is 1 and no max
 data MultipleFiringOp = 
-  IterOp Int (Compose UtilOp (SingleFiringOp))
+  IterOp Int (Compose (UtilOp SingleFiringOp))
   | FixedOp (UtilOp (FixedFiringOp))
   deriving (Eq, Show)
 
-instance SpaceTime FixedFiringOp where
-  space (Iter numIters op) = (counterSpace numIters) |+| (space op)
+instance SpaceTime MultipleFiringOp where
+  space (IterOp numIters op) = (counterSpace numIters) |+| (space op)
   space (FixedOp op) = space op
 
-  time (Iter numIters op) = replicateTimeOverStream numIters (time op)
-  time (fixedOp op) = time op
+  time (IterOp numIters op) = replicateTimeOverStream numIters (time op)
+  time (FixedOp op) = time op
 
-  util (Iter _ op) = util op
+  util (IterOp _ op) = util op
   util (FixedOp op) = util op
 
-  inPortsType (Iter _ op) = inPortsType op
+  inPortsType (IterOp _ op) = inPortsType op
   inPortsType (FixedOp op) = inPortsType op
 
-  outPortsType (Iter _ op) = outPortsType op
+  outPortsType (IterOp _ op) = outPortsType op
   outPortsType (FixedOp op) = outPortsType op
 
-  numFirings (Iter n op) = n * (numFirings op)
+  numFirings (IterOp n op) = n * (numFirings op)
   numFirings (FixedOp op) = numFirings op
