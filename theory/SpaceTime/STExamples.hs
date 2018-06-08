@@ -4,13 +4,14 @@ import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 import SpaceTime.STOps
 
-exMemRead = Just (ComposeContainer $ UtilNonMapLeaf 0 $ Mem_Read $ T_Array 3 T_Int)
-exPart = Just (ComposeContainer $ UtilNonMapLeaf 0 $ StreamArrayController
-  (1, T_Array 3 T_Int) (1, T_Array 1 (T_Array 3 T_Int)))
-exLB = Just (ComposeContainer $ UtilNonMapLeaf 0 $ LineBuffer 1 3 (T_Array 3 T_Int))
-exFlat = Just (ComposeContainer $ UtilNonMapLeaf 0 $ StreamArrayController
-  (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
-exConst = Just (ComposeContainer $ UtilNonMapLeaf 2 $ Constant_Int 1 [1, 1, 1])
+exMemRead = Just (ComposeContainer $ FixedOp $ UtilOp 0 $ MemRead 10 $ T_Array 3 T_Int)
+exPart = Just (ComposeContainer $ ScalableOp $ UtilOp 0 $ IterOp 10 $ ComposeContainer $ UtilOp 0 $ 
+  SFNonMappable $ StreamArrayController (1, T_Array 3 T_Int) (1, T_Array 1 (T_Array 3 T_Int)))
+exLB = Just (ComposeContainer $ FixedOp $ UtilOp 0 $ LineBuffer 1 3 10 (T_Array 3 T_Int))
+exFlat = Just (ComposeContainer $ ScalableOp $ UtilOp 2 $ IterOp 8 $ ComposeContainer $ UtilOp 0 $
+  SFNonMappable $ StreamArrayController (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
+exConst = Just (ComposeContainer $ ScalableOp $ UtilOp 2 $ IterOp 8 $ ComposeContainer $ UtilOp 0 $
+  SFNonMappable $ Constant_Int 1 [1, 1, 1])
 
 conv1PxPerClock = 
   (
@@ -22,6 +23,8 @@ conv1PxPerClock =
     ) |&|
     exConst
   ) |>>=|
-  Just (ComposeContainer $ UtilHigherOrder 0 $ MapOp 3 3 $ LeafOp $ Add T_Int) |>>=|
-  Just (ComposeContainer $ UtilHigherOrder 0 $ ReduceOp 3 3 $ LeafOp $ Add T_Int) |>>=|
-  Just (ComposeContainer $ UtilNonMapLeaf 0 $ Mem_Write T_Int)
+  Just (ComposeContainer $ ScalableOp $ UtilOp 2 $ IterOp 8 $ ComposeContainer $ 
+    UtilOp 0 $ SFHigherOrder $ MapOp 3 3 $ LeafOp $ Add T_Int) |>>=|
+  Just (ComposeContainer $ ScalableOp $ UtilOp 2 $ IterOp 8 $ ComposeContainer $ 
+    UtilOp 0 $ SFHigherOrder $ ReduceOp 3 3 $ LeafOp $ Add T_Int) |>>=|
+  Just (ComposeContainer $ FixedOp $ UtilOp 0 $ MemWrite 8 $ T_Int)
