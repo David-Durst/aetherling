@@ -207,27 +207,37 @@ instance (SpaceTime a) => SpaceTime (UtilOp a) where
   outPortsType (UtilOp _ op) = outPortsType op
   numFirings _ = 1
 
+data IterOp = IterOp Int (Compose (UtilOp SingleFiringOp)) deriving (Eq, Show)
+
+instance SpaceTime IterOp where
+  space (IterOp numIters op) = (counterSpace numIters) |+| (space op)
+  time (IterOp numIters op) = replicateTimeOverStream numIters (time op)
+  util (IterOp _ op) = util op
+  inPortsType (IterOp _ op) = inPortsType op
+  outPortsType (IterOp _ op) = outPortsType op
+  numFirings (IterOp n op) = n * (numFirings op)
+
 -- Int here is numIterations, min is 1 and no max
 data MultipleFiringOp = 
-  IterOp Int (Compose (UtilOp SingleFiringOp))
+  ScalableOp (UtilOp (IterOp))
   | FixedOp (UtilOp (FixedFiringOp))
   deriving (Eq, Show)
 
 instance SpaceTime MultipleFiringOp where
-  space (IterOp numIters op) = (counterSpace numIters) |+| (space op)
+  space (ScalableOp op) = space op
   space (FixedOp op) = space op
 
-  time (IterOp numIters op) = replicateTimeOverStream numIters (time op)
+  time (ScalableOp op) = time op
   time (FixedOp op) = time op
 
-  util (IterOp _ op) = util op
+  util (ScalableOp op) = util op
   util (FixedOp op) = util op
 
-  inPortsType (IterOp _ op) = inPortsType op
+  inPortsType (ScalableOp op) = inPortsType op
   inPortsType (FixedOp op) = inPortsType op
 
-  outPortsType (IterOp _ op) = outPortsType op
+  outPortsType (ScalableOp op) = outPortsType op
   outPortsType (FixedOp op) = outPortsType op
 
-  numFirings (IterOp n op) = n * (numFirings op)
+  numFirings (ScalableOp op) = numFirings op
   numFirings (FixedOp op) = numFirings op
