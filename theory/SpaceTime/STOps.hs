@@ -199,7 +199,7 @@ floatUsedClocks :: (SpaceTime a) => a -> Float
 floatUsedClocks = fromIntegral . seqTime . time
 
 instance (SpaceTime a) => SpaceTime (UtilOp a) where
-  space (UtilOp _ op) = space op
+  space uOp@(UtilOp _ op) = space op |+| counterSpace (seqTime $ time uOp)
   time (UtilOp unusedClocks op) = time op |+| SCTime unusedClocks 0
   util (UtilOp unusedClocks op) = floatUsedClocks op /
     (floatUsedClocks op + fromIntegral unusedClocks)
