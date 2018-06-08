@@ -213,8 +213,8 @@ instance SpaceTime IterOp where
   space (IterOp numIters op) = (counterSpace numIters) |+| (space op)
   time (IterOp numIters op) = replicateTimeOverStream numIters (time op)
   util (IterOp _ op) = util op
-  inPortsType (IterOp _ op) = inPortsType op
-  outPortsType (IterOp _ op) = outPortsType op
+  inPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ inPortsType op
+  outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
   numFirings (IterOp n op) = n * (numFirings op)
 
 -- Int here is numIterations, min is 1 and no max
