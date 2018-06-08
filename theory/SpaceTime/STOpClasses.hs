@@ -62,11 +62,15 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
 
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
-(|.|) (Just op0@(ComposeSeq ops0)) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
-  Just $ ComposeSeq $ ops1 ++ ops0
-(|.|) (Just op0@(ComposeSeq ops0)) (Just op1) | canComposeSeq op1 op0 =
+-- when checking if can compose, need to match up individual elements, not whole list
+-- ex. If each component is operating at one token per 10 clocks, sequence of 4
+-- parts will take 40 clocks, but should be able to add another component 
+-- operating at one token per 10 clocks to get a sequence of 5 parts at 50 clocks
+(|.|) (Just op0@(ComposeSeq ops0)) (Just op1@(ComposeSeq ops1)) 
+  | canComposeSeq (last ops1) (head ops0) = Just $ ComposeSeq $ ops1 ++ ops0
+(|.|) (Just op0@(ComposeSeq ops0)) (Just op1) | canComposeSeq op1 (head ops0) =
   Just $ ComposeSeq $ [op1] ++ ops0
-(|.|) (Just op0) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
+(|.|) (Just op0) (Just op1@(ComposeSeq ops1)) | canComposeSeq (last ops1) op0 =
   Just $ ComposeSeq $ ops1 ++ [op0]
 (|.|) (Just op0) (Just op1) | canComposeSeq op1 op0 =
   Just $ ComposeSeq $ [op1] ++ [op0]
