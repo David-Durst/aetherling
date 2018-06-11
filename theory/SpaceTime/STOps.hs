@@ -9,11 +9,10 @@ data LeafOp =
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
-  MemRead {mrStreamLen :: Int, mrT :: TokenType}
+  | MemRead {mrStreamLen :: Int, mrT :: TokenType}
   | MemWrite {mwStreamLen :: Int, mwT :: TokenType}
   -- first Int is pixels per clock, second is window width, third int is 
-  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInStreamLen :: Int,
-    lbInT :: TokenType}
+  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
   -- Array is constant produced, int is stream length
   | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
@@ -83,24 +82,22 @@ instance SpaceTime LeafOp where
   outPortsType (MemWrite _ _) = []
   -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
   -- including warmup and shutdown
-  outPortsType (LineBuffer p w sLen t) = [T_Port "O" 1 (T_Array p (T_Array w t))]
+  outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t))]
   outPortsType (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int)]
   outPortsType (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit)]
   outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
   
   numFirings _ = 1
 
-  elementsInPipeline _ = 1
-
 data SingleFiringOp = 
   -- First Int is parallelism, second is total number elements reducing
-  MapOp Int Int HigherOrderOp
+  MapOp Int Int SingleFiringOp
   -- First Int is parallelism, second is total number elements reducing
-  | ReduceOp Int Int HigherOrderOp
+  | ReduceOp Int Int SingleFiringOp
   | SFLeafOp LeafOp
   deriving (Eq, Show)
 
-instance SpaceTime SingleFiringNode where
+instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
   space (MapOp pEl _ op) = (space op) |* pEl
   -- area of reduce is area of reduce tree, with area for register for partial
@@ -111,14 +108,14 @@ instance SpaceTime SingleFiringNode where
     reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
     |+| (counterSpace $ seqTime $ time rOp)
     where reduceTreeSpace = space (ReduceOp pEl pEl op)
-  space (LeafOp op) = space op
+  space (SFLeafOp op) = space op
 
   time (MapOp pEl totEl op) = replicateTimeOverStream (totEl `ceilDiv` pEl) (time op)
   time (ReduceOp pEl totEl op) | pEl == totEl = (time op) |* (ceilLog pEl)
   time (ReduceOp pEl totEl op) =
     replicateTimeOverStream (totEl `ceilDiv` pEl) (reduceTreeTime |+| (time op) |+| registerTime)
     where reduceTreeTime = time (ReduceOp pEl pEl op)
-  time (LeafOp op) = time op
+  time (SFLeafOp op) = time op
 
   util _ = 1
 
@@ -126,12 +123,12 @@ instance SpaceTime SingleFiringNode where
     scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
   inPortsType (ReduceOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
-  inPortsType (LeafOp op) = inPortsType op
+  inPortsType (SFLeafOp op) = inPortsType op
 
   outPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (outPortsType op)
   outPortsType (ReduceOp _ _ op) = outPortsType op
-  outPortsType (LeafOp op) = outPortsType op
+  outPortsType (SFLeafOp op) = outPortsType op
 
   numFirings _ = 1
 
@@ -161,6 +158,6 @@ instance SpaceTime IterOp where
   numFirings (IterOp n op) = n * (numFirings op)
 
 fullUtilSFToIter :: Int -> SingleFiringOp -> Pipeline
-fullUtilIter n sfOp = ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp
+fullUtilSFToIter n sfOp = Pipeline $ ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp
 
 newtype Pipeline = Pipeline (Compose IterOp)
