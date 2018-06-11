@@ -4,55 +4,41 @@ import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 
 -- These are leaf nodes that can be used in a higher order operator
-data MappableLeafOp =
+data LeafOp =
   Add TokenType
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
-  deriving (Eq, Show)
-
-twoInSimplePorts t = [T_Port "I0" 1 t, T_Port "I1" 1 t]
-oneOutSimplePort t = [T_Port "O" 1 t]
-
-instance SpaceTime MappableLeafOp where
-  space (Add t) = OWA (len t) (2 * len t)
-  space (Sub t) = space (Add t)
-  space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
-    where OWA _ wireArea = space (Add t)
-  space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
-    where OWA _ wireArea = space (Add t)
-
-  time (Add t) = SCTime 0 1
-  time (Sub t) = SCTime 0 1
-  time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
-  time (Div t) = SCTime 0 divSpaceTimeIncreaser
-
-  util _ = 1.0
-
-  inPortsType (Add t) = twoInSimplePorts t
-  inPortsType (Sub t) = twoInSimplePorts t
-  inPortsType (Mul t) = twoInSimplePorts t
-  inPortsType (Div t) = twoInSimplePorts t
-
-  outPortsType (Add t) = oneOutSimplePort t
-  outPortsType (Sub t) = oneOutSimplePort t
-  outPortsType (Mul t) = oneOutSimplePort t
-  outPortsType (Div t) = oneOutSimplePort t
-  
-  numFirings _ = 1
-
--- These are leaf nodes that need a custom implementation to be parallelized
--- and cannot be used in a map, reduce, or iterate
-data NonMappableLeafOp =
+  MemRead {mrStreamLen :: Int, mrT :: TokenType}
+  | MemWrite {mwStreamLen :: Int, mwT :: TokenType}
+  -- first Int is pixels per clock, second is window width, third int is 
+  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInStreamLen :: Int,
+    lbInT :: TokenType}
   -- Array is constant produced, int is stream length
-  Constant_Int Int [Int]
+  | Constant_Int Int [Int]
   -- Array is constant produced, int is stream length
   | Constant_Bit Int [Bool]
   -- first pair is input stream length and tokens per stream element, second is output
   | StreamArrayController (Int, TokenType) (Int, TokenType)
   deriving (Eq, Show)
 
-instance SpaceTime NonMappableLeafOp where
+twoInSimplePorts t = [T_Port "I0" 1 t, T_Port "I1" 1 t]
+oneOutSimplePort t = [T_Port "O" 1 t]
+
+instance SpaceTime LeafOp where
+  space (Add t) = OWA (len t) (2 * len t)
+  space (Sub t) = space (Add t)
+  space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
+    where OWA _ wireArea = space (Add t)
+  space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
+    where OWA _ wireArea = space (Add t)
+  space (MemRead _ t) = OWA (len t) (len t)
+  space (MemWrite n t) = space (MemRead n t)
+  -- need registers for storing intermediate values
+  -- registers account for wiring as some registers receive input wires,
+  -- others get wires from other registers
+  -- add |+| counterSpace (p `ceilDiv` w) when accounting for warmup counter
+  space (LineBuffer p w t) = registerSpace [T_Array (p + w - 1) t]
   space (Constant_Int n consts) = OWA (len (T_Array n T_Int)) 0
   space (Constant_Bit n consts) = OWA (len (T_Array n T_Bit)) 0
   -- just a pass through, so will get removed by CoreIR
@@ -62,7 +48,13 @@ instance SpaceTime NonMappableLeafOp where
   -- entire input
   space (StreamArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
 
-  -- assuming reads are 
+  time (Add t) = SCTime 0 1
+  time (Sub t) = SCTime 0 1
+  time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
+  time (Div t) = SCTime 0 divSpaceTimeIncreaser
+  time (MemRead sLen _) = SCTime rwTime rwTime |* sLen
+  time (MemWrite sLen _) = SCTime rwTime rwTime |* sLen
+  time (LineBuffer _ _ _) = registerTime
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
   time (StreamArrayController (inSLen, _) (outSLen, _)) | 
@@ -72,25 +64,43 @@ instance SpaceTime NonMappableLeafOp where
 
   util _ = 1.0
 
+  inPortsType (Add t) = twoInSimplePorts t
+  inPortsType (Sub t) = twoInSimplePorts t
+  inPortsType (Mul t) = twoInSimplePorts t
+  inPortsType (Div t) = twoInSimplePorts t
+  inPortsType (MemRead _ _) = []
+  inPortsType (MemWrite sLen t) = [T_Port "I" sLen t]
+  inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
   inPortsType (Constant_Int _ _) = []
   inPortsType (Constant_Bit _ _) = []
   inPortsType (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType]
 
+  outPortsType (Add t) = oneOutSimplePort t
+  outPortsType (Sub t) = oneOutSimplePort t
+  outPortsType (Mul t) = oneOutSimplePort t
+  outPortsType (Div t) = oneOutSimplePort t
+  outPortsType (MemRead sLen t) = [T_Port "O" sLen t]
+  outPortsType (MemWrite _ _) = []
+  -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
+  -- including warmup and shutdown
+  outPortsType (LineBuffer p w sLen t) = [T_Port "O" 1 (T_Array p (T_Array w t))]
   outPortsType (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int)]
   outPortsType (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit)]
   outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
-
+  
   numFirings _ = 1
 
-data HigherOrderOp = 
+  elementsInPipeline _ = 1
+
+data SingleFiringOp = 
   -- First Int is parallelism, second is total number elements reducing
   MapOp Int Int HigherOrderOp
   -- First Int is parallelism, second is total number elements reducing
   | ReduceOp Int Int HigherOrderOp
-  | LeafOp MappableLeafOp
+  | SFLeafOp LeafOp
   deriving (Eq, Show)
 
-instance SpaceTime HigherOrderOp where
+instance SpaceTime SingleFiringNode where
   -- area of parallel map is area of all the copies
   space (MapOp pEl _ op) = (space op) |* pEl
   -- area of reduce is area of reduce tree, with area for register for partial
@@ -125,73 +135,6 @@ instance SpaceTime HigherOrderOp where
 
   numFirings _ = 1
 
-data SingleFiringOp =
-  SFHigherOrder HigherOrderOp
-  | SFMappable MappableLeafOp
-  | SFNonMappable NonMappableLeafOp
-  deriving (Eq, Show)
-
-instance SpaceTime SingleFiringOp where
-  space (SFHigherOrder op) = space op
-  space (SFMappable op) = space op
-  space (SFNonMappable op) = space op
-
-  time (SFHigherOrder op) = time op
-  time (SFMappable op) = time op
-  time (SFNonMappable op) = time op
-
-  util (SFHigherOrder op) = util op
-  util (SFMappable op) = util op
-  util (SFNonMappable op) = util op
-
-  inPortsType (SFHigherOrder op) = inPortsType op
-  inPortsType (SFMappable op) = inPortsType op
-  inPortsType (SFNonMappable op) = inPortsType op
-
-  outPortsType (SFHigherOrder op) = outPortsType op
-  outPortsType (SFMappable op) = outPortsType op
-  outPortsType (SFNonMappable op) = outPortsType op
-
-  numFirings _ = 1
-
-
--- These are ops that require knowing the full stream length, cannot be 
--- iterated
-data FixedFiringOp =
-  MemRead {mrStreamLen :: Int, mrT :: TokenType}
-  | MemWrite {mwStreamLen :: Int, mwT :: TokenType}
-  -- first Int is pixels per clock, second is window width, third int is 
-  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInStreamLen :: Int,
-    lbInT :: TokenType}
-  deriving (Eq, Show)
-
-instance SpaceTime FixedFiringOp where
-  space (MemRead _ t) = OWA (len t) (len t)
-  space (MemWrite n t) = space (MemRead n t)
-  -- need counter for warmup, and registers for storing intermediate values
-  -- registers account for wiring as some registers receive input wires,
-  -- others get wires from other registers
-  space (LineBuffer p w _ t) = counterSpace (p `ceilDiv` w) |+| 
-    registerSpace [T_Array (p + w - 1) t]
-
-  -- assuming reads are 
-  time (MemRead sLen _) = SCTime rwTime rwTime |* sLen
-  time (MemWrite sLen _) = SCTime rwTime rwTime |* sLen
-  time (LineBuffer _ _ sLen _) = registerTime |* sLen
-
-  util _ = 1.0
-
-  inPortsType (MemRead _ _) = []
-  inPortsType (MemWrite sLen t) = [T_Port "I" sLen t]
-  inPortsType (LineBuffer p _ sLen t) = [T_Port "I" sLen (T_Array p t)]
-
-  outPortsType (MemRead sLen t) = [T_Port "O" sLen t]
-  outPortsType (MemWrite _ _) = []
-  outPortsType (LineBuffer p w sLen t) =
-    [T_Port "O" (sLen - ((w `ceilDiv` p) - 1)) (T_Array p (T_Array w t))]
-
-  numFirings _ = 1
-
 -- Int is number of unutilized clocks
 data UtilOp a = UtilOp Int a deriving (Eq, Show)
 
@@ -217,27 +160,7 @@ instance SpaceTime IterOp where
   outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
   numFirings (IterOp n op) = n * (numFirings op)
 
--- Int here is numIterations, min is 1 and no max
-data MultipleFiringOp = 
-  ScalableOp (UtilOp (IterOp))
-  | FixedOp (UtilOp (FixedFiringOp))
-  deriving (Eq, Show)
+fullUtilSFToIter :: Int -> SingleFiringOp -> Pipeline
+fullUtilIter n sfOp = ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp
 
-instance SpaceTime MultipleFiringOp where
-  space (ScalableOp op) = space op
-  space (FixedOp op) = space op
-
-  time (ScalableOp op) = time op
-  time (FixedOp op) = time op
-
-  util (ScalableOp op) = util op
-  util (FixedOp op) = util op
-
-  inPortsType (ScalableOp op) = inPortsType op
-  inPortsType (FixedOp op) = inPortsType op
-
-  outPortsType (ScalableOp op) = outPortsType op
-  outPortsType (FixedOp op) = outPortsType op
-
-  numFirings (ScalableOp op) = numFirings op
-  numFirings (FixedOp op) = numFirings op
+newtype Pipeline = Pipeline (Compose IterOp)
