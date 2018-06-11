@@ -15,6 +15,12 @@ class SpaceTime a where
   inPortsType :: a -> [PortType]
   outPortsType :: a -> [PortType]
   numFirings :: a -> Int
+  -- the number of clocks per firing of each stage in pipeline
+  -- needs to match up for connecting two piplines
+  -- This can't be calculated using time and numFirings as don't know how
+  -- many stages in a nested pipeline where a compose for a single firing is 
+  -- contained in a multifiring node which is in another compose
+  pipelineTime :: a -> Int
 
 -- is there a better utilization than weighted by operator area
 utilWeightedByArea :: (SpaceTime a) => [a] -> Float
@@ -60,6 +66,14 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
 
   numFirings _ = 1
 
+  pipelineTime (ComposeContainer op) = pipelineTime op
+  -- need max pipelineTime as can have combinational op with 0 time
+  pipelineTime (ComposePar ops) = maximum $ map pipelineTime ops
+  pipelineTime (ComposeSeq ops) = maximum $ map pipelineTime ops
+
+instance (SpaceTime a) => Pipelined a where
+  pipelineTime (ComposeContainer op) = 
+
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
 -- when checking if can compose, need to match up individual elements, not whole list
@@ -67,10 +81,10 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
 -- parts will take 40 clocks, but should be able to add another component 
 -- operating at one token per 10 clocks to get a sequence of 5 parts at 50 clocks
 (|.|) (Just op0@(ComposeSeq ops0)) (Just op1@(ComposeSeq ops1)) 
-  | canComposeSeq (last ops1) (head ops0) = Just $ ComposeSeq $ ops1 ++ ops0
-(|.|) (Just op0@(ComposeSeq ops0)) (Just op1) | canComposeSeq op1 (head ops0) =
+  | canComposeSeq op1 op0 = Just $ ComposeSeq $ ops1 ++ ops0
+(|.|) (Just op0@(ComposeSeq ops0)) (Just op1) | canComposeSeq op1 op0 =
   Just $ ComposeSeq $ [op1] ++ ops0
-(|.|) (Just op0) (Just op1@(ComposeSeq ops1)) | canComposeSeq (last ops1) op0 =
+(|.|) (Just op0) (Just op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 =
   Just $ ComposeSeq $ ops1 ++ [op0]
 (|.|) (Just op0) (Just op1) | canComposeSeq op1 op0 =
   Just $ ComposeSeq $ [op1] ++ [op0]
@@ -97,10 +111,9 @@ canComposeSeq :: (SpaceTime a) => a -> a -> Bool
 
 -- only join two sequential nodes if token types match, ports do same number of tokens
 -- over all firings and streams per firing, and if same number of clock cycles
-canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
+canCompose op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
   -- this checks both token types and numTokens over all firing/stream combos
-  portsScaledByFiringPerOp outPortsType [op0] == portsScaledByFiringPerOp inPortsType [op1] &&
-  (seqTime . time) op0 == (seqTime . time) op1
+  outPortsType op0 == outPortsType op1 && pipelineTime op0 == pipelineTime op1
 
 -- can join a combinational node with another node if they do the same amount
 -- every clock cycle
@@ -109,7 +122,8 @@ canComposeSeq op0 op1 = ((map pTType) . outPortsType) op0 ==
 
 canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes in parallel if same number of clocks
-canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1
+canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1 && 
+  pipelineTime op0 == pipelineTime op1
 
 -- Since can compose things with different numbers of firings as long as total 
 -- numbers of tokens and time, need composes to each have 1 firing and put
