@@ -61,6 +61,12 @@ instance SpaceTime LeafOp where
   time (StreamArrayController (inSLen, _) (outSLen, _)) = registerTime |* 
     lcm inSLen outSLen
 
+  -- what's correct here for streamarraycontroller for non-zero seqtime?
+  -- for everythign else, emitting something every clock if sequential, and 
+  -- no impact on clocks if combinational
+  pipelineTime op | seqTime $ time op > 0 = 1
+  pipelineTime op = 0
+
   util _ = 1.0
 
   inPortsType (Add t) = twoInSimplePorts t
@@ -88,11 +94,13 @@ instance SpaceTime LeafOp where
   outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
   
   numFirings _ = 1
+  
 
 data SingleFiringOp = 
   -- First Int is parallelism, second is total number elements reducing
   MapOp Int Int SingleFiringOp
   -- First Int is parallelism, second is total number elements reducing
+  -- can't reduce a mem_read
   | ReduceOp Int Int SingleFiringOp
   | SFLeafOp LeafOp
   deriving (Eq, Show)
@@ -116,6 +124,11 @@ instance SpaceTime SingleFiringOp where
     replicateTimeOverStream (totEl `ceilDiv` pEl) (reduceTreeTime |+| (time op) |+| registerTime)
     where reduceTreeTime = time (ReduceOp pEl pEl op)
   time (SFLeafOp op) = time op
+
+  pipelineTime (MapOp _ _ op) = pipelineTime op
+  -- this only works as can't reduce the ops like memread that have complex time
+  pipelineTime (ReduceOp _ _ op) = seqTime $ time op
+  pipelineTime (SFLeafOp op) = pipelineTime op
 
   util _ = 1
 
@@ -141,6 +154,7 @@ floatUsedClocks = fromIntegral . seqTime . time
 instance (SpaceTime a) => SpaceTime (UtilOp a) where
   space uOp@(UtilOp _ op) = space op |+| counterSpace (seqTime $ time uOp)
   time (UtilOp unusedClocks op) = time op |+| SCTime unusedClocks 0
+  pipelineTime (UtilOp unusedClocks op) = unusedClocks + pipelineTime op
   util (UtilOp unusedClocks op) = floatUsedClocks op /
     (floatUsedClocks op + fromIntegral unusedClocks)
   inPortsType (UtilOp _ op) = inPortsType op
@@ -152,6 +166,7 @@ data IterOp = IterOp Int (Compose (UtilOp SingleFiringOp)) deriving (Eq, Show)
 instance SpaceTime IterOp where
   space (IterOp numIters op) = (counterSpace numIters) |+| (space op)
   time (IterOp numIters op) = replicateTimeOverStream numIters (time op)
+  pipelineTime (IterOp _ op) = pipelineTime op
   util (IterOp _ op) = util op
   inPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ inPortsType op
   outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
