@@ -146,7 +146,7 @@ instance SpaceTime SingleFiringOp where
 
   numFirings _ = 1
 
-data (SpaceTime a) => IterOp a = 
+data IterOp a = 
   -- First Int is num iterations, second is num iterations active
   IterOp Int Int a
   -- Int is number of clocks doing nothing, first is inports, second is outports
@@ -156,28 +156,28 @@ data (SpaceTime a) => IterOp a =
 floatUsedClocks :: (SpaceTime a) => a -> Float
 floatUsedClocks = fromIntegral . seqTime . time
 
-instance (SpaceTime a) => SpaceTime (UtilOp a) where
+instance (SpaceTime a) => SpaceTime (IterOp a) where
   space iOp@(IterOp numIters _ op) = space op |+| counterSpace (seqTime $ time iOp)
   space (IterTomb numClocks iPorts _) = counterSpace numClocks |+| (registerSpace $ map pTType iPorts)
 
   time (IterOp numIters _ op) = replicateTimeOverStream numIters (time op)
-  time (IterTomb numClocks _ _) = numClocks
+  time (IterTomb numClocks _ _) = SCTime numClocks 0
 
   pipelineTime (IterOp numIters _ op) = pipelineTime op |* numIters
   pipelineTime (IterTomb numClocks _ _) = PTime 1 numClocks
 
-  util (UtilOp totalIters usedIters op) = floatUsedClocks op * (fromIntegral usedIters) /
+  util (IterOp totalIters usedIters op) = floatUsedClocks op * (fromIntegral usedIters) /
     (fromIntegral $ totalIters + usedIters)
-  util (UtilTomb _ _ _) = 0
+  util (IterTomb _ _ _) = 0
 
-  inPortsType (UtilOp _ usedIters op) = scalePortsStreamLens usedIters $ inPortsType op
-  inPortsType (UtilTomb _ iPorts _) = iPorts
+  inPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPortsType op
+  inPortsType (IterTomb _ iPorts _) = iPorts
 
-  outPortsType (UtilOp _ usedIters op) = scalePortsStreamLens usedIters $ outPortsType op
-  inPortsType (UtilTomb _ oPorts _) = oPorts
+  outPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ outPortsType op
+  outPortsType (IterTomb _ oPorts _) = oPorts
 
-  numFirings (UtilOp _ usedIters op) = usedIters * numFirings op
-  numFirings (UtilTomb _ _ _) = 1
+  numFirings (IterOp _ usedIters op) = usedIters * numFirings op
+  numFirings (IterTomb _ _ _) = 1
 
-fullUtilSFToIter :: Int -> SingleFiringOp -> Compose (IterOp (Compose (IterOp SingleFiringOp)))
-fullUtilSFToIter n sfOp = ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp
+fullIterSFToIter :: Int -> Int -> SingleFiringOp -> Compose (IterOp (Compose (IterOp SingleFiringOp)))
+fullIterSFToIter t u sfOp = ComposeContainer $ IterOp t u $ ComposeContainer $ IterOp 1 1 sfOp
