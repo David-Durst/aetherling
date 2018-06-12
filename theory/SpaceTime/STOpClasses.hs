@@ -92,7 +92,7 @@ instance SpaceTime Compose where
   pipelineTime (ComposeSeq (hd:tl)) = foldl (|+|) (pipelineTime hd) $ map pipelineTime tl
 
 -- This is for making ComposeSeq
-(|.|) :: Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
+(|.|) :: Maybe Compose -> Maybe Compose -> Maybe Compose
 -- when checking if can compose, need to match up individual elements, not whole list
 -- ex. If each component is operating at one token per 10 clocks, sequence of 4
 -- parts will take 40 clocks, but should be able to add another component 
@@ -108,7 +108,7 @@ instance SpaceTime Compose where
 (|.|) _ _ = Nothing
 
 -- This is for making ComposePar
-(|&|) :: Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
+(|&|) :: Maybe Compose -> Maybe Compose -> Maybe Compose
 (|&|) (Just op0@(ComposePar ops0)) (Just op1@(ComposePar ops1)) | canComposePar op1 op0 =
   Just $ ComposePar $ ops0 ++ ops1
 (|&|) (Just op0@(ComposePar ops0)) (Just op1) | canComposePar op1 op0 =
@@ -121,7 +121,7 @@ instance SpaceTime Compose where
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
-(|>>=|) :: Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
+(|>>=|) :: Maybe Compose -> Maybe Compose -> Maybe Compose
 (|>>=|) op0 op1 = op1 |.| op0
 
 canComposeSeq :: (SpaceTime a) => a -> a -> Bool
