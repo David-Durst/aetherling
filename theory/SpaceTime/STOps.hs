@@ -172,7 +172,5 @@ instance SpaceTime IterOp where
   outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
   numFirings (IterOp n op) = n * (numFirings op)
 
-fullUtilSFToIter :: Int -> SingleFiringOp -> Pipeline
-fullUtilSFToIter n sfOp = Pipeline $ ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp
-
-newtype Pipeline = Pipeline (Compose IterOp)
+fullUtilSFToIter :: Int -> SingleFiringOp -> Compose IterOp
+fullUtilSFToIter n sfOp = ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp
