@@ -20,7 +20,7 @@ class SpaceTime a where
   -- This can't be calculated using time and numFirings as don't know how
   -- many stages in a nested pipeline where a compose for a single firing is 
   -- contained in a multifiring node which is in another compose
-  pipelineTime :: a -> Int
+  pipelineTime :: a -> PipelineTime
 
 -- is there a better utilization than weighted by operator area
 utilWeightedByArea :: (SpaceTime a) => [a] -> Float
@@ -74,11 +74,13 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   pipelineTime (ComposeSeq ops) = maximum $ map pipelineTime ops
 
 -- This walks a tree of nested composes
-pipelineTimeWalker :: (SpaceTime a) => a -> Int
-pipelineTimeWalker (ComposeContainer op) = pipelineTimeWalker op
+--pipelineTimeWalker :: SpaceTime a => Compose a -> Int
+pipelineTimeWalker (ComposeContainer op@(ComposeContainer _)) = pipelineTimeWalker op
+pipelineTimeWalker (ComposeContainer op@(ComposePar _)) = pipelineTimeWalker op
+pipelineTimeWalker (ComposeContainer op@(ComposeSeq _)) = pipelineTimeWalker op
+pipelineTimeWalker (ComposeContainer op) = pipelineTime op
 pipelineTimeWalker (ComposePar (op:_)) = pipelineTimeWalker op
---pipelineTimeWalker (ComposeSeq ops) = foldl (+) 0 $ map pipelineTimeWalker ops
-pipelineTimeWalker op = pipelineTime op
+pipelineTimeWalker (ComposeSeq ops) = foldl (+) 0 $ map pipelineTimeWalker ops
 
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)

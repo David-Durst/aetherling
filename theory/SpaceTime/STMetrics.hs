@@ -75,3 +75,12 @@ instance MergeOrScale SeqCombTime where
 replicateTimeOverStream :: Int -> SeqCombTime -> SeqCombTime
 replicateTimeOverStream i t@(SCTime s _) | s == 0 = t |+| (registerTime |* i)
 replicateTimeOverStream i t@(SCTime s _) = t |* i
+
+data PipelineTime = PTime {numStages :: Int, numClocks :: Int} deriving (Eq, Show)
+
+-- assuming only making valid merges, come back later to deal with other cases
+instance MergeOrScale PipelineTime where
+  addId = PTime 0 0
+  (|+|) (PTime n0 c0) (PTime n1 _) = PTime (n0 + n1) c0
+  (|*) (PTime n c) i = PTime (n * i) c
+  (|/) (PTime n c) i = PTime (n `ceilDiv` i) c
