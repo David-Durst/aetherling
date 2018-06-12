@@ -71,9 +71,6 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   pipelineTime (ComposePar ops) = maximum $ map pipelineTime ops
   pipelineTime (ComposeSeq ops) = maximum $ map pipelineTime ops
 
-instance (SpaceTime a) => Pipelined a where
-  pipelineTime (ComposeContainer op) = 
-
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
 -- when checking if can compose, need to match up individual elements, not whole list

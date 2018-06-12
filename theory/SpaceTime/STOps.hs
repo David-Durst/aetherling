@@ -64,7 +64,7 @@ instance SpaceTime LeafOp where
   -- what's correct here for streamarraycontroller for non-zero seqtime?
   -- for everythign else, emitting something every clock if sequential, and 
   -- no impact on clocks if combinational
-  pipelineTime op | seqTime $ time op > 0 = 1
+  pipelineTime op | (seqTime $ time op) > 0 = 1
   pipelineTime op = 0
 
   util _ = 1.0
