@@ -49,7 +49,7 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   time (ComposePar ops) = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
   time (ComposeSeq ops@(hd:tl)) = 
-    SCTime ((seqTime . time) hd + (foldl (+) 0 $ map pipelineTimeWalker tl)) maxCombTime
+    SCTime ((seqTime . time) hd + (foldl (+) 0 $ map pipelineTime tl)) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
 
   util (ComposeContainer op) = util op
@@ -69,18 +69,8 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   numFirings _ = 1
 
   pipelineTime (ComposeContainer op) = pipelineTime op
-  -- need max pipelineTime as can have combinational op with 0 time
-  pipelineTime (ComposePar ops) = maximum $ map pipelineTime ops
-  pipelineTime (ComposeSeq ops) = maximum $ map pipelineTime ops
-
--- This walks a tree of nested composes
---pipelineTimeWalker :: SpaceTime a => Compose a -> Int
-pipelineTimeWalker (ComposeContainer op@(ComposeContainer _)) = pipelineTimeWalker op
-pipelineTimeWalker (ComposeContainer op@(ComposePar _)) = pipelineTimeWalker op
-pipelineTimeWalker (ComposeContainer op@(ComposeSeq _)) = pipelineTimeWalker op
-pipelineTimeWalker (ComposeContainer op) = pipelineTime op
-pipelineTimeWalker (ComposePar (op:_)) = pipelineTimeWalker op
-pipelineTimeWalker (ComposeSeq ops) = foldl (+) 0 $ map pipelineTimeWalker ops
+  pipelineTime (ComposePar (hd:_)) = pipelineTime hd
+  pipelineTime (ComposeSeq (hd:tl)) = foldl (|+|) (pipelineTime hd) $ map pipelineTime ops
 
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)

@@ -64,8 +64,8 @@ instance SpaceTime LeafOp where
   -- what's correct here for streamarraycontroller for non-zero seqtime?
   -- for everythign else, emitting something every clock if sequential, and 
   -- no impact on clocks if combinational
-  pipelineTime op | (seqTime $ time op) > 0 = 1
-  pipelineTime op = 0
+  pipelineTime op | (seqTime $ time op) > 0 = PTime 1 1
+  pipelineTime op = PTime 1 0
 
   util _ = 1.0
 
@@ -126,8 +126,9 @@ instance SpaceTime SingleFiringOp where
   time (SFLeafOp op) = time op
 
   pipelineTime (MapOp _ _ op) = pipelineTime op
-  -- this only works as can't reduce the ops like memread that have complex time
-  pipelineTime (ReduceOp _ _ op) = seqTime $ time op
+  pipelineTime (ReduceOp pEl totEl op) | pEl == totEl = (pipelineTime op) |* (ceilLog pEl)
+  pipelineTime (ReduceOp pEl totEl op) = reduceTreeTime |* (totEl `ceilDiv` pEl)
+    where reduceTreeTime = pipelineTime (ReduceOp pEl pEl op)
   pipelineTime (SFLeafOp op) = pipelineTime op
 
   util _ = 1
@@ -145,11 +146,53 @@ instance SpaceTime SingleFiringOp where
 
   numFirings _ = 1
 
--- Int is number of unutilized clocks
-data UtilOp a = UtilOp Int a deriving (Eq, Show)
+data (SpaceTime a) => IterOp a = 
+  -- First Int is num iterations, second is num iterations active
+  IterOp Int Int a
+  -- Int is number of clocks doing nothing, first is inports, second is outports
+  | IterTomb Int [PortType] [PortType]
+  deriving (Eq, Show)
 
 floatUsedClocks :: (SpaceTime a) => a -> Float
 floatUsedClocks = fromIntegral . seqTime . time
+
+instance (SpaceTime a) => SpaceTime (UtilOp a) where
+  space iOp@(IterOp numIters _ op) = space op |+| counterSpace (seqTime $ time iOp)
+  space (IterTomb numClocks iPorts _) = counterSpace numClocks |+| (registerSpace $ map pTType iPorts)
+
+  time (IterOp numIters _ op) = replicateTimeOverStream numIters (time op)
+  time (IterTomb numClocks _ _) = numClocks
+
+  pipelineTime (IterOp numIters _ op) = pipelineTime op |* numIters
+  pipelineTime (IterTomb numClocks _ _) = PTime 1 numClocks
+
+  util (UtilOp totalIters usedIters op) = floatUsedClocks op * (fromIntegral usedIters) /
+    (fromIntegral $ totalIters + usedIters)
+  util (UtilTomb _ _ _) = 0
+
+  inPortsType (UtilOp _ usedIters op) = scalePortsStreamLens usedIters $ inPortsType op
+  inPortsType (UtilTomb _ iPorts _) = iPorts
+
+  outPortsType (UtilOp _ usedIters op) = scalePortsStreamLens usedIters $ outPortsType op
+  inPortsType (UtilTomb _ oPorts _) = oPorts
+
+  numFirings (UtilOp _ usedIters op) = usedIters * numFirings op
+  numFirings (UtilTomb _ _ _) = 1
+
+instance SpaceTime IterOp where
+  pipelineTime (IterOp _ op) = pipelineTime op
+  util (IterOp _ op) = util op
+  inPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ inPortsType op
+  outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
+  numFirings (IterOp n op) = n * (numFirings op)
+
+data UtilOp a = 
+  -- First int is utilized
+  UtilOp Int a 
+  -- This is a tombstone that 
+  | UtilTomb Int
+  deriving (Eq, Show)
+
 
 instance (SpaceTime a) => SpaceTime (UtilOp a) where
   space uOp@(UtilOp _ op) = space op |+| counterSpace (seqTime $ time uOp)
