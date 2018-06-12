@@ -179,41 +179,5 @@ instance (SpaceTime a) => SpaceTime (UtilOp a) where
   numFirings (UtilOp _ usedIters op) = usedIters * numFirings op
   numFirings (UtilTomb _ _ _) = 1
 
-instance SpaceTime IterOp where
-  pipelineTime (IterOp _ op) = pipelineTime op
-  util (IterOp _ op) = util op
-  inPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ inPortsType op
-  outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
-  numFirings (IterOp n op) = n * (numFirings op)
-
-data UtilOp a = 
-  -- First int is utilized
-  UtilOp Int a 
-  -- This is a tombstone that 
-  | UtilTomb Int
-  deriving (Eq, Show)
-
-
-instance (SpaceTime a) => SpaceTime (UtilOp a) where
-  space uOp@(UtilOp _ op) = space op |+| counterSpace (seqTime $ time uOp)
-  time (UtilOp unusedClocks op) = time op |+| SCTime unusedClocks 0
-  pipelineTime (UtilOp unusedClocks op) = unusedClocks + pipelineTime op
-  util (UtilOp unusedClocks op) = floatUsedClocks op /
-    (floatUsedClocks op + fromIntegral unusedClocks)
-  inPortsType (UtilOp _ op) = inPortsType op
-  outPortsType (UtilOp _ op) = outPortsType op
-  numFirings _ = 1
-
-data IterOp = IterOp Int (Compose (UtilOp SingleFiringOp)) deriving (Eq, Show)
-
-instance SpaceTime IterOp where
-  space (IterOp numIters op) = (counterSpace numIters) |+| (space op)
-  time (IterOp numIters op) = replicateTimeOverStream numIters (time op)
-  pipelineTime (IterOp _ op) = pipelineTime op
-  util (IterOp _ op) = util op
-  inPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ inPortsType op
-  outPortsType (IterOp sLen op) = scalePortsStreamLens sLen $ outPortsType op
-  numFirings (IterOp n op) = n * (numFirings op)
-
-fullUtilSFToIter :: Int -> SingleFiringOp -> Compose IterOp
+fullUtilSFToIter :: Int -> SingleFiringOp -> Compose (IterOp (Compose (IterOp SingleFiringOp)))
 fullUtilSFToIter n sfOp = ComposeContainer $ IterOp n $ ComposeContainer $ UtilOp 0 sfOp

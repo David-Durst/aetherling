@@ -49,8 +49,10 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   time (ComposePar ops) = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
   time (ComposeSeq ops@(hd:tl)) = 
-    SCTime ((seqTime . time) hd + (foldl (+) 0 $ map pipelineTime tl)) maxCombTime
-    where maxCombTime = maximum $ map (combTime . time) ops
+    SCTime ((seqTime . time) hd + (numStages tailPipelineTime * numClocks tailPipelineTime)) maxCombTime
+    where 
+      maxCombTime = maximum $ map (combTime . time) ops
+      tailPipelineTime = pipelineTime $ ComposeSeq tl
 
   util (ComposeContainer op) = util op
   util (ComposePar ops) = utilWeightedByArea ops
@@ -70,7 +72,7 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
 
   pipelineTime (ComposeContainer op) = pipelineTime op
   pipelineTime (ComposePar (hd:_)) = pipelineTime hd
-  pipelineTime (ComposeSeq (hd:tl)) = foldl (|+|) (pipelineTime hd) $ map pipelineTime ops
+  pipelineTime (ComposeSeq (hd:tl)) = foldl (|+|) (pipelineTime hd) $ map pipelineTime tl
 
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
