@@ -48,7 +48,9 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   -- space time helpers for compose that are used for all implementations
   time (ComposePar ops) = SCTime (seqTime $ time $ head ops) maxCombTime
     where maxCombTime = maximum $ map (combTime . time) ops
-  time (ComposeSeq ops) = foldl (|+|) addId $ map time ops
+  time (ComposeSeq ops@(hd:tl)) = 
+    SCTime ((seqTime . time) hd + (foldl (+) 0 $ map pipelineTimeWalker tl)) maxCombTime
+    where maxCombTime = maximum $ map (combTime . time) ops
 
   util (ComposeContainer op) = util op
   util (ComposePar ops) = utilWeightedByArea ops
@@ -70,6 +72,13 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
   -- need max pipelineTime as can have combinational op with 0 time
   pipelineTime (ComposePar ops) = maximum $ map pipelineTime ops
   pipelineTime (ComposeSeq ops) = maximum $ map pipelineTime ops
+
+-- This walks a tree of nested composes
+pipelineTimeWalker :: (SpaceTime a) => a -> Int
+pipelineTimeWalker (ComposeContainer op) = pipelineTimeWalker op
+pipelineTimeWalker (ComposePar (op:_)) = pipelineTimeWalker op
+--pipelineTimeWalker (ComposeSeq ops) = foldl (+) 0 $ map pipelineTimeWalker ops
+pipelineTimeWalker op = pipelineTime op
 
 -- This is for making ComposeSeq
 (|.|) :: (SpaceTime a) => Maybe (Compose a) -> Maybe (Compose a) -> Maybe (Compose a)
@@ -110,7 +119,7 @@ canComposeSeq :: (SpaceTime a) => a -> a -> Bool
 -- over all firings and streams per firing, and if same number of clock cycles
 canCompose op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
   -- this checks both token types and numTokens over all firing/stream combos
-  outPortsType op0 == outPortsType op1 && pipelineTime op0 == pipelineTime op1
+  outPortsType op0 == inPortsType op1 && pipelineTime op0 == pipelineTime op1
 
 -- can join a combinational node with another node if they do the same amount
 -- every clock cycle
@@ -119,6 +128,11 @@ canComposeSeq op0 op1 = ((map pTType) . outPortsType) op0 ==
 
 canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- only join two nodes in parallel if same number of clocks
+-- don't think need equal lengths, just producing same amount every clock,
+-- right?Do this however so can compute time more easily and easier to connect
+-- composePar to other things. Users just need to underutilize one pipeline
+-- which is explicit version of what allowing two different timed things to
+-- run in parallel is anyway
 canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1 && 
   pipelineTime op0 == pipelineTime op1
 
