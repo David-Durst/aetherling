@@ -178,5 +178,5 @@ instance (SpaceTime a) => SpaceTime (IterOp a) where
   numFirings (IterOp _ usedIters op) = usedIters * numFirings op
   numFirings (IterTomb _ _ _) = 1
 
-fullIterSF :: Int -> Int -> SingleFiringOp -> Compose (IterOp (Compose (IterOp SingleFiringOp)))
+fullIterSF :: Int -> Int -> SingleFiringOp -> Compose
 fullIterSF t u sfOp = ComposeContainer $ IterOp t u $ ComposeContainer $ IterOp 1 1 sfOp
