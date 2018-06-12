@@ -72,6 +72,8 @@ instance (SpaceTime a) => SpaceTime (Compose a) where
 
   pipelineTime (ComposeContainer op) = pipelineTime op
   pipelineTime (ComposePar (hd:_)) = pipelineTime hd
+  -- this assumes all pipelineTimes have same numbers of clocks, what to do when
+  -- not true?
   pipelineTime (ComposeSeq (hd:tl)) = foldl (|+|) (pipelineTime hd) $ map pipelineTime tl
 
 -- This is for making ComposeSeq
@@ -111,9 +113,10 @@ canComposeSeq :: (SpaceTime a) => a -> a -> Bool
 
 -- only join two sequential nodes if token types match, ports do same number of tokens
 -- over all firings and streams per firing, and if same number of clock cycles
-canCompose op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
+canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
   -- this checks both token types and numTokens over all firing/stream combos
-  outPortsType op0 == inPortsType op1 && pipelineTime op0 == pipelineTime op1
+  outPortsType op0 == inPortsType op1 && 
+  (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
 
 -- can join a combinational node with another node if they do the same amount
 -- every clock cycle
