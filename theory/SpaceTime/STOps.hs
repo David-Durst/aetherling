@@ -157,19 +157,30 @@ instance SpaceTime SingleFiringOp where
   numFirings (MapOp _ _ op) = numFirings op
   numFirings (ReduceOp _ _ op) = numFirings op
 
-data IterOp a = 
+data IterOp = 
   -- First Int is num iterations, second is num iterations active
-  IterOp Int Int a
+  forall a. (SpaceTime a, Eq a, Show a, Typeable a) => IterOp Int Int a
   -- delayStages is stages to add, delayClocks is clocks to add to each stage 
   -- when doing nothing, a is for thing to wrap with registers
   -- put registers after each stage of spacetime being wrapped
-  | RegDelay {delayStages :: Int, delayClocks :: Int, wrappedModule :: a}
-  deriving (Eq, Show)
+  | forall a. (SpaceTime a, Eq a, Show a, Typeable a) =>
+    RegDelay {delayStages :: Int, delayClocks :: Int, wrappedModule :: a}
+
+deriving instance Show IterOp
+
+instance Eq IterOp where
+  (==) (IterOp ni0 ui0 op0) (IterOp ni1 ui1 op1) = case cast op1 of 
+    Nothing -> False 
+    Just op1T0 -> op0 == op1T0 && ni0 == ni1 && ui0 == ui1
+  (==) (RegDelay ds0 dc0 op0) (RegDelay ds1 dc1 op1) = case cast op1 of 
+    Nothing -> False 
+    Just op1T0 -> op0 == op1T0 && ds0 == ds1 && dc0 == dc1
+  (/=) op0 op1 = not (op0 /= op1)
 
 floatUsedClocks :: (SpaceTime a) => a -> Float
 floatUsedClocks = fromIntegral . seqTime . time
 
-instance (SpaceTime a) => SpaceTime (IterOp a) where
+instance SpaceTime IterOp where
   space iOp@(IterOp numIters _ op) = space op |+| counterSpace (seqTime $ time iOp)
   space (RegDelay ds dc op) = counterSpace dc |+| 
     ((registerSpace $ map pTType $ inPortsType op) |* (ds + (numStages $ pipelineTime op))) |+| space op
