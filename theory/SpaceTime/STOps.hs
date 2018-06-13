@@ -183,4 +183,4 @@ instance (SpaceTime a) => SpaceTime (IterOp a) where
   numFirings (RegDelay _ _ op) = numFirings op
 
 fullIterSF :: (SpaceTime a) => Int -> Int -> a -> Compose
-fullIterSF t u stOp = ComposeContainer $ IterOp t u $ ComposeContainer $ IterOp 1 1 stOp
+fullIterSF t u stOp = ComposeContainer $ IterOp t u stOp
