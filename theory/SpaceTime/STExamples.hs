@@ -10,8 +10,8 @@ exPart = Just (ComposeContainer $ IterOp 1 1 $ SFLeafOp $
 exLB = Just (ComposeContainer $ IterOp 1 1 $ SFLeafOp $ LineBuffer 1 3 T_Int)
 exFlat = Just (ComposeContainer $ IterOp 1 1 $ SFLeafOp $ 
   StreamArrayController (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
-exConst = Just (ComposeContainer $ IterOp 10 10 $ ComposeContainer $ IterOp 1 1 $
-  SFLeafOp $ Constant_Int 1 [1, 1, 1])
+exConst = Just (ComposeContainer $ RegDelay 3 0 $ IterOp 10 10 $ ComposeContainer $
+    SFLeafOp $ Constant_Int 1 [1, 1, 1])
 
 conv1PxPerClock = 
   (

@@ -148,8 +148,10 @@ instance SpaceTime SingleFiringOp where
 data IterOp a = 
   -- First Int is num iterations, second is num iterations active
   IterOp Int Int a
-  -- Int is number of clocks doing nothing, first is inports, second is outports
-  | IterTomb Int [PortType] [PortType]
+  -- delayStages is stages to add, delayClocks is clocks to add to each stage 
+  -- when doing nothing, a is for thing to wrap with registers
+  -- put registers after each stage of spacetime being wrapped
+  | RegDelay {delayStages :: Int, delayClocks :: Int, wrappedModule :: a}
   deriving (Eq, Show)
 
 floatUsedClocks :: (SpaceTime a) => a -> Float
@@ -157,26 +159,30 @@ floatUsedClocks = fromIntegral . seqTime . time
 
 instance (SpaceTime a) => SpaceTime (IterOp a) where
   space iOp@(IterOp numIters _ op) = space op |+| counterSpace (seqTime $ time iOp)
-  space (IterTomb numClocks iPorts _) = counterSpace numClocks |+| (registerSpace $ map pTType iPorts)
+  space (RegDelay ds dc op) = counterSpace dc |+| 
+    ((registerSpace $ map pTType $ inPortsType op) |* (ds + (numStages $ pipelineTime op))) |+| space op
 
   time (IterOp numIters _ op) = replicateTimeOverStream numIters (time op)
-  time (IterTomb numClocks _ _) = SCTime numClocks 0
+  time (RegDelay ds dc op) = time op |+| 
+    SCTime (dc * (ds + (numStages $ pipelineTime op))) 0
 
   pipelineTime (IterOp numIters _ op) = pipelineTime op
-  pipelineTime (IterTomb numClocks _ _) = PTime 1 numClocks
+  pipelineTime (RegDelay ds dc op) = PTime (ds + (numStages $ pipelineTime op)) 
+    (dc + (numClocks $ pipelineTime op))
 
   util (IterOp totalIters usedIters op) = floatUsedClocks op * (fromIntegral usedIters) /
     (fromIntegral $ totalIters + usedIters)
-  util (IterTomb _ _ _) = 0
+  -- ignoring dleay stages for now, need to come back to them later
+  util (RegDelay _ dc op) = (util op) / (util op + (fromIntegral dc))
 
   inPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPortsType op
-  inPortsType (IterTomb _ iPorts _) = iPorts
+  inPortsType (RegDelay _ _ op) = inPortsType op
 
   outPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ outPortsType op
-  outPortsType (IterTomb _ oPorts _) = oPorts
+  outPortsType (RegDelay _ _ op) = outPortsType op
 
   numFirings (IterOp _ usedIters op) = usedIters * numFirings op
-  numFirings (IterTomb _ _ _) = 1
+  numFirings (RegDelay _ _ op) = numFirings op
 
 fullIterSF :: Int -> Int -> SingleFiringOp -> Compose
 fullIterSF t u sfOp = ComposeContainer $ IterOp t u $ ComposeContainer $ IterOp 1 1 sfOp

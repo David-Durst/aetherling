@@ -73,7 +73,7 @@ instance MergeOrScale SeqCombTime where
 -- given a SeqCombTime and a stream length, return its time assuming registers
 -- are at the end of each element of stream
 replicateTimeOverStream :: Int -> SeqCombTime -> SeqCombTime
-replicateTimeOverStream i t@(SCTime s _) | s == 0 = t |+| (registerTime |* i)
+replicateTimeOverStream i t@(SCTime s _) | s == 0 = t |+| (SCTime 1 0 |* i)
 replicateTimeOverStream i t@(SCTime s _) = t |* i
 
 data PipelineTime = PTime {numStages :: Int, numClocks :: Int} deriving (Eq, Show)

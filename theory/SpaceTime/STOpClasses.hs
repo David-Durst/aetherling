@@ -146,7 +146,7 @@ canComposePar :: (SpaceTime a) => a -> a -> Bool
 -- which is explicit version of what allowing two different timed things to
 -- run in parallel is anyway
 canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1 && 
-  pipelineTime op0 == pipelineTime op1
+  (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
 
 -- Since can compose things with different numbers of firings as long as total 
 -- numbers of tokens and time, need composes to each have 1 firing and put
