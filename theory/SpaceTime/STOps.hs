@@ -193,10 +193,11 @@ instance SpaceTime IterOp where
   pipelineTime (RegDelay ds dc op) = PTime (ds + (numStages $ pipelineTime op)) 
     (dc + (numClocks $ pipelineTime op))
 
-  util (IterOp totalIters usedIters op) = floatUsedClocks op * (fromIntegral usedIters) /
-    (fromIntegral $ totalIters + usedIters)
+  util (IterOp totalIters usedIters op) = util op * (fromIntegral usedIters) /
+    (fromIntegral $ totalIters)
   -- ignoring dleay stages for now, need to come back to them later
-  util (RegDelay _ dc op) = (util op) / (util op + (fromIntegral dc))
+  -- I think no underutilziation here, as registers being used for pipelining
+  util (RegDelay _ dc op) = util op
 
   inPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPortsType op
   inPortsType (RegDelay _ _ op) = inPortsType op

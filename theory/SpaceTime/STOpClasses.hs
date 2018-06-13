@@ -27,13 +27,15 @@ class (Eq a, Show a, Typeable a) => SpaceTime a where
 
   -- return actual slow down ratio and slowed down module, 1 if not slowed down,
   -- 1 <= actual slow down ratio <= requested slowdown ratio
--- slowdown :: Ratio -> a -> (a, Ratio)
+--- slowdown :: Ratio -> a -> (a, Ratio)
 
 -- is there a better utilization than weighted by operator area
 utilWeightedByArea :: (SpaceTime a) => [a] -> Float
-utilWeightedByArea ops = unnormalizedUtil / (fromIntegral $ length ops)
-    where unnormalizedUtil = foldl (+) 0 $
-            map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
+utilWeightedByArea ops = unnormalizedUtil / totalArea
+    where 
+      unnormalizedUtil = foldl (+) 0 $
+        map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
+      totalArea = foldl (+) 0 $ map (fromIntegral . opsArea . space) ops
 
 data Compose = forall a. (SpaceTime a, Eq a, Show a, Typeable a) =>
   ComposeContainer a
