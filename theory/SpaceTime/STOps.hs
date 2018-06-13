@@ -1,7 +1,9 @@
+{-# LANGUAGE StandaloneDeriving, ExistentialQuantification #-}
 module SpaceTime.STOps where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
+import Data.Typeable
 
 -- These are leaf nodes that can be used in a higher order operator
 data LeafOp =
@@ -95,15 +97,26 @@ instance SpaceTime LeafOp where
   numFirings _ = 1
   
 
-data SingleFiringOp a = 
+data SingleFiringOp = 
   -- First Int is parallelism, second is total number elements reducing
-  MapOp Int Int a
+  forall a. (SpaceTime a, Eq a, Show a, Typeable a) => MapOp Int Int a
+  -- Should I use a GADT to verify op for reduce has 2 inputs only?
   -- First Int is parallelism, second is total number elements reducing
   -- can't reduce a mem_read
-  | ReduceOp Int Int a
-  deriving (Eq, Show)
+  | forall a. (SpaceTime a, Eq a, Show a, Typeable a) => ReduceOp Int Int a
 
-instance (SpaceTime a) => SpaceTime (SingleFiringOp a) where
+deriving instance Show SingleFiringOp
+
+instance Eq SingleFiringOp where
+  (==) (MapOp pEl0 totEl0 op0) (MapOp pEl1 totEl1 op1) = case cast op1 of 
+    Nothing -> False 
+    Just op1T0 -> op0 == op1T0 && pEl0 == pEl1 && totEl0 == totEl1
+  (==) (ReduceOp pEl0 totEl0 op0) (ReduceOp pEl1 totEl1 op1) = case cast op1 of 
+    Nothing -> False 
+    Just op1T0 -> op0 == op1T0 && pEl0 == pEl1 && totEl0 == totEl1
+  (/=) op0 op1 = not (op0 /= op1)
+
+instance SpaceTime SingleFiringOp where
   -- area of parallel map is area of all the copies
   space (MapOp pEl _ op) = (space op) |* pEl
   -- area of reduce is area of reduce tree, with area for register for partial
