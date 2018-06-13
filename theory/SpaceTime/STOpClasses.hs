@@ -3,6 +3,7 @@ module SpaceTime.STOpClasses where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
 import Data.Typeable
+import Data.Ratio
 
 -- the typeclasses that all the elements of the IR must implement
 class SpaceTime a where
@@ -23,6 +24,10 @@ class SpaceTime a where
   -- many stages in a nested pipeline where a compose for a single firing is 
   -- contained in a multifiring node which is in another compose
   pipelineTime :: a -> PipelineTime
+
+  -- return actual slow down ratio and slowed down module, 1 if not slowed down,
+  -- 1 <= actual slow down ratio <= requested slowdown ratio
+-- slowdown :: Ratio -> a -> (a, Ratio)
 
 -- is there a better utilization than weighted by operator area
 utilWeightedByArea :: (SpaceTime a) => [a] -> Float
@@ -90,6 +95,12 @@ instance SpaceTime Compose where
   -- this assumes all pipelineTimes have same numbers of clocks, what to do when
   -- not true?
   pipelineTime (ComposeSeq (hd:tl)) = foldl (|+|) (pipelineTime hd) $ map pipelineTime tl
+
+--  slowdown slowRatio (ComposeContainer op) | slowResult == slowRatio = 
+--    ComposeContainer childSlow
+--    where (childSlow, slowResult) = slowdown op
+--  slowdown slowRatio (ComposeContainer op) | slowRatio > 1 h
+--    where (childSlow, slowResult) = slowdown op
 
 -- This is for making ComposeSeq
 (|.|) :: Maybe Compose -> Maybe Compose -> Maybe Compose
