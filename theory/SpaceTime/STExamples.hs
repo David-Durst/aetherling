@@ -4,7 +4,7 @@ import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 import SpaceTime.STOps
 
-exMemRead = Just (fullIterSF 1 1 $ MemRead 10 $ T_Int)
+exMemRead = Just (ComposeContainer $ MemRead 10 $ T_Int)
 exPart = Just (ComposeContainer $
   StreamArrayController (1, T_Int) (1, T_Array 1 T_Int))
 exLB = Just (ComposeContainer $ LineBuffer 1 3 T_Int)
@@ -28,4 +28,4 @@ conv1PxPerClock =
     Just (ComposeContainer $ MapOp 3 3 $ Add T_Int) |>>=|
     Just (ComposeContainer $ ReduceOp 3 3 $ Add T_Int)
   ) |>>=|
-  Just (fullIterSF 1 1 $ MemWrite 10 $ T_Int)
+  Just (ComposeContainer $ MemWrite 10 $ T_Int)
