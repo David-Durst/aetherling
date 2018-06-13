@@ -135,7 +135,9 @@ instance SpaceTime SingleFiringOp where
   inPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
   inPortsType (ReduceOp pEl totEl op) = duplicatePorts pEl $
-    scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
+  -- can just take head as can only reduce binary operators
+  -- parallelism means apply binary to pEl at a time
+    scalePortsStreamLens (totEl `ceilDiv` pEl) [head $ inPortsType op]
   inPortsType (SFLeafOp op) = inPortsType op
 
   outPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
