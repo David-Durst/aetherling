@@ -82,5 +82,7 @@ data PipelineTime = PTime {numStages :: Int, numClocks :: Int} deriving (Eq, Sho
 instance MergeOrScale PipelineTime where
   addId = PTime 0 0
   (|+|) (PTime n0 c0) (PTime n1 _) = PTime (n0 + n1) c0
+  (|*) (PTime n c) i | n == 0 = PTime 0 (c*i)
   (|*) (PTime n c) i = PTime (n * i) c
+  (|/) (PTime n c) i | n == 0 = PTime 0 (c `ceilDiv` i)
   (|/) (PTime n c) i = PTime (n `ceilDiv` i) c

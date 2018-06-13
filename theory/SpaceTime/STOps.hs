@@ -134,10 +134,11 @@ instance SpaceTime SingleFiringOp where
     replicateTimeOverStream (totEl `ceilDiv` pEl) (reduceTreeTime |+| (time op) |+| registerTime)
     where reduceTreeTime = time (ReduceOp pEl pEl op)
 
-  pipelineTime (MapOp _ _ op) = pipelineTime op
+  -- can't pipeline through a sequential map or reduce
+  pipelineTime (MapOp pEl totEl op) | pEl == totEl = pipelineTime op
+  pipelineTime m@(MapOp _ _ op) = PTime 1 (seqTime $ time m)
   pipelineTime (ReduceOp pEl totEl op) | pEl == totEl = (pipelineTime op) |* (ceilLog pEl)
-  pipelineTime (ReduceOp pEl totEl op) = reduceTreeTime |* (totEl `ceilDiv` pEl)
-    where reduceTreeTime = pipelineTime (ReduceOp pEl pEl op)
+  pipelineTime r@(ReduceOp _ _ op) = PTime 1 (seqTime $ time r)
 
   util (MapOp _ _ op) = util op
   util (ReduceOp _ _ op) = util op
