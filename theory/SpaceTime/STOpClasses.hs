@@ -6,7 +6,7 @@ import Data.Typeable
 import Data.Ratio
 
 -- the typeclasses that all the elements of the IR must implement
-class SpaceTime a where
+class (Eq a, Show a, Typeable a) => SpaceTime a where
   -- for wire space, only counting input wires, not outputs. This avoids
   -- double counting
   space :: a -> OpsWireArea

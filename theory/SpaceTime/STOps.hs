@@ -95,16 +95,15 @@ instance SpaceTime LeafOp where
   numFirings _ = 1
   
 
-data SingleFiringOp = 
+data SingleFiringOp a = 
   -- First Int is parallelism, second is total number elements reducing
-  MapOp Int Int SingleFiringOp
+  MapOp Int Int a
   -- First Int is parallelism, second is total number elements reducing
   -- can't reduce a mem_read
-  | ReduceOp Int Int SingleFiringOp
-  | SFLeafOp LeafOp
+  | ReduceOp Int Int a
   deriving (Eq, Show)
 
-instance SpaceTime SingleFiringOp where
+instance (SpaceTime a) => SpaceTime (SingleFiringOp a) where
   -- area of parallel map is area of all the copies
   space (MapOp pEl _ op) = (space op) |* pEl
   -- area of reduce is area of reduce tree, with area for register for partial
@@ -115,22 +114,20 @@ instance SpaceTime SingleFiringOp where
     reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
     |+| (counterSpace $ seqTime $ time rOp)
     where reduceTreeSpace = space (ReduceOp pEl pEl op)
-  space (SFLeafOp op) = space op
 
   time (MapOp pEl totEl op) = replicateTimeOverStream (totEl `ceilDiv` pEl) (time op)
   time (ReduceOp pEl totEl op) | pEl == totEl = (time op) |* (ceilLog pEl)
   time (ReduceOp pEl totEl op) =
     replicateTimeOverStream (totEl `ceilDiv` pEl) (reduceTreeTime |+| (time op) |+| registerTime)
     where reduceTreeTime = time (ReduceOp pEl pEl op)
-  time (SFLeafOp op) = time op
 
   pipelineTime (MapOp _ _ op) = pipelineTime op
   pipelineTime (ReduceOp pEl totEl op) | pEl == totEl = (pipelineTime op) |* (ceilLog pEl)
   pipelineTime (ReduceOp pEl totEl op) = reduceTreeTime |* (totEl `ceilDiv` pEl)
     where reduceTreeTime = pipelineTime (ReduceOp pEl pEl op)
-  pipelineTime (SFLeafOp op) = pipelineTime op
 
-  util _ = 1
+  util (MapOp _ _ op) = util op
+  util (ReduceOp _ _ op) = util op
 
   inPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
@@ -138,14 +135,13 @@ instance SpaceTime SingleFiringOp where
   -- can just take head as can only reduce binary operators
   -- parallelism means apply binary to pEl at a time
     scalePortsStreamLens (totEl `ceilDiv` pEl) [head $ inPortsType op]
-  inPortsType (SFLeafOp op) = inPortsType op
 
   outPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
     scalePortsStreamLens (totEl `ceilDiv` pEl) (outPortsType op)
   outPortsType (ReduceOp _ _ op) = outPortsType op
-  outPortsType (SFLeafOp op) = outPortsType op
 
-  numFirings _ = 1
+  numFirings (MapOp _ _ op) = numFirings op
+  numFirings (ReduceOp _ _ op) = numFirings op
 
 data IterOp a = 
   -- First Int is num iterations, second is num iterations active
@@ -186,5 +182,5 @@ instance (SpaceTime a) => SpaceTime (IterOp a) where
   numFirings (IterOp _ usedIters op) = usedIters * numFirings op
   numFirings (RegDelay _ _ op) = numFirings op
 
-fullIterSF :: Int -> Int -> SingleFiringOp -> Compose
-fullIterSF t u sfOp = ComposeContainer $ IterOp t u $ ComposeContainer $ IterOp 1 1 sfOp
+fullIterSF :: (SpaceTime a) => Int -> Int -> a -> Compose
+fullIterSF t u stOp = ComposeContainer $ IterOp t u $ ComposeContainer $ IterOp 1 1 stOp

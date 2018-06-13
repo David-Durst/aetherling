@@ -4,14 +4,13 @@ import SpaceTime.STMetrics
 import SpaceTime.STOpClasses
 import SpaceTime.STOps
 
-exMemRead = Just (fullIterSF 1 1 $ SFLeafOp $ MemRead 10 $ T_Int)
-exPart = Just (ComposeContainer $ SFLeafOp $ 
+exMemRead = Just (fullIterSF 1 1 $ MemRead 10 $ T_Int)
+exPart = Just (ComposeContainer $
   StreamArrayController (1, T_Int) (1, T_Array 1 T_Int))
-exLB = Just (ComposeContainer $ SFLeafOp $ LineBuffer 1 3 T_Int)
-exFlat = Just (ComposeContainer $ SFLeafOp $ 
+exLB = Just (ComposeContainer $ LineBuffer 1 3 T_Int)
+exFlat = Just (ComposeContainer $ 
   StreamArrayController (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
-exConst = Just (ComposeContainer $ RegDelay 3 0 $ IterOp 13 10 $
-    SFLeafOp $ Constant_Int 1 [1, 1, 1])
+exConst = Just (ComposeContainer $ RegDelay 3 0 $ IterOp 13 10 $ Constant_Int 1 [1, 1, 1])
 
 conv1PxPerClock = 
   (
@@ -26,7 +25,7 @@ conv1PxPerClock =
     exConst
   ) |>>=|
   fmap (ComposeContainer . IterOp 10 10) (
-    Just (ComposeContainer $ MapOp 3 3 $ SFLeafOp $ Add T_Int) |>>=|
-    Just (ComposeContainer $ ReduceOp 3 3 $ SFLeafOp $ Add T_Int)
+    Just (ComposeContainer $ MapOp 3 3 $ Add T_Int) |>>=|
+    Just (ComposeContainer $ ReduceOp 3 3 $ Add T_Int)
   ) |>>=|
-  Just (fullIterSF 1 1 $ SFLeafOp $ MemWrite 10 $ T_Int)
+  Just (fullIterSF 1 1 $ MemWrite 10 $ T_Int)
