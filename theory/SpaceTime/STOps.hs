@@ -34,6 +34,11 @@ data Op =
   -- when doing nothing, a is for thing to wrap with registers
   -- put registers after each stage of spacetime being wrapped
   | RegDelay {delayStages :: Int, delayClocks :: Int, delayedOp :: Op}
+
+  -- COMPOSE OPS
+  | ComposePar [Op]
+  | ComposeSeq [Op]
+  | ComposeFailure ComposeResult (Op, Op) 
   deriving (Eq, Show)
 
 twoInSimplePorts t = [T_Port "I0" 1 t, T_Port "I1" 1 t]
@@ -171,3 +176,71 @@ instance SpaceTime LeafOp where
   outPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ outPortsType op
   outPortsType (RegDelay _ _ op) = outPortsType op
 
+-- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
+-- all port types and latencies 
+data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
+  deriving (Eq, Show)
+
+-- This is for making ComposeSeq
+(|.|) :: Op -> Op -> Op
+-- when checking if can compose, need to match up individual elements, not whole list
+-- ex. If each component is operating at one token per 10 clocks, sequence of 4
+-- parts will take 40 clocks, but should be able to add another component 
+-- operating at one token per 10 clocks to get a sequence of 5 parts at 50 clocks
+(|.|) (op0@(ComposeSeq ops0)) (op1@(ComposeSeq ops1)) 
+  | canComposeSeq op1 op0 == ComposeSuccess = $ ComposeSeq $ ops1 ++ ops0
+(|.|) (op0@(ComposeSeq ops0)) (op1) | canComposeSeq op1 op0 == ComposeSuccess =
+  $ ComposeSeq $ [op1] ++ ops0
+(|.|) (op0) (op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 == ComposeSuccess =
+  $ ComposeSeq $ ops1 ++ [op0]
+(|.|) (op0) (op1) | canComposeSeq op1 op0 == ComposeSuccess =
+  $ ComposeSeq $ [op1] ++ [op0]
+(|.|) op0 op1 = canComposeSeq op0 op1
+
+-- This is for making ComposePar
+(|&|) :: Maybe Compose -> Maybe Compose -> Maybe Compose
+(|&|) (op0@(ComposePar ops0)) (op1@(ComposePar ops1)) | canComposePar op1 op0 == ComposeSuccess =
+  $ ComposePar $ ops0 ++ ops1
+(|&|) (op0@(ComposePar ops0)) (op1) | canComposePar op1 op0 == ComposeSuccess =
+  $ ComposePar $ [op1] ++ ops0
+(|&|) (op0) (op1@(ComposePar ops1)) | canComposePar op1 op0 == ComposeSuccess =
+  $ ComposePar $ ops1 ++ [op0]
+(|&|) (op0) (op1) | canComposePar op1 op0 == ComposeSuccess =
+  $ ComposePar $ [op1] ++ [op0]
+(|&|) op0 op1 = canComposePar op0 op1
+
+-- This is in same spirit as Monad's >>=, kinda abusing notation
+-- It's |.| in reverse so that can create pipelines in right order
+(|>>=|) :: Op -> Op -> Op
+(|>>=|) op0 op1 = op1 |.| op0
+
+canComposeSeq :: (SpaceTime a) => a -> a -> Bool
+
+-- only join two sequential nodes if token types match, ports do same number of tokens
+-- over all firings and streams per firing, and if same number of clock cycles
+canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
+  -- this checks both token types and numTokens over all firing/stream combos
+  outPortsType op0 == inPortsType op1 && 
+  (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
+
+-- can join a combinational node with another node if they do the same amount
+-- every clock cycle
+canComposeSeq op0 op1 = ((map pTType) . outPortsType) op0 ==
+  ((map pTType) . inPortsType) op1
+
+canComposePar :: (SpaceTime a) => a -> a -> Bool
+-- only join two nodes in parallel if same number of clocks
+-- don't think need equal lengths, just producing same amount every clock,
+-- right?Do this however so can compute time more easily and easier to connect
+-- composePar to other things. Users just need to underutilize one pipeline
+-- which is explicit version of what allowing two different timed things to
+-- run in parallel is anyway
+canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1 && 
+  (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
+
+-- Since can compose things with different numbers of firings as long as total 
+-- numbers of tokens and time, need composes to each have 1 firing and put
+-- children ops' firings in its stream lengths
+portsScaledByFiringPerOp :: (SpaceTime a) => (a -> [PortType]) -> [a] -> [[PortType]]
+portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
+  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
