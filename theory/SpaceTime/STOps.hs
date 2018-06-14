@@ -12,8 +12,8 @@ data Op =
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
-  | MemRead {mrStreamLen :: Int, mrT :: TokenType}
-  | MemWrite {mwStreamLen :: Int, mwT :: TokenType}
+  | MemRead TokenType
+  | MemWrite TokenType
   -- first Int is pixels per clock, second is window width, third int is 
   | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
   -- Array is constant produced, int is stream length
@@ -51,8 +51,8 @@ instance SpaceTime LeafOp where
     where OWA _ wireArea = space (Add t)
   space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
     where OWA _ wireArea = space (Add t)
-  space (MemRead _ t) = OWA (len t) (len t)
-  space (MemWrite n t) = space (MemRead n t)
+  space (MemRead t) = OWA 0 (len t)
+  space (MemWrite t) = OWA (len t) (len t)
   -- need registers for storing intermediate values
   -- registers account for wiring as some registers receive input wires,
   -- others get wires from other registers
@@ -88,8 +88,8 @@ instance SpaceTime LeafOp where
   time (Sub t) = SCTime 0 1
   time (Mul t) = SCTime 0 mulSpaceTimeIncreaser
   time (Div t) = SCTime 0 divSpaceTimeIncreaser
-  time (MemRead sLen _) = SCTime rwTime rwTime |* sLen
-  time (MemWrite sLen _) = SCTime rwTime rwTime |* sLen
+  time (MemRead _) = SCTime rwTime rwTime
+  time (MemWrite _) = SCTime rwTime rwTime
   time (LineBuffer _ _ _) = registerTime
   time (Constant_Int _ _) = SCTime 0 1
   time (Constant_Bit _ _) = SCTime 0 1
@@ -117,8 +117,8 @@ instance SpaceTime LeafOp where
   util (Sub t) = 1
   util (Mul t) = 1
   util (Div t) = 1
-  util (MemRead sLen _) = 1
-  util (MemWrite sLen _) = 1
+  util (MemRead _) = 1
+  util (MemWrite _) = 1
   util (LineBuffer _ _ _) = 1
   util (Constant_Int _ _) = 1
   util (Constant_Bit _ _) = 1
@@ -138,8 +138,8 @@ instance SpaceTime LeafOp where
   inPortsType (Sub t) = twoInSimplePorts t
   inPortsType (Mul t) = twoInSimplePorts t
   inPortsType (Div t) = twoInSimplePorts t
-  inPortsType (MemRead _ _) = []
-  inPortsType (MemWrite sLen t) = [T_Port "I" sLen t]
+  inPortsType (MemRead _) = []
+  inPortsType (MemWrite t) = [T_Port "I" 1 t]
   inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
   inPortsType (Constant_Int _ _) = []
   inPortsType (Constant_Bit _ _) = []
@@ -160,8 +160,8 @@ instance SpaceTime LeafOp where
   outPortsType (Sub t) = oneOutSimplePort t
   outPortsType (Mul t) = oneOutSimplePort t
   outPortsType (Div t) = oneOutSimplePort t
-  outPortsType (MemRead sLen t) = [T_Port "O" sLen t]
-  outPortsType (MemWrite _ _) = []
+  outPortsType (MemRead t) = [T_Port "O" 1 t]
+  outPortsType (MemWrite _) = []
   -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
   -- including warmup and shutdown
   outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t))]
