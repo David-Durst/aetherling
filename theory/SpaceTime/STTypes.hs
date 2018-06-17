@@ -20,8 +20,9 @@ instance HasLen TokenType where
 
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
-data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokenType} 
-  deriving (Show)
+-- pCTime tracks the combinonal time from the module through this port
+data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokenType,
+  pCTime :: Int} deriving (Show)
 
 instance Eq PortType where
   -- ignore names for equality, just check that all same

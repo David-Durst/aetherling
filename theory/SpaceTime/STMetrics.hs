@@ -3,8 +3,6 @@ import SpaceTime.STTypes
 
 -- helpful functions and constants
 -- constant use for scaling operations in space and time
-rwTime :: Int
-rwTime = 1
 mulSpaceTimeIncreaser :: Int
 mulSpaceTimeIncreaser = 5
 divSpaceTimeIncreaser :: Int
@@ -45,44 +43,3 @@ instance MergeOrScale OpsWireArea where
   (|*) (OWA o w) i = OWA (o * i) (w * i)
   -- taking ceiling to be conservative
   (|/) (OWA o w) i = OWA (o `ceilDiv` i) (w `ceilDiv` i)
-
--- seq time tracks number of clock cycles, comb time tracks max combinational
--- path time 
-data SeqCombTime = SCTime {seqTime :: Int, combTime :: Int} deriving (Eq, Show)
-
-registerTime = SCTime 1 1
-
-isCombNode :: SeqCombTime -> Bool
-isCombNode (SCTime s _) = s == 0
-
-instance MergeOrScale SeqCombTime where
-  addId = SCTime 0 0
-  -- if either is just a combinational element, combinational time increases
-  -- and num cycles is constant
-  (|+|) (SCTime s0 c0) (SCTime s1 c1) | s0 == 0 || s1 == 0 =
-    SCTime (max s0 s1) (c0 + c1)
-  -- if both are sequential, assume registers at end of each op
-  (|+|) (SCTime s0 c0) (SCTime s1 c1) = SCTime (s0 + s1) (max c0 c1)
-  -- when scaling up/down combinational, combinational time gets longer
-  -- otherwise sequential time gets longer
-  (|*) (SCTime s c) i | s == 0 = SCTime 0 (c * i)
-  (|*) (SCTime s c) i = SCTime (s * i) c
-  (|/) (SCTime s c) i | s == 0 = SCTime 0 (c `ceilDiv` i)
-  (|/) (SCTime s c) i = SCTime (s `ceilDiv` i) c
-
--- given a SeqCombTime and a stream length, return its time assuming registers
--- are at the end of each element of stream
-replicateTimeOverStream :: Int -> SeqCombTime -> SeqCombTime
-replicateTimeOverStream i t@(SCTime s _) | s == 0 = t |+| (SCTime 1 0 |* i)
-replicateTimeOverStream i t@(SCTime s _) = t |* i
-
-data PipelineTime = PTime {numStages :: Int, numClocks :: Int} deriving (Eq, Show)
-
--- assuming only making valid merges, come back later to deal with other cases
-instance MergeOrScale PipelineTime where
-  addId = PTime 0 0
-  (|+|) (PTime n0 c0) (PTime n1 _) = PTime (n0 + n1) c0
-  (|*) (PTime n c) i | n == 0 = PTime 0 (c*i)
-  (|*) (PTime n c) i = PTime (n * i) c
-  (|/) (PTime n c) i | n == 0 = PTime 0 (c `ceilDiv` i)
-  (|/) (PTime n c) i = PTime (n `ceilDiv` i) c
