@@ -40,9 +40,6 @@ data Op =
   | ComposeFailure ComposeResult (Op, Op) 
   deriving (Eq, Show)
 
-twoInSimplePorts t = [T_Port "I0" 1 t, T_Port "I1" 1 t]
-oneOutSimplePort t = [T_Port "O" 1 t]
-
 -- for wire space, only counting input wires, not outputs. This avoids
 -- double counting
 space :: Op -> OpsWireArea
@@ -90,7 +87,7 @@ space (ComposeFailure _ _) = 0
 
 -- scaleCPS depending on if Op is combinational or not
 scaleCPS :: Op -> Int -> Int
-scaleCPS op n | isCombinational = 1
+scaleCPS op n | isComb = 1
 scaleCPS op n = cps op * n
 
 cps op = clocksPerStream op
@@ -118,7 +115,7 @@ clocksPerStream (ReduceOp pEl totEl op) =
   where 
     reduceTreeCPS = cps (ReduceOp pEl pEl op)
     -- op adds nothing if its combinational, its CPS else
-    opCPS = bool 0 (cps op) (isCombinational op)
+    opCPS = bool 0 (cps op) (isComb op)
 
 clocksPerStream (IterOp numIters op) = numIters * clocksPerStream op
 clocksPerStream (Underutil denom op) = clocksPerStream op * denom
@@ -147,14 +144,14 @@ latency (Constant_Bit _ _) = 1
 latency (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
 
 latency (MapOp _ _ op) = latency op
-latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 && isCombinational op = 1
+latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 && isComb op = 1
 latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = latency op * (totEl pEl)
 latency (ReduceOp pEl totEl op) =
   (totEl `ceilDiv` pEl) * (reduceTreeLatency + latency op + registerLatency)
   where 
     reduceTreeCPS = latency (ReduceOp pEl pEl op)
     -- op adds nothing if its combinational, its CPS else
-    opCPS = bool 0 (latency op) (isCombinational op)
+    opCPS = bool 0 (latency op) (isComb op)
 
 
 latency (IterOp numIters op) = latency op
@@ -169,7 +166,32 @@ latency (ComposeSeq ops) = bool combinationalLatency sequentialLatency
   (sequentialLatency > 0)
   where 
     combinationalLatency = 1
-    sequentialLatency = foldl (+) 0 $ map latency $ filter (not . isCombinational) ops
+    sequentialLatency = foldl (+) 0 $ map latency $ filter (not . isComb) ops
+
+
+maxCombPath :: a -> Float
+maxCombPath (Add t) = 1
+maxCombPath (Sub t) = 1
+maxCombPath (Mul t) = 1
+maxCombPath (Div t) = 1
+maxCombPath (MemRead _) = 1
+maxCombPath (MemWrite _) = 1
+maxCombPath (LineBuffer _ _ _) = 1
+maxCombPath (Constant_Int _ _) = 1
+maxCombPath (Constant_Bit _ _) = 1
+maxCombPath (StreamArrayController (inSLen, _) (outSLen, _)) = 1
+
+maxCombPath (MapOp _ _ op) = util op
+maxCombPath (ReduceOp _ _ op) = util op
+
+maxCombPath (IterOp numIters op) = util op
+maxCombPath (Underutil denom op) = util op / denom
+-- since pipelined, this doesn't affect clocks per stream
+maxCombPath (RegDelay _ op) = util op
+
+maxCombPath (ComposePar ops) = utilWeightedByArea ops
+maxCombPath (ComposeSeq ops) = utilWeightedByArea ops
+-- is there a better utilization than weighted by operator area
 
 
 util :: a -> Float
@@ -202,48 +224,89 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
         map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
       totalArea = foldl (+) 0 $ map (fromIntegral . opsArea . space) ops
 
-inPortsType (Add t) = twoInSimplePorts t
-inPortsType (Sub t) = twoInSimplePorts t
-inPortsType (Mul t) = twoInSimplePorts t
-inPortsType (Div t) = twoInSimplePorts t
-inPortsType (MemRead _) = []
-inPortsType (MemWrite t) = [T_Port "I" 1 t]
-inPortsType (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t)]
-inPortsType (Constant_Int _ _) = []
-inPortsType (Constant_Bit _ _) = []
-inPortsType (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType]
 
-inPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
-  scalePortsStreamLens (totEl `ceilDiv` pEl) (inPortsType op)
-inPortsType (ReduceOp pEl totEl op) = duplicatePorts pEl $
+twoInSimplePorts t = [T_Port "I0" 1 t 2, T_Port "I1" 1 t 2]
+inPorts :: Op -> [T_Port]
+inPorts (Add t) = twoInSimplePorts t
+inPorts (Sub t) = twoInSimplePorts t
+inPorts (Mul t) = twoInSimplePorts t
+inPorts (Div t) = twoInSimplePorts t
+inPorts (MemRead _) = []
+inPorts (MemWrite t) = [T_Port "I" 1 t 1]
+-- 2 as it goes straight through LB
+inPorts (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t) 2]
+inPorts (Constant_Int _ _) = []
+inPorts (Constant_Bit _ _) = []
+inPorts (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType 2]
+
+inPorts (MapOp pEl totEl op) = duplicatePorts pEl $
+  scalePortsStreamLens (totEl `ceilDiv` pEl) (inPorts op)
+inPorts (ReduceOp pEl totEl op) = duplicatePorts pEl $
 -- can just take head as can only reduce binary operators
 -- parallelism means apply binary to pEl at a time
-  scalePortsStreamLens (totEl `ceilDiv` pEl) [head $ inPortsType op]
+  scalePortsStreamLens (totEl `ceilDiv` pEl) [head $ inPorts op]
 
-inPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPortsType op
-inPortsType (RegDelay _ _ op) = inPortsType op
+inPorts (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPorts op
+inPorts (RegDelay _ _ op) = inPorts op
+
+inPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp inPorts ops
+inPorts (ComposeSeq ops) = scalePortsStreamLens (numFirings opHd) (inPorts opHd)
+  where opHd = head ops
+inPorts (ComposeFailure _ _) = []
 
 
-outPortsType (Add t) = oneOutSimplePort t
-outPortsType (Sub t) = oneOutSimplePort t
-outPortsType (Mul t) = oneOutSimplePort t
-outPortsType (Div t) = oneOutSimplePort t
-outPortsType (MemRead t) = [T_Port "O" 1 t]
-outPortsType (MemWrite _) = []
+oneOutSimplePort t = [T_Port "O" 1 t 2]
+outPorts :: Op -> [T_Port]
+outPorts (Add t) = oneOutSimplePort t
+outPorts (Sub t) = oneOutSimplePort t
+outPorts (Mul t) = oneOutSimplePort t
+outPorts (Div t) = oneOutSimplePort t
+outPorts (MemRead t) = [T_Port "O" 1 t 1]
+outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPortsType (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t))]
-outPortsType (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int)]
-outPortsType (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit)]
-outPortsType (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType]
+outPorts (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t)) 2]
+outPorts (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int) 1]
+outPorts (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit) 1]
+outPorts (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType 2]
 
-outPortsType (MapOp pEl totEl op) = duplicatePorts pEl $
-  scalePortsStreamLens (totEl `ceilDiv` pEl) (outPortsType op)
-outPortsType (ReduceOp _ _ op) = outPortsType op
+outPorts (MapOp pEl totEl op) = duplicatePorts pEl $
+  scalePortsStreamLens (totEl `ceilDiv` pEl) (outPorts op)
+outPorts (ReduceOp _ _ op) = outPorts op
 
-outPortsType (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ outPortsType op
-outPortsType (RegDelay _ _ op) = outPortsType op
+outPorts (IterOp numIters op) = scalePortsStreamLens numIters $ outPorts op
+outPorts (RegDelay _ op) = outPorts op
 
+outPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp outPorts ops
+outPorts (ComposeSeq ops) = scalePortsStreamLens (numFirings opLst) (outPorts opLst)
+  where opLst = last ops
+outPorts (ComposeFailure _ _) = []
+
+isComb :: a -> Bool
+isComb (Add t) = True
+isComb (Sub t) = True
+isComb (Mul t) = True
+isComb (Div t) = True
+-- this is meaningless for this units that don't have both and input and output
+isComb (MemRead _) = True
+isComb (MemWrite _) = True
+isComb (LineBuffer _ _ _) = True
+isComb (Constant_Int _ _) = True
+isComb (Constant_Bit _ _) = True
+isComb (StreamArrayController (inSLen, _) (outSLen, _)) = inSLen == 1 && outSLen == 1
+
+isComb (MapOp _ _ op) = isComb op
+isComb (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = isComb op
+isComb (ReduceOp _ _ op) = False
+
+isComb (IterOp numIters op) = isComb op
+isComb (Underutil denom op) = isComb op
+-- since pipelined, this doesn't affect clocks per stream
+isComb (RegDelay _ op) = False
+
+isComb (ComposePar ops) = length (filter isComb ops) > 0
+isComb (ComposeSeq ops) = length (filter isComb ops) > 0
+isComb (ComposeFailure _ _) = True
 -- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
 -- all port types and latencies 
 data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess

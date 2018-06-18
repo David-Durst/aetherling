@@ -20,7 +20,6 @@ class MergeOrScale a where
   addId :: a
   (|+|) :: a -> a -> a
   (|*) :: a -> Int -> a
-  (|/) :: a -> Int -> a
 
 -- first int tracks number of ops, second int tracks wiring consumed
 data OpsWireArea = OWA {opsArea :: Int, wireArea :: Int} deriving (Eq, Show)
@@ -41,5 +40,3 @@ instance MergeOrScale OpsWireArea where
   -- Note: need more realistic area approximation
   (|+|) (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
   (|*) (OWA o w) i = OWA (o * i) (w * i)
-  -- taking ceiling to be conservative
-  (|/) (OWA o w) i = OWA (o `ceilDiv` i) (w `ceilDiv` i)

@@ -37,3 +37,7 @@ duplicatePorts n ports = map wrapInArray ports
 scalePortsStreamLens :: Int -> [PortType] -> [PortType]
 scalePortsStreamLens n ports = map mulPortStreamLen ports 
   where mulPortStreamLen (T_Port pName pSLen tType) = T_Port pName (n*pSLen) tType
+
+scalePortsPerOp :: (a -> [PortType]) -> [a] -> [[PortType]]
+scalePortsPerOp portGetter ops = map scalePerOp ops
+  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
