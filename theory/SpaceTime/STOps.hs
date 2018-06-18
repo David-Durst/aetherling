@@ -118,7 +118,7 @@ clocksPerStream (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 =
 clocksPerStream (ReduceOp pEl totEl op) =
   (totEl `ceilDiv` pEl) * (reduceTreeCPS + cps op + registerCPS)
   where 
-    reduceTreeCPS = time (ReduceOp pEl pEl op)
+    reduceTreeCPS = cps (ReduceOp pEl pEl op)
     -- op adds nothing if its combinational, its CPS else
     opCPS = bool 0 (cps op) (isCombinational op)
 
@@ -133,7 +133,7 @@ clocksPerStream (ComposePar (hd:tl)) = cps hd
 clocksPerStream (ComposeSeq (hd:tl)) = cps hd
 clocksPerStream (ComposeFail@ure _ _) = 0
 
-
+registerLatency = 1
 latency :: a -> Int
 latency (Add t) = 1
 latency (Sub t) = 1
@@ -152,11 +152,11 @@ latency (MapOp _ _ op) = latency op
 latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 && isCombinational op = 1
 latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = latency op * (totEl pEl)
 latency (ReduceOp pEl totEl op) =
-  (totEl `ceilDiv` pEl) * (reduceTreeCPS + cps op + registerCPS)
+  (totEl `ceilDiv` pEl) * (reduceTreeLatency + latency op + registerLatency)
   where 
-    reduceTreeCPS = time (ReduceOp pEl pEl op)
+    reduceTreeCPS = latency (ReduceOp pEl pEl op)
     -- op adds nothing if its combinational, its CPS else
-    opCPS = bool 0 (cps op) (isCombinational op)
+    opCPS = bool 0 (latency op) (isCombinational op)
 
 
 latency (IterOp numIters op) = latency op
@@ -167,9 +167,10 @@ latency (RegDelay dc op) = latency op + dc
 latency (ComposePar ops) = maximum $ map latency ops
 -- latency is 1 if all elemetns are combintional, sum of latencies of sequential
 -- elements otherwise
-latency (ComposeSeq ops) = util ops
+latency (ComposeSeq ops) = bool combinationalLatency sequentialLatency
+  (sequentialLatency > 0)
   where 
-    combinatonalLatency = 1
+    combinationalLatency = 1
     sequentialLatency = foldl (+) 0 $ map latency $ filter (not . isCombinational) ops
 
 
