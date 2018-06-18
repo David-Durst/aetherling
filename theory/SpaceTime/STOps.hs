@@ -126,7 +126,7 @@ clocksPerStream (RegDelay _ op) = clocksPerStream op
 -- see the document for what is valid
 clocksPerStream (ComposePar (hd:tl)) = cps hd
 clocksPerStream (ComposeSeq (hd:tl)) = cps hd
-clocksPerStream (ComposeFail@ure _ _) = 0
+clocksPerStream (ComposeFailure _ _) = 0
 
 registerLatency = 1
 latency :: a -> Int
@@ -167,6 +167,7 @@ latency (ComposeSeq ops) = bool combinationalLatency sequentialLatency
   where 
     combinationalLatency = 1
     sequentialLatency = foldl (+) 0 $ map latency $ filter (not . isComb) ops
+latency (ComposeFailure _ _) = 0
 
 
 maxCombPath :: a -> Float
@@ -191,7 +192,7 @@ maxCombPath (RegDelay _ op) = util op
 
 maxCombPath (ComposePar ops) = utilWeightedByArea ops
 maxCombPath (ComposeSeq ops) = utilWeightedByArea ops
--- is there a better utilization than weighted by operator area
+maxCombPath (ComposeFailure _ _) = 0
 
 
 util :: a -> Float
@@ -216,6 +217,7 @@ util (RegDelay _ op) = util op
 
 util (ComposePar ops) = utilWeightedByArea ops
 util (ComposeSeq ops) = utilWeightedByArea ops
+util (ComposeFailure _ _) = 0
 -- is there a better utilization than weighted by operator area
 utilWeightedByArea :: (SpaceTime a) => [a] -> Float
 utilWeightedByArea ops = unnormalizedUtil / totalArea
