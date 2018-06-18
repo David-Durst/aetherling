@@ -107,8 +107,6 @@ clocksPerStream (MemWrite _) = rwTime
 clocksPerStream (LineBuffer _ _ _) = 1
 clocksPerStream (Constant_Int _ _) = 1
 clocksPerStream (Constant_Bit _ _) = 1
-clocksPerStream (StreamArrayController (inSLen, _) (outSLen, _)) | 
-  inSLen == 1 && outSLen == 1 = 1
 clocksPerStream (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
 
 clocksPerStream (MapOp pEl totEl op) = cps op * (totEl `ceilDiv` pEl)
@@ -146,7 +144,7 @@ latency (MemWrite _) = 1
 latency (LineBuffer p w _) = (w + p - 1) / p
 latency (Constant_Int _ _) = 1
 latency (Constant_Bit _ _) = 1
-latency (StreamArrayController (inSLen, _) (outSLen, _)) = 1
+latency (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
 
 latency (MapOp _ _ op) = latency op
 latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 && isCombinational op = 1
