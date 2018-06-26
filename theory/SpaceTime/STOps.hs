@@ -18,19 +18,17 @@ data Op =
   -- first Int is pixels per clock, second is window width, third int is 
   | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
   -- Array is constant produced, int is stream length
-  | Constant_Int {intConstStreamLen :: Int, intConstProduced :: [Int]}
+  | Constant_Int {intConstProduced :: [Int]}
   -- Array is constant produced, int is stream length
-  | Constant_Bit {bitConstStreamLen :: Int, bitConstProduced [Bool]}
-  -- first pair is input stream length and tokens per stream element, second is output
-  | StreamArrayController (Int, TokenType) (Int, TokenType)
+  | Constant_Bit {bitConstProduced [Bool]}
+  -- first pair is input subsequence length and tokens per element, second is output
+  | SequenceArrayController (Int, TokenType) (Int, TokenType)
 
   -- HIGHER ORDER OPS
-  | MapOp {mapParallelism :: Int, mapStreamLen :: Int, mappedOp :: Op}
-  | ReduceOp {reduceParallelism :: Int, reduceStreamLen :: Int, reducedOp :: Op}
+  | MapOp {mapParallelism :: Int, mappedOp :: Op}
+  | ReduceOp {reduceParallelism :: Int, reduceNumCombined :: Int, reducedOp :: Op}
 
-  -- ITERATION AND UNDERUTILIZATION OPS
-  | IterOp {numIterations :: Int, iteratedOp :: Op}
-  -- run underOp at 1 / utilDenominator CPS
+  -- run underOp at CPS = utilDenominator * old CPS
   | Underutil {utilDenominator :: int, underutilizedOp :: Op}
   -- this inceases latency
   | RegDelay {delayClocks :: Int, delayedOp :: Op}
@@ -60,22 +58,22 @@ space (LineBuffer p w t) = registerSpace [T_Array (p + w - 1) t]
 space (Constant_Int n consts) = OWA (len (T_Array n T_Int)) 0
 space (Constant_Bit n consts) = OWA (len (T_Array n T_Bit)) 0
 -- just a pass through, so will get removed by CoreIR
-space (StreamArrayController (inSLen, _) (outSLen, _)) | 
+space (SequenceArrayController (inSLen, _) (outSLen, _)) | 
   inSLen == 1 && outSLen == 1 = addId
 -- may need a more accurate approximate, but most conservative is storing
 -- entire input
-space (StreamArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
+space (SequenceArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
 
 -- area of parallel map is area of all the copies
-space (MapOp pEl _ op) = (space op) |* pEl
+space (MapOp par op) = (space op) |* par
 -- area of reduce is area of reduce tree, with area for register for partial
 -- results and counter for tracking iteration time if input is stream of more
 -- than what is passed in one clock
-space (ReduceOp pEl totEl op) | pEl == totEl = (space op) |* (pEl - 1)
-space rOp@(ReduceOp pEl _ op) =
+space (ReduceOp par numComb op) | par == numComb = (space op) |* (numPar - 1)
+space rOp@(ReduceOp par _ op) =
   reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
   |+| (counterSpace $ cps rOp)
-  where reduceTreeSpace = space (ReduceOp pEl pEl op)
+  where reduceTreeSpace = space (ReduceOp par par op)
 
 space (IterOp numIters op) = space op |+| counterSpace numIters
 space (Underutil denom op) = space op |+| counterSpace denom
@@ -95,19 +93,21 @@ cps op = clocksPerStream op
 clocksPerStream :: Op -> Int
 registerCPS = 1
 
-clocksPerStream (Add t) = 1
-clocksPerStream (Sub t) = 1
-clocksPerStream (Mul t) = 1
-clocksPerStream (Div t) = 1
+clocksPerStream (Add t) = baseWithNoWarmupStreamLen
+clocksPerStream (Sub t) = baseWithNoWarmupStreamLen
+clocksPerStream (Mul t) = baseWithNoWarmupStreamLen
+clocksPerStream (Div t) = baseWithNoWarmupStreamLen
 -- to what degree can we pipeline MemRead and MemWrite
-clocksPerStream (MemRead _) = rwTime
-clocksPerStream (MemWrite _) = rwTime
-clocksPerStream (LineBuffer _ _ _) = 1
-clocksPerStream (Constant_Int _ _) = 1
-clocksPerStream (Constant_Bit _ _) = 1
-clocksPerStream (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
+clocksPerStream (MemRead _) = baseWithNoWarmupStreamLen
+clocksPerStream (MemWrite _) = baseWithNoWarmupStreamLen
+clocksPerStream (LineBuffer _ _ _) = baseWithNoWarmupStreamLen
+clocksPerStream (Constant_Int _) = baseWithNoWarmupStreamLen
+clocksPerStream (Constant_Bit _) = baseWithNoWarmupStreamLen
+-- since one of the lengths must divide the other (as must be able to cleanly)
+-- divide/group the input into the output, just take max as that is lcm
+clocksPerStream (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max inSLen outSLen) 0
 
-clocksPerStream (MapOp pEl totEl op) = cps op * (totEl `ceilDiv` pEl)
+clocksPerStream (MapOp _ op) = cps op
 -- can only pipeline a reduce if its fully parallel
 clocksPerStream (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 =
   scaleCPS op (ceilLog totEl)
