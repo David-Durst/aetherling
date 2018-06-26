@@ -40,3 +40,14 @@ instance MergeOrScale OpsWireArea where
   -- Note: need more realistic area approximation
   (|+|) (OWA o0 w0) (OWA o1 w1) = OWA (o0 + o1) (w0 + w1)
   (|*) (OWA o w) i = OWA (o * i) (w * i)
+
+-- the constants for describing a number of clocks or elements that is 
+-- steadyStateMultiplier * n + warmupAdder
+data SteadyStateAndWarmupLen = SWLen {steadyStateMultiplier :: Int, warmupAdder :: Int}
+  deriving (Eq, Show)
+
+--instance MergeOrScale SteadyStateAndWarmupLen where
+--  addId = SeqLenConsts 0 0
+--  (|+|) (SeqLenConsts op0M op0A) (SeqLenConsts op1M op1A) = 
+--    SeqLenConsts (gcd op0M op1M) (op0A + op1A)
+--  (|*) ()
