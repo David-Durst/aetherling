@@ -4,6 +4,7 @@ import SpaceTime.STTypes
 import SpaceTime.STMetrics
 import Data.Typeable
 import Data.Bool
+import Data.Ratio
 
 -- These are leaf nodes that can be used in a higher order operator
 data Op =
@@ -127,6 +128,7 @@ clocksPerStream (RegDelay _ op) = clocksPerStream op
 clocksPerStream (ComposePar (hd:tl)) = cps hd
 clocksPerStream (ComposeSeq (hd:tl)) = cps hd
 clocksPerStream (ComposeFailure _ _) = 0
+
 
 registerLatency = 1
 latency :: a -> Int
@@ -295,7 +297,9 @@ isComb (MemWrite _) = True
 isComb (LineBuffer _ _ _) = True
 isComb (Constant_Int _ _) = True
 isComb (Constant_Bit _ _) = True
-isComb (StreamArrayController (inSLen, _) (outSLen, _)) = inSLen == 1 && outSLen == 1
+-- even if have sequential logic to store over multipel clocks,
+-- always combinational path through for first clock
+isComb (StreamArrayController (inSLen, _) (outSLen, _)) = True
 
 isComb (MapOp _ _ op) = isComb op
 isComb (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = isComb op
@@ -309,6 +313,17 @@ isComb (RegDelay _ op) = False
 isComb (ComposePar ops) = length (filter isComb ops) > 0
 isComb (ComposeSeq ops) = length (filter isComb ops) > 0
 isComb (ComposeFailure _ _) = True
+
+
+portThroughput :: Op -> T_Port -> (TokenType, Ratio)
+portThroughput op (T_Port _ sLen tType _) = (tType, sLen % cps op)
+
+inThroughput :: Op -> [(TokenType, Ratio)]
+inThroughput op = map (portThroughput) $ inPorts op
+
+outThroughput :: Op -> [(TokenType, Ratio)]
+outThroughput op = map (portThroughput) $ outPorts op
+
 -- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
 -- all port types and latencies 
 data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
