@@ -75,7 +75,6 @@ space rOp@(ReduceOp par _ op) =
   |+| (counterSpace $ cps rOp)
   where reduceTreeSpace = space (ReduceOp par par op)
 
-space (IterOp numIters op) = space op |+| counterSpace numIters
 space (Underutil denom op) = space op |+| counterSpace denom
 space (RegDelay dc op) = space op |+|
   ((registerSpace $ map pTType $ outPortsType op) |* dc)
@@ -111,18 +110,8 @@ clocksPerStream (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max 
 clocksPerStream (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
 clocksPerStream (ReduceOp par numComb op) = cps op
-clocksPerStream (ReduceOp par numComb op) = cps op
-  scaleCPS (reduceTreeCPS + cps op + registerCPS) (numComb `ceilDiv` par)
-  where 
-    -- log to get depth of tree, then add 1 for last operator.
-    -- No need to add reg time as overwrite to reg happens at same time taking 
-    -- in next input
-    reduceTreeCPS = scaleCPS op (ceilLog numComb + 1)
-    -- op adds nothing if its combinational, its CPS else
-    opCPS = bool 0 (cps op) (isComb op)
 
-clocksPerStream (IterOp numIters op) = numIters * clocksPerStream op
-clocksPerStream (Underutil denom op) = clocksPerStream op * denom
+clocksPerStream (Underutil denom op) = multToSteadyState denom $ clocksPerStream op
 -- since pipelined, this doesn't affect clocks per stream
 clocksPerStream (RegDelay _ op) = clocksPerStream op
 
@@ -133,47 +122,47 @@ clocksPerStream (ComposeSeq (hd:tl)) = cps hd
 clocksPerStream (ComposeFailure _ _) = 0
 
 
-registerLatency = 1
-latency :: a -> Int
-latency (Add t) = 1
-latency (Sub t) = 1
-latency (Mul t) = 1
-latency (Div t) = 1
-latency (MemRead _) = 1
-latency (MemWrite _) = 1
+registerInitialLatency = 1
+initialLatency :: a -> Int
+initialLatency (Add t) = 1
+initialLatency (Sub t) = 1
+initialLatency (Mul t) = 1
+initialLatency (Div t) = 1
+initialLatency (MemRead _) = 1
+initialLatency (MemWrite _) = 1
 -- for each extra element in per clock, first output is 1 larger, but get 1
 -- extra every clock building up to first output
-latency (LineBuffer p w _) = (w + p - 1) / p
-latency (Constant_Int _ _) = 1
-latency (Constant_Bit _ _) = 1
-latency (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
+initialLatency (LineBuffer p w _) = (w + p - 1) / p
+initialLatency (Constant_Int _ _) = 1
+initialLatency (Constant_Bit _ _) = 1
+initialLatency (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
 
-latency (MapOp _ _ op) = latency op
-latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 && isComb op = 1
-latency (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = latency op * (totEl pEl)
-latency (ReduceOp pEl totEl op) =
-  (totEl `ceilDiv` pEl) * (reduceTreeLatency + latency op + registerLatency)
+initialLatency (MapOp _ op) = initialLatency op
+initialLatency (ReduceOp par numComb op) | par `mod` numComb == 0 && isComb op = 1
+initialLatency (ReduceOp par numComb op) | par `mod` numComb == 0 = initialLatency op * (ceilLog par)
+initialLatency (ReduceOp par numComb op) =
+  -- pipelinng means only need to wait on latency of tree first time
+  reduceTreeInitialLatency + (numComb `ceilDiv` par) * (initialLatency op + registerInitialLatency)
   where 
-    reduceTreeCPS = latency (ReduceOp pEl pEl op)
+    reduceTreeInitialLatency = initialLatency (ReduceOp par par op)
     -- op adds nothing if its combinational, its CPS else
-    opCPS = bool 0 (latency op) (isComb op)
+    opCPS = bool 0 (initialLatency op) (isComb op)
 
-
-latency (IterOp numIters op) = latency op
-latency (Underutil denom op) = latency op
+initialLatency (Underutil denom op) = initialLatency op
 -- since pipelined, this doesn't affect clocks per stream
-latency (RegDelay dc op) = latency op + dc
+initialLatency (RegDelay dc op) = initialLatency op + dc
 
-latency (ComposePar ops) = maximum $ map latency ops
--- latency is 1 if all elemetns are combintional, sum of latencies of sequential
+initialLatency (ComposePar ops) = maximum $ map initialLatency ops
+-- initialLatency is 1 if all elemetns are combintional, sum of latencies of sequential
 -- elements otherwise
-latency (ComposeSeq ops) = bool combinationalLatency sequentialLatency
-  (sequentialLatency > 0)
+initialLatency (ComposeSeq ops) = bool combinationalInitialLatency sequentialInitialLatency
+  (sequentialInitialLatency > 0)
   where 
-    combinationalLatency = 1
-    sequentialLatency = foldl (+) 0 $ map latency $ filter (not . isComb) ops
-latency (ComposeFailure _ _) = 0
+    combinationalInitialLatency = 1
+    sequentialInitialLatency = foldl (+) 0 $ map initialLatency $ filter (not . isComb) ops
+initialLatency (ComposeFailure _ _) = 0
 
+-- in order to get maxCombPath
 
 maxCombPath :: a -> Float
 maxCombPath (Add t) = 1
@@ -187,16 +176,18 @@ maxCombPath (Constant_Int _ _) = 1
 maxCombPath (Constant_Bit _ _) = 1
 maxCombPath (StreamArrayController (inSLen, _) (outSLen, _)) = 1
 
-maxCombPath (MapOp _ _ op) = util op
+maxCombPath (MapOp _ op) = util op
 maxCombPath (ReduceOp _ _ op) = util op
 
-maxCombPath (IterOp numIters op) = util op
-maxCombPath (Underutil denom op) = util op / denom
+maxCombPath (Underutil denom op) = util op
 -- since pipelined, this doesn't affect clocks per stream
 maxCombPath (RegDelay _ op) = util op
 
-maxCombPath (ComposePar ops) = utilWeightedByArea ops
+maxCombPath (ComposePar ops) = maximum $ map maxCombPath ops
 maxCombPath (ComposeSeq ops) = utilWeightedByArea ops
+  where
+    maxSingleOpPath = maximum $ maxCombPath ops
+
 maxCombPath (ComposeFailure _ _) = 0
 
 
@@ -212,10 +203,9 @@ util (Constant_Int _ _) = 1
 util (Constant_Bit _ _) = 1
 util (StreamArrayController (inSLen, _) (outSLen, _)) = 1
 
-util (MapOp _ _ op) = util op
+util (MapOp _ op) = util op
 util (ReduceOp _ _ op) = util op
 
-util (IterOp numIters op) = util op
 util (Underutil denom op) = util op / denom
 -- since pipelined, this doesn't affect clocks per stream
 util (RegDelay _ op) = util op
