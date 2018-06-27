@@ -87,8 +87,8 @@ space (ComposeFailure _ _) = 0
 -- scaleCPS depending on if Op is combinational or not
 scaleCPS :: Op -> Int -> SteadyStateAndWarmupLen
 scaleCPS op n | isComb op = baseWithNoWarmupStreamLen
-scaleCPS op n = SWLen (ssMult * n, wAdder * n)
-  where (ssMult, wAdder) = cps op
+scaleCPS op n = SWLen (ssMult * n, wSub * n)
+  where (ssMult, wSub) = cps op
 
 cps op = clocksPerStream op
 clocksPerStream :: Op -> SteadyStateAndWarmupLen
@@ -109,12 +109,15 @@ clocksPerStream (Constant_Bit _) = baseWithNoWarmupStreamLen
 clocksPerStream (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max inSLen outSLen) 0
 
 clocksPerStream (MapOp _ op) = cps op
--- can only pipeline a reduce if its fully parallel
-clocksPerStream (ReduceOp par numComb op) | par `mod` numComb == 0 = cps op
-clocksPerStream (ReduceOp par numComb op) =
+-- always can pipeline. Just reset register every numComb/par if not fully parallel
+clocksPerStream (ReduceOp par numComb op) = cps op
+clocksPerStream (ReduceOp par numComb op) = cps op
   scaleCPS (reduceTreeCPS + cps op + registerCPS) (numComb `ceilDiv` par)
   where 
-    reduceTreeCPS = scaleCPS op (ceilLog numComb)
+    -- log to get depth of tree, then add 1 for last operator.
+    -- No need to add reg time as overwrite to reg happens at same time taking 
+    -- in next input
+    reduceTreeCPS = scaleCPS op (ceilLog numComb + 1)
     -- op adds nothing if its combinational, its CPS else
     opCPS = bool 0 (cps op) (isComb op)
 
@@ -243,12 +246,9 @@ inPorts (Constant_Int _ _) = []
 inPorts (Constant_Bit _ _) = []
 inPorts (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType 2]
 
-inPorts (MapOp pEl totEl op) = duplicatePorts pEl $
-  scalePortsStreamLens (totEl `ceilDiv` pEl) (inPorts op)
-inPorts (ReduceOp pEl totEl op) = duplicatePorts pEl $
+inPorts (MapOp par op) = duplicatePorts par (inPorts op)
 -- can just take head as can only reduce binary operators
--- parallelism means apply binary to pEl at a time
-  scalePortsStreamLens (totEl `ceilDiv` pEl) [head $ inPorts op]
+inPorts (ReduceOp par numComb op) = duplicatePorts par [head $ inPorts op]
 
 inPorts (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPorts op
 inPorts (RegDelay _ _ op) = inPorts op
@@ -274,9 +274,10 @@ outPorts (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit) 1]
 outPorts (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType 2]
 
-outPorts (MapOp pEl totEl op) = duplicatePorts pEl $
-  scalePortsStreamLens (totEl `ceilDiv` pEl) (outPorts op)
-outPorts (ReduceOp _ _ op) = outPorts op
+outPorts (MapOp par op) = duplicatePorts par (outPorts op)
+outPorts (ReduceOp par numComb op) = map scaleSSLen $ outPorts op
+  where scaleSSLen (T_Port name sLen tType pct) = 
+    T_Port name (multToSteadyState (numComb `ceilDiv` par) sLen) tType pct
 
 outPorts (IterOp numIters op) = scalePortsStreamLens numIters $ outPorts op
 outPorts (RegDelay _ op) = outPorts op
