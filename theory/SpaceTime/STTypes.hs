@@ -18,26 +18,34 @@ instance HasLen TokenType where
   len T_Bit = 1
   len (T_Array i t) = i * len t
 
+-- the constants for describing a number of clocks or elements that is 
+-- steadyStateMultiplier * n - warmupSub
+data SteadyStateAndWarmupLen = SWLen {steadyStateMultiplier :: Int, warmupSub :: Int}
+  deriving (Eq)
+
+instance Show SteadyStateAndWarmupLen where
+  show (SWLen ssMult wSub) | wSub > 0 = (show ssMult) ++ "n - " ++ (show wSub)
+  show (SWLen ssMult wSub) | wSub == 0 = (show ssMult) ++ "n"
+  show (SWLen ssMult wSub) = (show ssMult) ++ "n + " ++ (show (-1 * wSub))
+
+addToWarmup wIncr (SWLen ssMult wSub) = SWLen ssMult (wSub + wIncr)
+multToSteadyState ssScaler (SWLen ssCur wSub) = SWLen (ssCur * ssScaler) wSub
+makeSWLenConcrete nLen (SWLen ssMult wSub) = ssMult * nLen - wSub
+
+baseWithNoWarmupStreamLen = SWLen 1 0
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
 -- pCTime tracks the combinonal time from the module through this port
-data PortType = T_Port {pName :: [Char], pStreamLen :: Int, pTType :: TokenType,
-  pCTime :: Int} deriving (Show)
+data PortType = T_Port {pName :: [Char], pSeqLen :: SteadyStateAndWarmupLen, 
+  pTType :: TokenType, pCTime :: Int} deriving (Show)
 
 instance Eq PortType where
   -- ignore names for equality, just check that all same
-  (==) (T_Port _ len0 tType0) (T_Port _ len1 tType1) = 
-    len0 == len1 && tType0 == tType1
+  (==) (T_Port _ len0 tType0 pct0) (T_Port _ len1 tType1 pct1) = 
+    len0 == len1 && tType0 == tType1 && pct0 == pct1
   (/=) pt0 pt1 = not $ pt0 == pt1
 
 duplicatePorts :: Int -> [PortType] -> [PortType]
 duplicatePorts n ports = map wrapInArray ports
-  where wrapInArray (T_Port name sLen t) = T_Port name sLen (T_Array n t)
+  where wrapInArray (T_Port name sLen t pct) = T_Port name sLen (T_Array n t) pct
 
-scalePortsStreamLens :: Int -> [PortType] -> [PortType]
-scalePortsStreamLens n ports = map mulPortStreamLen ports 
-  where mulPortStreamLen (T_Port pName pSLen tType) = T_Port pName (n*pSLen) tType
-
-scalePortsPerOp :: (a -> [PortType]) -> [a] -> [[PortType]]
-scalePortsPerOp portGetter ops = map scalePerOp ops
-  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
