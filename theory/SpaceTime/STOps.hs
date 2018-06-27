@@ -85,13 +85,14 @@ space (ComposeSeq ops) = foldl (|+|) addId $ map space ops
 space (ComposeFailure _ _) = 0
 
 -- scaleCPS depending on if Op is combinational or not
-scaleCPS :: Op -> Int -> Int
-scaleCPS op n | isComb = 1
-scaleCPS op n = cps op * n
+scaleCPS :: Op -> Int -> SteadyStateAndWarmupLen
+scaleCPS op n | isComb op = baseWithNoWarmupStreamLen
+scaleCPS op n = SWLen (ssMult * n, wAdder * n)
+  where (ssMult, wAdder) = cps op
 
 cps op = clocksPerStream op
-clocksPerStream :: Op -> Int
-registerCPS = 1
+clocksPerStream :: Op -> SteadyStateAndWarmupLen
+registerCPS = baseWithNoWarmupStreamLen
 
 clocksPerStream (Add t) = baseWithNoWarmupStreamLen
 clocksPerStream (Sub t) = baseWithNoWarmupStreamLen
@@ -109,12 +110,11 @@ clocksPerStream (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max 
 
 clocksPerStream (MapOp _ op) = cps op
 -- can only pipeline a reduce if its fully parallel
-clocksPerStream (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 =
-  scaleCPS op (ceilLog totEl)
-clocksPerStream (ReduceOp pEl totEl op) =
-  (totEl `ceilDiv` pEl) * (reduceTreeCPS + cps op + registerCPS)
+clocksPerStream (ReduceOp par numComb op) | par `mod` numComb == 0 = cps op
+clocksPerStream (ReduceOp par numComb op) =
+  scaleCPS (reduceTreeCPS + cps op + registerCPS) (numComb `ceilDiv` par)
   where 
-    reduceTreeCPS = cps (ReduceOp pEl pEl op)
+    reduceTreeCPS = scaleCPS op (ceilLog numComb)
     -- op adds nothing if its combinational, its CPS else
     opCPS = bool 0 (cps op) (isComb op)
 
