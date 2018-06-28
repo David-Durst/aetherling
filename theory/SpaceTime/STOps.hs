@@ -16,9 +16,9 @@ data Op =
   | MemWrite TokenType
   -- first Int is pixels per clock, second is window width, third int is 
   | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
-  -- Array is constant produced, int is stream length
+  -- Array is constant produced, int is sequence length
   | Constant_Int {intConstProduced :: [Int]}
-  -- Array is constant produced, int is stream length
+  -- Array is constant produced, int is sequence length
   | Constant_Bit {bitConstProduced :: [Bool]}
   -- first pair is input subsequence length and tokens per element, second is output
   | SequenceArrayController (Int, TokenType) (Int, TokenType)
@@ -66,7 +66,7 @@ space (SequenceArrayController (inSLen, inType) _) = registerSpace [inType] |* i
 -- area of parallel map is area of all the copies
 space (MapOp par op) = (space op) |* par
 -- area of reduce is area of reduce tree, with area for register for partial
--- results and counter for tracking iteration time if input is stream of more
+-- results and counter for tracking iteration time if input is sequence of more
 -- than what is passed in one clock
 space (ReduceOp par numComb op) | par == numComb = (space op) |* (par - 1)
 space rOp@(ReduceOp par numComb op) =
@@ -91,45 +91,45 @@ space (ComposeFailure _ _) = 0
 
 -- scaleCPS depending on if Op is combinational or not
 scaleCPS :: Op -> Int -> SteadyStateAndWarmupLen
-scaleCPS op n | isComb op = baseWithNoWarmupStreamLen
-scaleCPS op n = SWLen (ssMult * n, wSub * n)
-  where (ssMult, wSub) = cps op
+scaleCPS op n | isComb op = baseWithNoWarmupSequenceLen
+scaleCPS op n = SWLen (ssMult * n) (wSub * n)
+  where (SWLen ssMult wSub) = cps op
 
-cps op = clocksPerStream op
-clocksPerStream :: Op -> SteadyStateAndWarmupLen
-registerCPS = baseWithNoWarmupStreamLen
+cps op = clocksPerSequence op
+clocksPerSequence :: Op -> SteadyStateAndWarmupLen
+registerCPS = baseWithNoWarmupSequenceLen
 
-clocksPerStream (Add t) = baseWithNoWarmupStreamLen
-clocksPerStream (Sub t) = baseWithNoWarmupStreamLen
-clocksPerStream (Mul t) = baseWithNoWarmupStreamLen
-clocksPerStream (Div t) = baseWithNoWarmupStreamLen
+clocksPerSequence (Add t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Sub t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Mul t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Div t) = baseWithNoWarmupSequenceLen
 -- to what degree can we pipeline MemRead and MemWrite
-clocksPerStream (MemRead _) = baseWithNoWarmupStreamLen
-clocksPerStream (MemWrite _) = baseWithNoWarmupStreamLen
-clocksPerStream (LineBuffer _ _ _) = baseWithNoWarmupStreamLen
-clocksPerStream (Constant_Int _) = baseWithNoWarmupStreamLen
-clocksPerStream (Constant_Bit _) = baseWithNoWarmupStreamLen
+clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
+clocksPerSequence (MemWrite _) = baseWithNoWarmupSequenceLen
+clocksPerSequence (LineBuffer _ _ _) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)
 -- divide/group the input into the output, just take max as that is lcm
-clocksPerStream (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max inSLen outSLen) 0
+clocksPerSequence (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max inSLen outSLen) 0
 
-clocksPerStream (MapOp _ op) = cps op
+clocksPerSequence (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
-clocksPerStream (ReduceOp par _ op) = cps op
+clocksPerSequence (ReduceOp par _ op) = cps op
 
-clocksPerStream (Underutil denom op) = multToSteadyState denom $ clocksPerStream op
+clocksPerSequence (Underutil denom op) = multToSteadyState denom $ clocksPerSequence op
 -- since pipelined, this doesn't affect clocks per stream
-clocksPerStream (RegDelay _ op) = clocksPerStream op
+clocksPerSequence (RegDelay _ op) = clocksPerSequence op
 
 -- this depends the constructors verifying that only composing valid things
 -- see the document for what is valid
-clocksPerStream (ComposePar (hd:tl)) = cps hd
-clocksPerStream (ComposeSeq (hd:tl)) = cps hd
-clocksPerStream (ComposeFailure _ _) = 0
+clocksPerSequence (ComposePar (hd:tl)) = cps hd
+clocksPerSequence (ComposeSeq (hd:tl)) = cps hd
+clocksPerSequence (ComposeFailure _ _) = 0
 
 
 registerInitialLatency = 1
-initialLatency :: a -> Int
+initialLatency :: Op -> Int
 initialLatency (Add t) = 1
 initialLatency (Sub t) = 1
 initialLatency (Mul t) = 1
@@ -139,8 +139,8 @@ initialLatency (MemWrite _) = 1
 -- for each extra element in per clock, first output is 1 larger, but get 1
 -- extra every clock building up to first output
 initialLatency (LineBuffer p w _) = (w + p - 1) / p
-initialLatency (Constant_Int _ _) = 1
-initialLatency (Constant_Bit _ _) = 1
+initialLatency (Constant_Int _) = 1
+initialLatency (Constant_Bit _) = 1
 initialLatency (SequenceArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
 
 initialLatency (MapOp _ op) = initialLatency op
@@ -172,7 +172,7 @@ initialLatency (ComposeFailure _ _) = 0
 -- chains with the starting and stopping sequential nodes to get all max, multiop
 -- combinational paths
 getMultiOpCombGroupings (ComposeSeq ops) = 
-  fold appendIfCombNewListIfSeq ops []
+  foldl appendIfCombNewListIfSeq ops []
   where 
     appendIfCombNewListIfSeq listOfCombLists nextOp | length listOfCombLists == 0 = 
       [[nextOp]]
@@ -204,8 +204,8 @@ maxCombPath (Div t) = 1
 maxCombPath (MemRead _) = 1
 maxCombPath (MemWrite _) = 1
 maxCombPath (LineBuffer _ _ _) = 1
-maxCombPath (Constant_Int _ _) = 1
-maxCombPath (Constant_Bit _ _) = 1
+maxCombPath (Constant_Int _) = 1
+maxCombPath (Constant_Bit _) = 1
 maxCombPath (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
 
 maxCombPath (MapOp _ op) = maxCombPath op
@@ -241,8 +241,8 @@ util (Div t) = 1
 util (MemRead _) = 1
 util (MemWrite _) = 1
 util (LineBuffer _ _ _) = 1
-util (Constant_Int _ _) = 1
-util (Constant_Bit _ _) = 1
+util (Constant_Int _) = 1
+util (Constant_Bit _) = 1
 util (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
 
 util (MapOp _ op) = util op
@@ -274,8 +274,8 @@ inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" 1 t 1]
 -- 2 as it goes straight through LB
 inPorts (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t) 2]
-inPorts (Constant_Int _ _) = []
-inPorts (Constant_Bit _ _) = []
+inPorts (Constant_Int _) = []
+inPorts (Constant_Bit _) = []
 inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType 2]
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
@@ -301,8 +301,8 @@ outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
 outPorts (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t)) 2]
-outPorts (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int) 1]
-outPorts (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit) 1]
+outPorts (Constant_Int ints) = [T_Port "O" n (T_Array (length ints) T_Int) 1]
+outPorts (Constant_Bit bits) = [T_Port "O" n (T_Array (length bits) T_Bit) 1]
 outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType 2]
 
 outPorts (MapOp par op) = duplicatePorts par (outPorts op)
@@ -325,8 +325,8 @@ isComb (Div t) = True
 isComb (MemRead _) = True
 isComb (MemWrite _) = True
 isComb (LineBuffer _ _ _) = True
-isComb (Constant_Int _ _) = True
-isComb (Constant_Bit _ _) = True
+isComb (Constant_Int _) = True
+isComb (Constant_Bit _) = True
 -- even if have sequential logic to store over multipel clocks,
 -- always combinational path through for first clock
 isComb (SequenceArrayController (inSLen, _) (outSLen, _)) = True
