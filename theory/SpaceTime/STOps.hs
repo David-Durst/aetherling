@@ -172,14 +172,16 @@ initialLatency (ComposeFailure _ _) = 0
 -- chains with the starting and stopping sequential nodes to get all max, multiop
 -- combinational paths
 getMultiOpCombGroupings (ComposeSeq ops) = 
-  foldl appendIfCombNewListIfSeq ops []
+  foldl appendIfCombNewListIfSeq [] ops
   where 
+    appendIfCombNewListIfSeq :: [[Op]] -> Op -> [[Op]]
     appendIfCombNewListIfSeq listOfCombLists nextOp | length listOfCombLists == 0 = 
       [[nextOp]]
-    appendIfCombNewListIfSeq listOfCombLists nextOp | isComb nextOp = 
-      [init listOfCombLists] ++ [tail listOfCombLists ++ nextOp]
-    appendIfCombNewListIfSeq listOfCombLists nextOp | isComb nextOp = 
-      [init listOfCombLists] ++ [tail listOfCombLists ++ nextOp] ++ [nextOp]
+    -- if this is combinational, keep the current list going by appending nothing
+    -- , else stop it by starting the next one
+    appendIfCombNewListIfSeq listOfCombLists nextOp = 
+      init listOfCombLists ++ [last listOfCombLists ++ [nextOp]] ++
+        bool [] [[nextOp]] (isComb nextOp)
 
 -- assuming here that all ports on a combinational module have the same comb
 -- path length. Not a valid assumption, but good enough to get started
@@ -194,9 +196,9 @@ getCombPathLength ops = seqStartCombLen ops + seqEndCombLen ops + sumOfCombOpPat
     seqStartCombLen ops = maximum $ map pCTime (outPorts $ head ops)
     seqEndCombLen ops | isComb $ head ops = 0
     seqEndCombLen ops = maximum $ map pCTime (inPorts $ last ops)
-    sumOfCombOpPaths = foldl sum 0 $ map maxCombPath ops
+    sumOfCombOpPaths = foldl (+) 0 $ map maxCombPath ops
 
-maxCombPath :: a -> Float
+maxCombPath :: a -> Int
 maxCombPath (Add t) = 1
 maxCombPath (Sub t) = 1
 maxCombPath (Mul t) = 1
