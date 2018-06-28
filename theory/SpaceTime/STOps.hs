@@ -68,11 +68,12 @@ space (MapOp par op) = (space op) |* par
 -- area of reduce is area of reduce tree, with area for register for partial
 -- results and counter for tracking iteration time if input is stream of more
 -- than what is passed in one clock
-space (ReduceOp par numComb op) | par == numComb = (space op) |* (numPar - 1)
-space rOp@(ReduceOp par _ op) =
-  reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPortsType op)
-  |+| (counterSpace $ cps rOp)
+space (ReduceOp par numComb op) | par == numComb = (space op) |* (par - 1)
+space rOp@(ReduceOp par numComb op) =
+  reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPorts op)
+  |+| (counterSpace )
   where reduceTreeSpace = space (ReduceOp par par op)
+    where (_, elPerClock = )
 
 space (Underutil denom op) = space op |+| counterSpace denom
 space (RegDelay dc op) = space op |+|
@@ -337,13 +338,13 @@ isComb (ComposeSeq ops) = length (filter isComb ops) > 0
 isComb (ComposeFailure _ _) = True
 
 
-portThroughput :: Op -> PortType -> (TokenType, Ratio Int)
-portThroughput op (T_Port _ sLen tType _) = (tType, sLen % cps op)
+portThroughput :: Op -> PortType -> (TokenType, SteadyStateAndWarmupRatio)
+portThroughput op (T_Port _ sLen tType _) = (tType, SWRatio sLen $ cps op)
 
-inThroughput :: Op -> [(TokenType, Ratio Int)]
+inThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
 inThroughput op = map (portThroughput) $ inPorts op
 
-outThroughput :: Op -> [(TokenType, Ratio Int)]
+outThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
 outThroughput op = map (portThroughput) $ outPorts op
 
 -- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 

@@ -33,6 +33,7 @@ multToSteadyState ssScaler (SWLen ssCur wSub) = SWLen (ssCur * ssScaler) wSub
 makeSWLenConcrete nLen (SWLen ssMult wSub) = ssMult * nLen - wSub
 
 baseWithNoWarmupStreamLen = SWLen 1 0
+
 -- implicitly not banning multiple ports with same name here
 -- names are only helpful reminders, can have duplicates with non-renamed ports
 -- pCTime tracks the combinonal time from the module through this port
