@@ -162,7 +162,33 @@ initialLatency (ComposeSeq ops) = bool combinationalInitialLatency sequentialIni
     sequentialInitialLatency = foldl (+) 0 $ map initialLatency $ filter (not . isComb) ops
 initialLatency (ComposeFailure _ _) = 0
 
--- in order to get maxCombPath
+-- in order to get maxCombPath for composeSeq, need to get all combinational 
+-- chains with the starting and stopping sequential nodes to get all max, multiop
+-- combinational paths
+getMultiOpCombGroupings (ComposeSeq ops) = 
+  fold appendIfCombNewListIfSeq ops []
+  where 
+    appendIfCombNewListIfSeq listOfCombLists nextOp | length listOfCombLists == 0 = 
+      [[nextOp]]
+    appendIfCombNewListIfSeq listOfCombLists nextOp | isComb nextOp = 
+      [init listOfCombLists] ++ [tail listOfCombLists ++ nextOp]
+    appendIfCombNewListIfSeq listOfCombLists nextOp | isComb nextOp = 
+      [init listOfCombLists] ++ [tail listOfCombLists ++ nextOp] ++ [nextOp]
+
+-- assuming here that all ports on a combinational module have the same comb
+-- path length. Not a valid assumption, but good enough to get started
+-- each list is one of the child lists from getMultiOpCombPaths, meaning
+-- only valid locations for sequential elements are at start and end
+getCombPathLength ops = seqStartCombLen + seqEndCombLen + sumOfCombOpPaths
+  where
+    -- add longest of comb lengths of ports of starting and ending sequential 
+    -- ops. But only do this if the first and last elements are sequential
+    -- Otherwise, this will be handled by sumOfCombOpPaths
+    seqStartCombLen | isComb $ head ops = 0
+    seqStartCombLen = maximum $ map pCTime (outPorts $ head ops)
+    seqEndCombLen | isComb $ head ops = 0
+    seqEndCombLen = maximum $ map pCTime (inPorts $ last ops)
+    sumOfCombOpPaths = foldl sum 0 $ map maxCombPath ops
 
 maxCombPath :: a -> Float
 maxCombPath (Add t) = 1
@@ -176,7 +202,7 @@ maxCombPath (Constant_Int _ _) = 1
 maxCombPath (Constant_Bit _ _) = 1
 maxCombPath (StreamArrayController (inSLen, _) (outSLen, _)) = 1
 
-maxCombPath (MapOp _ op) = util op
+maxCombPath (MapOp _ op) = maxCombPath op
 maxCombPath (ReduceOp _ _ op) = util op
 
 maxCombPath (Underutil denom op) = util op
@@ -184,9 +210,11 @@ maxCombPath (Underutil denom op) = util op
 maxCombPath (RegDelay _ op) = util op
 
 maxCombPath (ComposePar ops) = maximum $ map maxCombPath ops
-maxCombPath (ComposeSeq ops) = utilWeightedByArea ops
+maxCombPath (ComposeSeq ops) = max maxSingleOpPath maxMultiOpPath
   where
+    -- maxSingleOpPath gets the maximum internal combinational path of all elements
     maxSingleOpPath = maximum $ maxCombPath ops
+    maxMultiOpPath = maximum $ map getCombPathLength $ getMultiOpCombGroupings ops
 
 maxCombPath (ComposeFailure _ _) = 0
 
