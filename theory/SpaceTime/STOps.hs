@@ -71,13 +71,19 @@ space (MapOp par op) = (space op) |* par
 space (ReduceOp par numComb op) | par == numComb = (space op) |* (par - 1)
 space rOp@(ReduceOp par numComb op) =
   reduceTreeSpace |+| (space op) |+| (registerSpace $ map pTType $ outPorts op)
-  |+| (counterSpace )
-  where reduceTreeSpace = space (ReduceOp par par op)
-    where (_, elPerClock = )
+  |+| (counterSpace $ numComb * denomSSMult `ceilDiv` numSSMult)
+  where 
+    reduceTreeSpace = space (ReduceOp par par op)
+    -- need to be able to count all clocks in steady state, as that is when
+    -- will be doing reset every nth
+    -- thus, divide numComb by throuhgput in steady state to get clocks for
+    -- numComb to be absorbed
+    -- only need throughput from first port as all ports have same throuhgput
+    (_, SWRatio (SWLen numSSMult _) (SWLen denomSSMult _)) = portThroughput op $ head $ inPorts op
 
 space (Underutil denom op) = space op |+| counterSpace denom
 space (RegDelay dc op) = space op |+|
-  ((registerSpace $ map pTType $ outPortsType op) |* dc)
+  ((registerSpace $ map pTType $ outPorts op) |* dc)
 
 space (ComposePar ops) = foldl (|+|) addId $ map space ops
 space (ComposeSeq ops) = foldl (|+|) addId $ map space ops
@@ -391,13 +397,13 @@ canComposeSeq :: Op -> Op -> Bool
 -- over all firings and streams per firing, and if same number of clock cycles
 canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
   -- this checks both token types and numTokens over all firing/stream combos
-  outPortsType op0 == inPortsType op1 && 
+  outPorts op0 == inPorts op1 && 
   (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
 
 -- can join a combinational node with another node if they do the same amount
 -- every clock cycle
-canComposeSeq op0 op1 = ((map pTType) . outPortsType) op0 ==
-  ((map pTType) . inPortsType) op1
+canComposeSeq op0 op1 = ((map pTType) . outPorts) op0 ==
+  ((map pTType) . inPorts) op1
 
 canComposePar :: Op -> Op -> Bool
 -- only join two nodes in parallel if same number of clocks
