@@ -109,7 +109,7 @@ clocksPerStream (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max 
 
 clocksPerStream (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
-clocksPerStream (ReduceOp par numComb op) = cps op
+clocksPerStream (ReduceOp par _ op) = cps op
 
 clocksPerStream (Underutil denom op) = multToSteadyState denom $ clocksPerStream op
 -- since pipelined, this doesn't affect clocks per stream
@@ -203,7 +203,14 @@ maxCombPath (Constant_Bit _ _) = 1
 maxCombPath (StreamArrayController (inSLen, _) (outSLen, _)) = 1
 
 maxCombPath (MapOp _ op) = maxCombPath op
-maxCombPath (ReduceOp _ _ op) = util op
+maxCombPath (ReduceOp par _ op) | isComb op = maxCombPath op * ceilLog par
+-- since connecting each op to a copy, and all are duplicates, 
+-- maxCombPath is either internal to each op, or from combining two of them
+maxCombPath (ReduceOp par numComb op) = max (maxCombPath op) maxCombPathFromOutputToInput
+  -- since same output goes to both inputs, just take max of input comb path 
+  -- plus output path as that is max path
+  -- assuming two inputs and one output to op
+  maxCombPathFromOutputToInput = maximum (map pCTime $ inPorts op) + (pCTime $ head $ outPorts op)
 
 maxCombPath (Underutil denom op) = util op
 -- since pipelined, this doesn't affect clocks per stream
