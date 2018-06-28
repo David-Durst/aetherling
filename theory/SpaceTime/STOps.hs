@@ -1,4 +1,3 @@
-{-# LANGUAGE StandaloneDeriving, ExistentialQuantification #-}
 module SpaceTime.STOps where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
@@ -20,7 +19,7 @@ data Op =
   -- Array is constant produced, int is stream length
   | Constant_Int {intConstProduced :: [Int]}
   -- Array is constant produced, int is stream length
-  | Constant_Bit {bitConstProduced [Bool]}
+  | Constant_Bit {bitConstProduced :: [Bool]}
   -- first pair is input subsequence length and tokens per element, second is output
   | SequenceArrayController (Int, TokenType) (Int, TokenType)
 
@@ -29,7 +28,7 @@ data Op =
   | ReduceOp {reduceParallelism :: Int, reduceNumCombined :: Int, reducedOp :: Op}
 
   -- run underOp at CPS = utilDenominator * old CPS
-  | Underutil {utilDenominator :: int, underutilizedOp :: Op}
+  | Underutil {utilDenominator :: Int, underutilizedOp :: Op}
   -- this inceases latency
   | RegDelay {delayClocks :: Int, delayedOp :: Op}
 
@@ -55,8 +54,8 @@ space (MemWrite t) = OWA (len t) (len t)
 -- others get wires from other registers
 -- add |+| counterSpace (p `ceilDiv` w) when accounting for warmup counter
 space (LineBuffer p w t) = registerSpace [T_Array (p + w - 1) t]
-space (Constant_Int n consts) = OWA (len (T_Array n T_Int)) 0
-space (Constant_Bit n consts) = OWA (len (T_Array n T_Bit)) 0
+space (Constant_Int consts) = OWA (len (T_Array (length consts) T_Int)) 0
+space (Constant_Bit consts) = OWA (len (T_Array (length consts) T_Bit)) 0
 -- just a pass through, so will get removed by CoreIR
 space (SequenceArrayController (inSLen, _) (outSLen, _)) | 
   inSLen == 1 && outSLen == 1 = addId
@@ -135,7 +134,7 @@ initialLatency (MemWrite _) = 1
 initialLatency (LineBuffer p w _) = (w + p - 1) / p
 initialLatency (Constant_Int _ _) = 1
 initialLatency (Constant_Bit _ _) = 1
-initialLatency (StreamArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
+initialLatency (SequenceArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
 
 initialLatency (MapOp _ op) = initialLatency op
 initialLatency (ReduceOp par numComb op) | par `mod` numComb == 0 && isComb op = 1
@@ -179,15 +178,15 @@ getMultiOpCombGroupings (ComposeSeq ops) =
 -- path length. Not a valid assumption, but good enough to get started
 -- each list is one of the child lists from getMultiOpCombPaths, meaning
 -- only valid locations for sequential elements are at start and end
-getCombPathLength ops = seqStartCombLen + seqEndCombLen + sumOfCombOpPaths
+getCombPathLength ops = seqStartCombLen ops + seqEndCombLen ops + sumOfCombOpPaths
   where
     -- add longest of comb lengths of ports of starting and ending sequential 
     -- ops. But only do this if the first and last elements are sequential
     -- Otherwise, this will be handled by sumOfCombOpPaths
-    seqStartCombLen | isComb $ head ops = 0
-    seqStartCombLen = maximum $ map pCTime (outPorts $ head ops)
-    seqEndCombLen | isComb $ head ops = 0
-    seqEndCombLen = maximum $ map pCTime (inPorts $ last ops)
+    seqStartCombLen ops | isComb $ head ops = 0
+    seqStartCombLen ops = maximum $ map pCTime (outPorts $ head ops)
+    seqEndCombLen ops | isComb $ head ops = 0
+    seqEndCombLen ops = maximum $ map pCTime (inPorts $ last ops)
     sumOfCombOpPaths = foldl sum 0 $ map maxCombPath ops
 
 maxCombPath :: a -> Float
@@ -200,17 +199,18 @@ maxCombPath (MemWrite _) = 1
 maxCombPath (LineBuffer _ _ _) = 1
 maxCombPath (Constant_Int _ _) = 1
 maxCombPath (Constant_Bit _ _) = 1
-maxCombPath (StreamArrayController (inSLen, _) (outSLen, _)) = 1
+maxCombPath (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
 
 maxCombPath (MapOp _ op) = maxCombPath op
 maxCombPath (ReduceOp par _ op) | isComb op = maxCombPath op * ceilLog par
 -- since connecting each op to a copy, and all are duplicates, 
 -- maxCombPath is either internal to each op, or from combining two of them
 maxCombPath (ReduceOp par numComb op) = max (maxCombPath op) maxCombPathFromOutputToInput
-  -- since same output goes to both inputs, just take max of input comb path 
-  -- plus output path as that is max path
-  -- assuming two inputs and one output to op
-  maxCombPathFromOutputToInput = maximum (map pCTime $ inPorts op) + (pCTime $ head $ outPorts op)
+  where
+    -- since same output goes to both inputs, just take max of input comb path 
+    -- plus output path as that is max path
+    -- assuming two inputs and one output to op
+    maxCombPathFromOutputToInput = maximum (map pCTime $ inPorts op) + (pCTime $ head $ outPorts op)
 
 maxCombPath (Underutil denom op) = util op
 -- since pipelined, this doesn't affect clocks per stream
@@ -236,7 +236,7 @@ util (MemWrite _) = 1
 util (LineBuffer _ _ _) = 1
 util (Constant_Int _ _) = 1
 util (Constant_Bit _ _) = 1
-util (StreamArrayController (inSLen, _) (outSLen, _)) = 1
+util (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
 
 util (MapOp _ op) = util op
 util (ReduceOp _ _ op) = util op
@@ -249,7 +249,7 @@ util (ComposePar ops) = utilWeightedByArea ops
 util (ComposeSeq ops) = utilWeightedByArea ops
 util (ComposeFailure _ _) = 0
 -- is there a better utilization than weighted by operator area
-utilWeightedByArea :: (SpaceTime a) => [a] -> Float
+utilWeightedByArea :: [op] -> Float
 utilWeightedByArea ops = unnormalizedUtil / totalArea
     where 
       unnormalizedUtil = foldl (+) 0 $
@@ -258,7 +258,7 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
 
 
 twoInSimplePorts t = [T_Port "I0" 1 t 2, T_Port "I1" 1 t 2]
-inPorts :: Op -> [T_Port]
+inPorts :: Op -> [PortType]
 inPorts (Add t) = twoInSimplePorts t
 inPorts (Sub t) = twoInSimplePorts t
 inPorts (Mul t) = twoInSimplePorts t
@@ -269,13 +269,12 @@ inPorts (MemWrite t) = [T_Port "I" 1 t 1]
 inPorts (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t) 2]
 inPorts (Constant_Int _ _) = []
 inPorts (Constant_Bit _ _) = []
-inPorts (StreamArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType 2]
+inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType 2]
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
 -- can just take head as can only reduce binary operators
 inPorts (ReduceOp par numComb op) = duplicatePorts par [head $ inPorts op]
 
-inPorts (IterOp _ usedIters op) = scalePortsStreamLens usedIters $ inPorts op
 inPorts (RegDelay _ _ op) = inPorts op
 
 inPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp inPorts ops
@@ -285,7 +284,7 @@ inPorts (ComposeFailure _ _) = []
 
 
 oneOutSimplePort t = [T_Port "O" 1 t 2]
-outPorts :: Op -> [T_Port]
+outPorts :: Op -> [PortType]
 outPorts (Add t) = oneOutSimplePort t
 outPorts (Sub t) = oneOutSimplePort t
 outPorts (Mul t) = oneOutSimplePort t
@@ -297,14 +296,12 @@ outPorts (MemWrite _) = []
 outPorts (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t)) 2]
 outPorts (Constant_Int n ints) = [T_Port "O" n (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit n bits) = [T_Port "O" n (T_Array (length bits) T_Bit) 1]
-outPorts (StreamArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType 2]
+outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType 2]
 
 outPorts (MapOp par op) = duplicatePorts par (outPorts op)
 outPorts (ReduceOp par numComb op) = map scaleSSLen $ outPorts op
-  where scaleSSLen (T_Port name sLen tType pct) = 
-    T_Port name (multToSteadyState (numComb `ceilDiv` par) sLen) tType pct
+  where scaleSSLen (T_Port name sLen tType pct) = T_Port name (multToSteadyState (numComb `ceilDiv` par) sLen) tType pct
 
-outPorts (IterOp numIters op) = scalePortsStreamLens numIters $ outPorts op
 outPorts (RegDelay _ op) = outPorts op
 
 outPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp outPorts ops
@@ -325,13 +322,12 @@ isComb (Constant_Int _ _) = True
 isComb (Constant_Bit _ _) = True
 -- even if have sequential logic to store over multipel clocks,
 -- always combinational path through for first clock
-isComb (StreamArrayController (inSLen, _) (outSLen, _)) = True
+isComb (SequenceArrayController (inSLen, _) (outSLen, _)) = True
 
 isComb (MapOp _ _ op) = isComb op
 isComb (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = isComb op
 isComb (ReduceOp _ _ op) = False
 
-isComb (IterOp numIters op) = isComb op
 isComb (Underutil denom op) = isComb op
 -- since pipelined, this doesn't affect clocks per stream
 isComb (RegDelay _ op) = False
@@ -341,13 +337,13 @@ isComb (ComposeSeq ops) = length (filter isComb ops) > 0
 isComb (ComposeFailure _ _) = True
 
 
-portThroughput :: Op -> T_Port -> (TokenType, Ratio)
+portThroughput :: Op -> PortType -> (TokenType, Ratio Int)
 portThroughput op (T_Port _ sLen tType _) = (tType, sLen % cps op)
 
-inThroughput :: Op -> [(TokenType, Ratio)]
+inThroughput :: Op -> [(TokenType, Ratio Int)]
 inThroughput op = map (portThroughput) $ inPorts op
 
-outThroughput :: Op -> [(TokenType, Ratio)]
+outThroughput :: Op -> [(TokenType, Ratio Int)]
 outThroughput op = map (portThroughput) $ outPorts op
 
 -- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
@@ -362,25 +358,25 @@ data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
 -- parts will take 40 clocks, but should be able to add another component 
 -- operating at one token per 10 clocks to get a sequence of 5 parts at 50 clocks
 (|.|) (op0@(ComposeSeq ops0)) (op1@(ComposeSeq ops1)) 
-  | canComposeSeq op1 op0 == ComposeSuccess = $ ComposeSeq $ ops1 ++ ops0
+  | canComposeSeq op1 op0 == ComposeSuccess = ComposeSeq $ ops1 ++ ops0
 (|.|) (op0@(ComposeSeq ops0)) (op1) | canComposeSeq op1 op0 == ComposeSuccess =
-  $ ComposeSeq $ [op1] ++ ops0
+  ComposeSeq $ [op1] ++ ops0
 (|.|) (op0) (op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 == ComposeSuccess =
-  $ ComposeSeq $ ops1 ++ [op0]
+  ComposeSeq $ ops1 ++ [op0]
 (|.|) (op0) (op1) | canComposeSeq op1 op0 == ComposeSuccess =
-  $ ComposeSeq $ [op1] ++ [op0]
+  ComposeSeq $ [op1] ++ [op0]
 (|.|) op0 op1 = canComposeSeq op0 op1
 
 -- This is for making ComposePar
-(|&|) :: Maybe Compose -> Maybe Compose -> Maybe Compose
+(|&|) :: Maybe Op -> Maybe Op -> Maybe Op
 (|&|) (op0@(ComposePar ops0)) (op1@(ComposePar ops1)) | canComposePar op1 op0 == ComposeSuccess =
-  $ ComposePar $ ops0 ++ ops1
+  ComposePar $ ops0 ++ ops1
 (|&|) (op0@(ComposePar ops0)) (op1) | canComposePar op1 op0 == ComposeSuccess =
-  $ ComposePar $ [op1] ++ ops0
+  ComposePar $ [op1] ++ ops0
 (|&|) (op0) (op1@(ComposePar ops1)) | canComposePar op1 op0 == ComposeSuccess =
-  $ ComposePar $ ops1 ++ [op0]
+  ComposePar $ ops1 ++ [op0]
 (|&|) (op0) (op1) | canComposePar op1 op0 == ComposeSuccess =
-  $ ComposePar $ [op1] ++ [op0]
+  ComposePar $ [op1] ++ [op0]
 (|&|) op0 op1 = canComposePar op0 op1
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
@@ -388,7 +384,7 @@ data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
 (|>>=|) :: Op -> Op -> Op
 (|>>=|) op0 op1 = op1 |.| op0
 
-canComposeSeq :: (SpaceTime a) => a -> a -> Bool
+canComposeSeq :: Op -> Op -> Bool
 
 -- only join two sequential nodes if token types match, ports do same number of tokens
 -- over all firings and streams per firing, and if same number of clock cycles
@@ -402,7 +398,7 @@ canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
 canComposeSeq op0 op1 = ((map pTType) . outPortsType) op0 ==
   ((map pTType) . inPortsType) op1
 
-canComposePar :: (SpaceTime a) => a -> a -> Bool
+canComposePar :: Op -> Op -> Bool
 -- only join two nodes in parallel if same number of clocks
 -- don't think need equal lengths, just producing same amount every clock,
 -- right?Do this however so can compute time more easily and easier to connect
@@ -415,6 +411,6 @@ canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1 &&
 -- Since can compose things with different numbers of firings as long as total 
 -- numbers of tokens and time, need composes to each have 1 firing and put
 -- children ops' firings in its stream lengths
-portsScaledByFiringPerOp :: (SpaceTime a) => (a -> [PortType]) -> [a] -> [[PortType]]
-portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
-  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
+-- portsScaledByFiringPerOp ::  => (a -> [PortType]) -> [a] -> [[PortType]]
+-- portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
+--  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
