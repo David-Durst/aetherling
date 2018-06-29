@@ -121,10 +121,17 @@ clocksPerSequence (Underutil denom op) = multToSteadyState denom $ clocksPerSequ
 -- since pipelined, this doesn't affect clocks per stream
 clocksPerSequence (RegDelay _ op) = clocksPerSequence op
 
--- this depends the constructors verifying that only composing valid things
--- see the document for what is valid
-clocksPerSequence (ComposePar (hd:tl)) = cps hd
-clocksPerSequence (ComposeSeq (hd:tl)) = cps hd
+clocksPerSequence (ComposePar ops) = SWLen lcmSteadyState maxWarmup
+  where 
+    maxWarmup = maximum $ map (warmupSub . cps) ops
+    -- 1 works as all integers for steady state >= 1
+    lcmSteadyState :: Int
+    lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
+-- this depends on only wiring up things that have matching throughputs
+clocksPerSequence (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
+  where
+    sumWarmup = sum $ map (warmupSub . cps) ops
+    lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
 clocksPerSequence (ComposeFailure _ _) = 0
 
 
@@ -198,7 +205,7 @@ getCombPathLength ops = seqStartCombLen ops + seqEndCombLen ops + sumOfCombOpPat
     seqEndCombLen ops = maximum $ map pCTime (inPorts $ last ops)
     sumOfCombOpPaths = foldl (+) 0 $ map maxCombPath ops
 
-maxCombPath :: a -> Int
+maxCombPath :: Op -> Int
 maxCombPath (Add t) = 1
 maxCombPath (Sub t) = 1
 maxCombPath (Mul t) = 1
@@ -221,21 +228,21 @@ maxCombPath (ReduceOp par numComb op) = max (maxCombPath op) maxCombPathFromOutp
     -- assuming two inputs and one output to op
     maxCombPathFromOutputToInput = maximum (map pCTime $ inPorts op) + (pCTime $ head $ outPorts op)
 
-maxCombPath (Underutil denom op) = util op
+maxCombPath (Underutil denom op) = maxCombPath op
 -- since pipelined, this doesn't affect clocks per stream
-maxCombPath (RegDelay _ op) = util op
+maxCombPath (RegDelay _ op) = maxCombPath op
 
 maxCombPath (ComposePar ops) = maximum $ map maxCombPath ops
-maxCombPath (ComposeSeq ops) = max maxSingleOpPath maxMultiOpPath
+maxCombPath compSeq@(ComposeSeq ops) = max maxSingleOpPath maxMultiOpPath
   where
     -- maxSingleOpPath gets the maximum internal combinational path of all elements
-    maxSingleOpPath = maximum $ maxCombPath ops
-    maxMultiOpPath = maximum $ map getCombPathLength $ getMultiOpCombGroupings ops
+    maxSingleOpPath = maximum $ map maxCombPath ops
+    maxMultiOpPath = maximum $ map getCombPathLength $ getMultiOpCombGroupings compSeq
 
 maxCombPath (ComposeFailure _ _) = 0
 
 
-util :: a -> Float
+util :: Op -> Float
 util (Add t) = 1
 util (Sub t) = 1
 util (Mul t) = 1
@@ -250,7 +257,7 @@ util (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
 util (MapOp _ op) = util op
 util (ReduceOp _ _ op) = util op
 
-util (Underutil denom op) = util op / denom
+util (Underutil denom op) = util op / fromIntegral denom
 -- since pipelined, this doesn't affect clocks per stream
 util (RegDelay _ op) = util op
 
@@ -258,7 +265,7 @@ util (ComposePar ops) = utilWeightedByArea ops
 util (ComposeSeq ops) = utilWeightedByArea ops
 util (ComposeFailure _ _) = 0
 -- is there a better utilization than weighted by operator area
-utilWeightedByArea :: [op] -> Float
+utilWeightedByArea :: [Op] -> Float
 utilWeightedByArea ops = unnormalizedUtil / totalArea
     where 
       unnormalizedUtil = foldl (+) 0 $
@@ -278,13 +285,13 @@ inPorts (MemWrite t) = [T_Port "I" 1 t 1]
 inPorts (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t) 2]
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
-inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" inSLen inType 2]
+inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen 0) inType 2]
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
 -- can just take head as can only reduce binary operators
 inPorts (ReduceOp par numComb op) = duplicatePorts par [head $ inPorts op]
 
-inPorts (RegDelay _ _ op) = inPorts op
+inPorts (RegDelay _ op) = inPorts op
 
 inPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp inPorts ops
 inPorts (ComposeSeq ops) = scalePortsStreamLens (numFirings opHd) (inPorts opHd)
@@ -302,10 +309,10 @@ outPorts (MemRead t) = [T_Port "O" 1 t 1]
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts (LineBuffer p w t) = [T_Port "O" 1 (T_Array p (T_Array w t)) 2]
-outPorts (Constant_Int ints) = [T_Port "O" n (T_Array (length ints) T_Int) 1]
-outPorts (Constant_Bit bits) = [T_Port "O" n (T_Array (length bits) T_Bit) 1]
-outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" outSLen outType 2]
+outPorts (LineBuffer p w t) = [T_Port "O" (SWLen 1 ((w `ceilDiv` p) - 1)) (T_Array p (T_Array w t)) 2]
+outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
+outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
+outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" (SWLen outSLen 0) outType 2]
 
 outPorts (MapOp par op) = duplicatePorts par (outPorts op)
 outPorts (ReduceOp par numComb op) = map scaleSSLen $ outPorts op
