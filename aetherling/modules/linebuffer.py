@@ -1,8 +1,7 @@
-from magma import In, Out
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper
 from ..helpers.nameCleanup import cleanName
-from magma.array import ArrayKind
+from magma import Circuit, Array, ArrayKind, Kind, In, Out, Bit, wire
 
 """
 Instance* lbInst = def->addInstance("conv1DLineBuffer", "commonlib.linebuffer", {
@@ -16,12 +15,13 @@ Instance* lbInst = def->addInstance("conv1DLineBuffer", "commonlib.linebuffer", 
 """
 import coreir
 from magma.backend.coreir_ import CoreIRBackend
-from aetherling.modules.linebuffer import Linebuffer
+from aetherling.modules.linebuffer import *
 from magma import *
 
 c = coreir.Context()
 cirb = CoreIRBackend(c)
-lb = Linebuffer(cirb, Array(1, Array(3, Bit)), Array(3, Array(3, Bit)), Array(10, Array(3, Bit)))
+Linebuffer1DPartitioned(cirb, 1, 3, Array(3, Bit), Array(30, Array(3, Bit)))
+lb = Linebuffer(cirb, Array(1, Array(3, Bit)), Array(3, Array(3, Bit)), Array(10, Array(3, Bit)), Array(3, Bit))
 
 """
 def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
@@ -31,14 +31,17 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
     are inputted per clock. outType is an array of how many pixels are emitted per clock.
     imgType is the size of the total image.
 
-    inType and outType are nested arrays if doing linebuffer over a 2d (or higher dimension)
+    inType and outType are nested arrays of elementType if doing linebuffer over a 2d (or higher dimension)
     image. Their nesting should match number of dimensions.
+
+    inType, outType, and imgType must be arrays of elementType
 
     Args:
         cirb: The CoreIR backend currently be used
         inType: The type of the input every clock
         outType: The type of the output every clock following warmup
         imgType: The type of the complete image
+        elementType: The elements of the image, typically this is a pixel
         has_valid: Whether this module should have an output port denoting if output data
         is valid this clock
 
@@ -64,13 +67,15 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
                                                   cleanName(str(outType)),
                                                   cleanName(str(imgType)),
                                                   strForValid)
+    # this is the linebuffer with the outputs as a flat array, unsplit
     defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "commonlib", "linebuffer",
                                                          ["mantle", "coreir", "global"],
-                                                         name,
+                                                         "unioned_" + name,
                                                          {"input_type": cirInType,
                                                           "output_type": cirOutType,
                                                           "image_type": cirImgType,
                                                           "has_valid": has_valid})
+
     return defToReturn
 
 
@@ -102,3 +107,40 @@ def Linebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
         valid : Out(Bit)
     """
     return DefineLinebuffer(cirb, inType, outType, imgType, has_valid)()
+
+def DefineLinebuffer1DPartitioned(cirb: CoreIRBackend, pxPerClock: int, stencilWidth: int,
+                                  elementType: ArrayKind, imgType: ArrayKind, has_valid = False):
+    class _1DLinebuffer(Circuit):
+        assert elementType == imgType.T, "For 1D linebuffer, image must be a 1D array of elements"
+        strForValid = "_Valid" if has_valid else ""
+        cirElementType = cirb.get_type(elementType, False)
+        cirImgType = cirb.get_type(imgType, False)
+
+        name = "linebuffer1d_p{}_w{}_img{}_elm{}".format(pxPerClock, stencilWidth, cleanName(str(imgType)),
+                                                         cleanName(str(elementType)), strForValid)
+        IO = ['I', In(Array(pxPerClock, elementType)), 'O', Out(Array(pxPerClock, Array(stencilWidth, elementType))), "CE", In(Bit)] + \
+             (['valid', Bit] if has_valid else [])
+
+        @classmethod
+        def definition(cls):
+            lb = Linebuffer(cirb, Array(pxPerClock, elementType), Array(stencilWidth + pxPerClock - 1, elementType), imgType)
+            overlapPartition = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "overlapPartition",
+                                                             ["commonlib", "mantle", "coreir", "global"],
+                                                             "overlapPartition_" + cls.name,
+                                                             {"elementType": cls.cirElementType,
+                                                              "numOverlapped": pxPerClock,
+                                                              "arrayLen": stencilWidth})()
+
+            wire(cls.I, lb.I)
+            wire(lb.out, overlapPartition.I)
+            wire(overlapPartition.out, cls.O)
+            wire(lb.wen, cls.CE)
+
+            if (has_valid):
+                cls.wire(lb.valid, cls.valid)
+
+    return _1DLinebuffer
+
+def Linebuffer1DPartitioned(cirb: CoreIRBackend, pxPerClock: int, stencilWidth: int, elementType: Kind,
+                            imgType: ArrayKind, has_valid = False):
+    return DefineLinebuffer1DPartitioned(cirb, pxPerClock, stencilWidth, elementType, imgType, has_valid)()

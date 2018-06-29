@@ -1,4 +1,4 @@
-from aetherling.modules.upsample import UpsampleSequential, UpsampleParallel
+from aetherling.modules.linebuffer import *
 from magma import *
 from magma.clock import *
 from magma.backend.coreir_ import CoreIRBackend
@@ -9,129 +9,62 @@ import coreir
 from magma.scope import Scope
 from mantle import CounterModM, Decode
 
-def test_up_parallel():
-    width = 5
-    numOut = 2
-    testVal = 3
+def test_linebuffer_1pxPerClock_3pxWindow():
     c = coreir.Context()
+    cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = Array(width, In(BitIn))
-    outType = Array(numOut, Out(inType))
+    inType = Array(1, Array(3, BitIn))
+    outType = Array(3, Array(3, Out(Bit)))
+    imgType = Array(30, Array(3, BitIn))
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
-    testcircuit = DefineCircuit('Test', *args)
+    testcircuit = DefineCircuit('lb1_3_Test', *args)
 
-    upParallel = UpsampleParallel(numOut, inType)
-    wire(upParallel.I, testcircuit.I)
-    wire(testcircuit.O, upParallel.O)
+    lb = Linebuffer(cirb, inType, outType, imgType, False)
+    wire(lb.I, testcircuit.I)
+    wire(testcircuit.O, lb.out)
+
+    wire(1, lb.wen)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-    sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-    sim.evaluate()
-    sim.advance_cycle()
-    sim.evaluate()
-    for i in range(numOut):
-        assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
-
-def test_modm_counter():
-    width = 5
-    numCycles = 4
-    maxCounter = 4
-    scope = Scope()
-    args = ['O', Out(Bit)] + ClockInterface(False, False)
-    testcircuit = DefineCircuit('TestModM', *args)
-    counter = CounterModM(maxCounter, width, cout=False)
-    decode = Decode(0, width)
-    wire(decode.I, counter.O)
-    wire(testcircuit.O, decode.O)
-    EndCircuit()
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-    for i in range(maxCounter * numCycles):
-        sim.evaluate()
-        sim.advance_cycle()
-
-    assert sim.get_value(testcircuit.O, scope) == True
-
-
-def test_up_sequential():
-    width = 5
-    numOut = 2
-    testVal = 3
+def test_linebuffer_2pxPerClock_4pxWindow():
     c = coreir.Context()
+    cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = Array(width, In(BitIn))
-    outType = Out(inType)
-    args = ['I', inType, 'O', outType, 'READY', Out(Bit)] + ClockInterface(False, False)
+    inType = Array(2, Array(3, BitIn))
+    outType = Array(4, Array(3, Out(Bit)))
+    imgType = Array(30, Array(3, BitIn))
+    args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
-    testcircuit = DefineCircuit('TestUpSequential', *args)
+    testcircuit = DefineCircuit('lb1_3_Test', *args)
 
-    coreir_backend = CoreIRBackend(c)
-    upSequential = UpsampleSequential(coreir_backend, numOut, inType)
-    wire(upSequential.I, testcircuit.I)
-    wire(testcircuit.O, upSequential.O)
-    wire(testcircuit.READY, upSequential.READY)
+    lb = Linebuffer(cirb, inType, outType, imgType, False)
+    wire(lb.I, testcircuit.I)
+    wire(testcircuit.O, lb.out)
+
+    wire(1, lb.wen)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
+def test_linebuffer_2pxPerClock_3pxWindow():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    elementType = Array(3, Bit)
+    pxPerClock = 2
+    stencilWidth = 3
+    inType = In(Array(pxPerClock, elementType))
+    outType = Out(Array(pxPerClock, Array(stencilWidth, elementType)))
+    imgType = Array(30, elementType)
+    args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
-    sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-    sim.evaluate()
+    testcircuit = DefineCircuit('lb1_3_Test', *args)
 
-    for i in range(numOut):
-        assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
-        sim.advance_cycle()
-        sim.evaluate()
-        assert sim.get_value(testcircuit.READY, scope) == (i == numOut - 1)
+    lb = Linebuffer1DPartitioned(cirb, pxPerClock, stencilWidth, elementType, imgType)
+    wire(lb.I, testcircuit.I)
+    wire(testcircuit.O, lb.O)
 
+    wire(1, lb.CE)
 
-if __name__ == "__main__":
-    test_up_parallel()
-    test_modm_counter()
-    test_up_sequential()
-
-"""
-
-width = 5
-numElements = 1
-testVal = 3
-c = coreir.Context()
-scope = Scope()
-inType = Array(width, In(BitIn))
-#outType = Array(width, Out(BitIn)) #uncomment this line
-#outType = Array(numElements, Out(inType))
-outType = Array(numElements, Out(Array(width, Bit))) #comment this line
-args = ['I', inType, 'O', outType] + ClockInterface(False, False)
-
-testcircuit = DefineCircuit('Test', *args)
-
-#upParallel = UpParallel(numElements, inType)
-#wire(upParallel.I, testcircuit.I)
-#wire(testcircuit.O, upParallel.O)
-#wire(testcircuit.O, testcircuit.I) # uncomment this line
-wire(testcircuit.O[0], testcircuit.I) # comment this line
-
-
-EndCircuit()
-
-sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-#coreir_testcircuit = coreir_compile(testcircuit, context=c)
-
-#c.run_passes(["rungenerators", "verifyconnectivity-onlyinputs-noclkrst",
-                    #"wireclocks-coreir", "flatten", "flattentypes", "verifyconnectivity",
-                    #"deletedeadinstances"])
-
-#sim_testcircuit = coreir.SimulatorState(coreir_testcircuit)
-
-
-#sim_testcircuit.set_value(["self.I"], bit_vector.BitVector(width, testVal).as_bool_list())
-#sim = PythonSimulator(testcircuit)
-sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-simulate(testcircuit, CoreIRSimulator)
-"""
+    EndCircuit()
