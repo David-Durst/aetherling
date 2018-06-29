@@ -115,7 +115,8 @@ clocksPerSequence (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (ma
 
 clocksPerSequence (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
-clocksPerSequence (ReduceOp par _ op) = cps op
+clocksPerSequence (ReduceOp par numComb op) = SWLen (ssMult * (numComb `ceilDiv` par)) (wSub * par)
+  where (SWLen ssMult wSub) = cps op
 
 clocksPerSequence (Underutil denom op) = multToSteadyState denom $ clocksPerSequence op
 -- since pipelined, this doesn't affect clocks per stream
@@ -271,8 +272,8 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
         map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
       totalArea = foldl (+) 0 $ map (fromIntegral . opsArea . space) ops
 
-scalePorts :: ([Op] -> [PortType]) -> (Int -> Int) -> Op
-scalePorts portAccessor warmupSumarizer cPar@(ComposePar ops) = 
+--scalePorts :: ([Op] -> [PortType]) -> (Int -> Int) -> Op
+--scalePorts portAccessor warmupSumarizer cPar@(ComposePar ops) = 
 
 twoInSimplePorts t = [T_Port "I0" baseWithNoWarmupSequenceLen t 1, 
   T_Port "I1" baseWithNoWarmupSequenceLen t 1]
@@ -295,26 +296,24 @@ inPorts (ReduceOp par numComb op) = duplicatePorts par [head $ inPorts op]
 
 inPorts (RegDelay _ op) = inPorts op
 
-inPorts cPar@(ComposePar ops) = SWLen scaledSteadyState maxWarmup
+inPorts cPar@(ComposePar ops) = unionScaledPorts
   where 
     -- can take head as assuming that all ports have same warmup for a module
-    maxWarmup = maximum $ map (warmupSub . head . inPorts) ops
+    maxWarmup = maximum $ map (warmupSub . pSeqLen . head . inPorts) ops
     -- will always get int here with right rounding as CPS of overall composePar
     -- is multiple of cps of each op
     steadyStateScaling = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
       (steadyStateMultiplier $ cps $ head ops)
-    scaledSteadyStates = map ((*) steadyStateScaling . steadyStateMultiplier . cps) ops
     -- given the scaled steadyStates and the ports, updated the ports sequence lengths
-    updatePort (T_Port name (SWLen origSteadyState _) tType pct) scaledSteadyState = 
-      T_Port name (SWLen scaledSteadyState maxWarmup) tType pct
+    updatePort (T_Port name (SWLen origSteadyState _) tType pct) = 
+      T_Port name (SWLen (origSteadyState * steadyStateScaling) maxWarmup) tType pct
     unionUnscaledPorts = foldl (++) [] $ map inPorts ops
-    updatedPorts = map updatePort $ zip 
+    unionScaledPorts = map updatePort unionUnscaledPorts
 -- this depends on only wiring up things that have matching throughputs
 inPorts (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
   where
     sumWarmup = sum $ map (warmupSub . cps) ops
     lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
-  where opHd = head ops
 inPorts (ComposeFailure _ _) = []
 
 
