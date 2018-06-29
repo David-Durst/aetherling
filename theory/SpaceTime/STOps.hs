@@ -115,7 +115,10 @@ clocksPerSequence (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (ma
 
 clocksPerSequence (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
-clocksPerSequence (ReduceOp par numComb op) = SWLen (ssMult * (numComb `ceilDiv` par)) (wSub * par)
+clocksPerSequence (ReduceOp par numComb op) = SWLen (ssMult * (numComb `ceilDiv` par)) 
+  -- need to add one here if not fully parallel for extra op that combines results
+  -- over multiple cycles
+  (wSub * (ceilLog par + (bool 1 0 (par == numComb))))
   where (SWLen ssMult wSub) = cps op
 
 clocksPerSequence (Underutil denom op) = multToSteadyState denom $ clocksPerSequence op
@@ -272,7 +275,20 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
         map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
       totalArea = foldl (+) 0 $ map (fromIntegral . opsArea . space) ops
 
---scalePorts :: ([Op] -> [PortType]) -> (Int -> Int) -> Op
+unionPorts :: [Op] -> [PortType]
+unionPorts ops = foldl (++) [] $ map inPorts ops
+
+
+-- update the sequence lengths of a list of ports, where all must have
+-- same warmup and can be scaled to different sequence lengths
+scalePorts :: Int -> ([Int] -> Int) -> [PortType] -> Op
+scalePorts ssScalings warmupSummarizer ports = map updatePort $ zip ports ssScalings
+  where
+    -- can take head as assuming that all ports have same warmup for a module
+    maxWarmup = warmupSummarizer $ map (warmupSub . pSeqLen . head) ports
+    updatePort (T_Port name (SWLen origSteadyState _) tType pct, ssScaling) = 
+      T_Port name (SWLen (origSteadyState * ssScaling) maxWarmup) tType pct
+
 --scalePorts portAccessor warmupSumarizer cPar@(ComposePar ops) = 
 
 twoInSimplePorts t = [T_Port "I0" baseWithNoWarmupSequenceLen t 1, 
@@ -291,23 +307,28 @@ inPorts (Constant_Bit _) = []
 inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen 0) inType 2]
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
--- can just take head as can only reduce binary operators
-inPorts (ReduceOp par numComb op) = duplicatePorts par [head $ inPorts op]
+inPorts (ReduceOp par numComb op) = scalePorts (replicate 2 [numComb `ceilDiv` par]) maximum 
+  $ duplicatePorts par $ inPorts op
 
 inPorts (RegDelay _ op) = inPorts op
 
-inPorts cPar@(ComposePar ops) = unionScaledPorts
+inPorts cPar@(ComposePar ops) = scalePorts 
   where 
-    -- can take head as assuming that all ports have same warmup for a module
     maxWarmup = maximum $ map (warmupSub . pSeqLen . head . inPorts) ops
+    -- given one op, get the scaling factor for its ports
     -- will always get int here with right rounding as CPS of overall composePar
     -- is multiple of cps of each op
-    steadyStateScaling = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
-      (steadyStateMultiplier $ cps $ head ops)
+    ssScaling op = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
+      (steadyStateMultiplier $ cps op)
+    -- given one op, get a scaling factor for each of its ports
+    -- note: all will be same, just need duplicates
+    ssScaleFactorsForOp op = replicate (length $ inPorts op) (ssScaling op))
+    -- scaling factors for all ports of all ops
+    ssScalings = foldl (++) [] $ map ssScaleFactorsForOp ops
     -- given the scaled steadyStates and the ports, updated the ports sequence lengths
     updatePort (T_Port name (SWLen origSteadyState _) tType pct) = 
       T_Port name (SWLen (origSteadyState * steadyStateScaling) maxWarmup) tType pct
-    unionUnscaledPorts = foldl (++) [] $ map inPorts ops
+    unionUnscaledPorts = unionPorts ops
     unionScaledPorts = map updatePort unionUnscaledPorts
 -- this depends on only wiring up things that have matching throughputs
 inPorts (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
