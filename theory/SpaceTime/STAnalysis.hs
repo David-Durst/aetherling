@@ -53,7 +53,7 @@ space (RegDelay dc op) = space op |+|
 
 space (ComposePar ops) = foldl (|+|) addId $ map space ops
 space (ComposeSeq ops) = foldl (|+|) addId $ map space ops
-space (ComposeFailure _ _) = 0
+space (ComposeFailure _ _) = OWA (-1) (-1)
 
 -- scaleCPS depending on if Op is combinational or not
 scaleCPS :: Op -> Int -> SteadyStateAndWarmupLen
@@ -101,7 +101,7 @@ clocksPerSequence (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
   where
     sumWarmup = sum $ map (warmupSub . cps) ops
     lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
-clocksPerSequence (ComposeFailure _ _) = 0
+clocksPerSequence (ComposeFailure _ _) = SWLen (-1) (-1)
 
 
 registerInitialLatency = 1
@@ -114,7 +114,7 @@ initialLatency (MemRead _) = 1
 initialLatency (MemWrite _) = 1
 -- for each extra element in per clock, first output is 1 larger, but get 1
 -- extra every clock building up to first output
-initialLatency (LineBuffer p w _) = (w + p - 1) / p
+initialLatency (LineBuffer p w _) = (w + p - 1) `ceilDiv` p
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
 initialLatency (SequenceArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
@@ -286,7 +286,7 @@ inPorts (Sub t) = twoInSimplePorts t
 inPorts (Mul t) = twoInSimplePorts t
 inPorts (Div t) = twoInSimplePorts t
 inPorts (MemRead _) = []
-inPorts (MemWrite t) = [T_Port "I" 1 t 1]
+inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
 inPorts (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t) 2]
 inPorts (Constant_Int _) = []
@@ -315,7 +315,7 @@ inPorts cSeq@(ComposeSeq ops@(hd:_)) =
 inPorts (ComposeFailure _ _) = []
 
 
-oneOutSimplePort t = [T_Port "O" 1 t 2]
+oneOutSimplePort t = [T_Port "O" baseWithNoWarmupSequenceLen t 2]
 outPorts :: Op -> [PortType]
 outPorts (Add t) = oneOutSimplePort t
 outPorts (Sub t) = oneOutSimplePort t
