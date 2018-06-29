@@ -101,4 +101,4 @@ def Linebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
         AND IF SET
         valid : Out(Bit)
     """
-    return DefineLinebuffer(cirb, inType, outType, imgType, has_valid)
+    return DefineLinebuffer(cirb, inType, outType, imgType, has_valid)()
