@@ -278,16 +278,36 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
 unionPorts :: [Op] -> [PortType]
 unionPorts ops = foldl (++) [] $ map inPorts ops
 
+-- for using some operator over a list of ints to combine all the warmups in one
+combineAllWarmups ops summarizer portGetter = summarizer 
+  -- can take head as assuming that all ports have same warmup for a module
+  $ map (warmupSub . pSeqLen . head . portGetter) ops
+
+-- Helper for in and out ports of composeSeq
+-- for each op in the list ops, get all the in or out ports 
+-- Then, create a scaling factor for each op, returning flat list with
+-- a copy of the scaling factor for an op replicated for each of the ops ports
+getSSScalingsForEachPortOfEachOp :: [Op] -> (Op -> [PortType]) -> [Int]
+getSSScalingsForEachPortOfEachOp ops portGetter = ssScalings
+  where
+    -- given one op, get the scaling factor for its ports
+    -- will always get int here with right rounding as CPS of overall composePar
+    -- is multiple of cps of each op
+    ssScaling op = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
+      (steadyStateMultiplier $ cps op)
+    -- given one op, get a scaling factor for each of its ports
+    -- note: all will be same, just need duplicates
+    ssScaleFactorsForOp op = replicate (length $ portGetter op) (ssScaling op)
+    -- scaling factors for all ports of all ops
+    ssScalings = foldl (++) [] $ map ssScaleFactorsForOp ops
 
 -- update the sequence lengths of a list of ports, where all must have
 -- same warmup and can be scaled to different sequence lengths
-scalePorts :: Int -> ([Int] -> Int) -> [PortType] -> Op
-scalePorts ssScalings warmupSummarizer ports = map updatePort $ zip ports ssScalings
+scalePorts :: [Int] -> ([Int] -> Int) -> [PortType] -> [PortType]
+scalePorts ssScalings newWarmup ports = map updatePort $ zip ports ssScalings
   where
-    -- can take head as assuming that all ports have same warmup for a module
-    maxWarmup = warmupSummarizer $ map (warmupSub . pSeqLen . head) ports
     updatePort (T_Port name (SWLen origSteadyState _) tType pct, ssScaling) = 
-      T_Port name (SWLen (origSteadyState * ssScaling) maxWarmup) tType pct
+      T_Port name (SWLen (origSteadyState * ssScaling) newWarmup) tType pct
 
 --scalePorts portAccessor warmupSumarizer cPar@(ComposePar ops) = 
 
@@ -307,34 +327,23 @@ inPorts (Constant_Bit _) = []
 inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen 0) inType 2]
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
-inPorts (ReduceOp par numComb op) = scalePorts (replicate 2 [numComb `ceilDiv` par]) maximum 
-  $ duplicatePorts par $ inPorts op
+inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $ inPorts op
+  where scaleSSForReduce (T_Port name (SWLen origMultSS wSub) tType pct) = 
+    T_Port name (SWLen (origMultSS * (numComb `ceilDiv` par)) wSub) tType pct
 
 inPorts (RegDelay _ op) = inPorts op
 
 inPorts cPar@(ComposePar ops) = scalePorts 
-  where 
-    maxWarmup = maximum $ map (warmupSub . pSeqLen . head . inPorts) ops
-    -- given one op, get the scaling factor for its ports
-    -- will always get int here with right rounding as CPS of overall composePar
-    -- is multiple of cps of each op
-    ssScaling op = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
-      (steadyStateMultiplier $ cps op)
-    -- given one op, get a scaling factor for each of its ports
-    -- note: all will be same, just need duplicates
-    ssScaleFactorsForOp op = replicate (length $ inPorts op) (ssScaling op))
-    -- scaling factors for all ports of all ops
-    ssScalings = foldl (++) [] $ map ssScaleFactorsForOp ops
-    -- given the scaled steadyStates and the ports, updated the ports sequence lengths
-    updatePort (T_Port name (SWLen origSteadyState _) tType pct) = 
-      T_Port name (SWLen (origSteadyState * steadyStateScaling) maxWarmup) tType pct
-    unionUnscaledPorts = unionPorts ops
-    unionScaledPorts = map updatePort unionUnscaledPorts
+  (getSSScalingsForEachPortOfEachOp ops inPorts) 
+  (combineAllWarmups ops maximum inPorts) (unionPorts ops)
 -- this depends on only wiring up things that have matching throughputs
-inPorts (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
+inPorts cSeq(ComposeSeq ops@(hd:_)) = 
+  scalePorts (replicate (length $ inPorts hd) ssScaling) 
+  (combineAllWarmups ops sum inPorts) (inPorts hd)
   where
-    sumWarmup = sum $ map (warmupSub . cps) ops
-    lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
+    -- the first op in the seq which we're gonna scale the input ports of
+    ssScaling = (steadyStateMultiplier $ cps cSeq) `ceilDiv` 
+      (steadyStateMultiplier $ cps hd)
 inPorts (ComposeFailure _ _) = []
 
 
