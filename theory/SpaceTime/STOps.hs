@@ -125,7 +125,6 @@ clocksPerSequence (ComposePar ops) = SWLen lcmSteadyState maxWarmup
   where 
     maxWarmup = maximum $ map (warmupSub . cps) ops
     -- 1 works as all integers for steady state >= 1
-    lcmSteadyState :: Int
     lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
 -- this depends on only wiring up things that have matching throughputs
 clocksPerSequence (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
@@ -272,8 +271,11 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
         map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
       totalArea = foldl (+) 0 $ map (fromIntegral . opsArea . space) ops
 
+scalePorts :: ([Op] -> [PortType]) -> (Int -> Int) -> Op
+scalePorts portAccessor warmupSumarizer cPar@(ComposePar ops) = 
 
-twoInSimplePorts t = [T_Port "I0" 1 t 2, T_Port "I1" 1 t 2]
+twoInSimplePorts t = [T_Port "I0" baseWithNoWarmupSequenceLen t 1, 
+  T_Port "I1" baseWithNoWarmupSequenceLen t 1]
 inPorts :: Op -> [PortType]
 inPorts (Add t) = twoInSimplePorts t
 inPorts (Sub t) = twoInSimplePorts t
@@ -293,8 +295,25 @@ inPorts (ReduceOp par numComb op) = duplicatePorts par [head $ inPorts op]
 
 inPorts (RegDelay _ op) = inPorts op
 
-inPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp inPorts ops
-inPorts (ComposeSeq ops) = scalePortsStreamLens (numFirings opHd) (inPorts opHd)
+inPorts cPar@(ComposePar ops) = SWLen scaledSteadyState maxWarmup
+  where 
+    -- can take head as assuming that all ports have same warmup for a module
+    maxWarmup = maximum $ map (warmupSub . head . inPorts) ops
+    -- will always get int here with right rounding as CPS of overall composePar
+    -- is multiple of cps of each op
+    steadyStateScaling = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
+      (steadyStateMultiplier $ cps $ head ops)
+    scaledSteadyStates = map ((*) steadyStateScaling . steadyStateMultiplier . cps) ops
+    -- given the scaled steadyStates and the ports, updated the ports sequence lengths
+    updatePort (T_Port name (SWLen origSteadyState _) tType pct) scaledSteadyState = 
+      T_Port name (SWLen scaledSteadyState maxWarmup) tType pct
+    unionUnscaledPorts = foldl (++) [] $ map inPorts ops
+    updatedPorts = map updatePort $ zip 
+-- this depends on only wiring up things that have matching throughputs
+inPorts (ComposeSeq ops) = SWLen lcmSteadyState sumWarmup
+  where
+    sumWarmup = sum $ map (warmupSub . cps) ops
+    lcmSteadyState = foldl lcm 1 $ map (steadyStateMultiplier . cps) ops
   where opHd = head ops
 inPorts (ComposeFailure _ _) = []
 
