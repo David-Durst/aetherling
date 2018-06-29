@@ -1,3 +1,4 @@
+from magma import In, Out
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper
 from ..helpers.nameCleanup import cleanName
@@ -12,6 +13,17 @@ Instance* lbInst = def->addInstance("conv1DLineBuffer", "commonlib.linebuffer", 
                 });
     """
 
+"""
+import coreir
+from magma.backend.coreir_ import CoreIRBackend
+from aetherling.modules.linebuffer import Linebuffer
+from magma import *
+
+c = coreir.Context()
+cirb = CoreIRBackend(c)
+lb = Linebuffer(cirb, Array(1, Array(3, Bit)), Array(3, Array(3, Bit)), Array(10, Array(3, Bit)))
+
+"""
 def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
                      imgType: ArrayKind, has_valid=False):
     """
@@ -39,11 +51,16 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
         AND IF SET
         valid : Out(Bit)
     """
-    cirInType = cirb.get_type(inType, True)
+    # Reason for weird False/True settings in get_type
+    # get_type does some funky things, False means not input, and since
+    # looking from inside module, output port is an input as it receives input
+    # But, linebuffer wants these ports from perspective of outside,
+    # so need inverse, inputs are BitIns and outputs are Bits
+    cirInType = cirb.get_type(inType, False)
     cirOutType = cirb.get_type(outType, True)
-    cirImgType = cirb.get_type(imgType, True)
-    strForValid = "Valid" if has_valid else ""
-    name = "linebuffer_in{}_out{}_img{}{}".format(cleanName(str(cirInType)),
+    cirImgType = cirb.get_type(imgType, False)
+    strForValid = "_Valid" if has_valid else ""
+    name = "linebuffer_in{}_out{}_img{}{}".format(cleanName(str(inType)),
                                                   cleanName(str(outType)),
                                                   cleanName(str(imgType)),
                                                   strForValid)
@@ -52,7 +69,7 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
                                                          name,
                                                          {"input_type": cirInType,
                                                           "output_type": cirOutType,
-                                                          "image_type": imgType,
+                                                          "image_type": cirImgType,
                                                           "has_valid": has_valid})
     return defToReturn
 
