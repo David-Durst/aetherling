@@ -363,14 +363,20 @@ outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array 
 outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" (SWLen outSLen 0) outType 2]
 
 outPorts (MapOp par op) = duplicatePorts par (outPorts op)
-outPorts (ReduceOp par numComb op) = map scaleSSLen $ outPorts op
-  where scaleSSLen (T_Port name sLen tType pct) = T_Port name (multToSteadyState (numComb `ceilDiv` par) sLen) tType pct
+outPorts (ReduceOp _ _ (_:tl)) = outPorts tl
 
 outPorts (RegDelay _ op) = outPorts op
 
-outPorts (ComposePar ops) = foldl (++) [] $ scalePortsPerOp outPorts ops
-outPorts (ComposeSeq ops) = scalePortsStreamLens (numFirings opLst) (outPorts opLst)
-  where opLst = last ops
+outPorts cPar@(ComposePar ops) = scalePorts 
+  (getSSScalingsForEachPortOfEachOp ops outPorts) 
+  (combineAllWarmups ops maximum outPorts) (unionPorts ops)
+outPorts cSeq(ComposeSeq ops@(hd:_)) = 
+  scalePorts (replicate (length $ outPorts hd) ssScaling) 
+  (combineAllWarmups ops sum outPorts) (outPorts hd)
+  where
+    -- the first op in the seq which we're gonna scale the input ports of
+    ssScaling = (steadyStateMultiplier $ cps cSeq) `ceilDiv` 
+      (steadyStateMultiplier $ cps hd)
 outPorts (ComposeFailure _ _) = []
 
 isComb :: a -> Bool
