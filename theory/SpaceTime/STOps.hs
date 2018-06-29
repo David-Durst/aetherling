@@ -38,6 +38,11 @@ data Op =
   | ComposeFailure ComposeResult (Op, Op) 
   deriving (Eq, Show)
 
+-- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
+-- all port types and latencies 
+data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
+  deriving (Eq, Show)
+
 -- for wire space, only counting input wires, not outputs. This avoids
 -- double counting
 space :: Op -> OpsWireArea
@@ -287,13 +292,13 @@ combineAllWarmups ops summarizer portGetter = summarizer
 -- for each op in the list ops, get all the in or out ports 
 -- Then, create a scaling factor for each op, returning flat list with
 -- a copy of the scaling factor for an op replicated for each of the ops ports
-getSSScalingsForEachPortOfEachOp :: [Op] -> (Op -> [PortType]) -> [Int]
-getSSScalingsForEachPortOfEachOp ops portGetter = ssScalings
+getSSScalingsForEachPortOfEachOp :: Op -> [Op] -> (Op -> [PortType]) -> [Int]
+getSSScalingsForEachPortOfEachOp containerOp ops portGetter = ssScalings
   where
     -- given one op, get the scaling factor for its ports
     -- will always get int here with right rounding as CPS of overall composePar
     -- is multiple of cps of each op
-    ssScaling op = (steadyStateMultiplier $ cps cPar) `ceilDiv` 
+    ssScaling op = (steadyStateMultiplier $ cps containerOp) `ceilDiv` 
       (steadyStateMultiplier $ cps op)
     -- given one op, get a scaling factor for each of its ports
     -- note: all will be same, just need duplicates
@@ -303,16 +308,17 @@ getSSScalingsForEachPortOfEachOp ops portGetter = ssScalings
 
 -- update the sequence lengths of a list of ports, where all must have
 -- same warmup and can be scaled to different sequence lengths
-scalePorts :: [Int] -> ([Int] -> Int) -> [PortType] -> [PortType]
+scalePorts :: [Int] -> Int -> [PortType] -> [PortType]
 scalePorts ssScalings newWarmup ports = map updatePort $ zip ports ssScalings
   where
     updatePort (T_Port name (SWLen origSteadyState _) tType pct, ssScaling) = 
       T_Port name (SWLen (origSteadyState * ssScaling) newWarmup) tType pct
 
---scalePorts portAccessor warmupSumarizer cPar@(ComposePar ops) = 
-
 twoInSimplePorts t = [T_Port "I0" baseWithNoWarmupSequenceLen t 1, 
   T_Port "I1" baseWithNoWarmupSequenceLen t 1]
+
+-- inPorts and outPorts handle the sequence lengths because each port can 
+-- have its own
 inPorts :: Op -> [PortType]
 inPorts (Add t) = twoInSimplePorts t
 inPorts (Sub t) = twoInSimplePorts t
@@ -328,16 +334,17 @@ inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
 inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $ inPorts op
-  where scaleSSForReduce (T_Port name (SWLen origMultSS wSub) tType pct) = 
-    T_Port name (SWLen (origMultSS * (numComb `ceilDiv` par)) wSub) tType pct
+  where 
+    scaleSSForReduce (T_Port name (SWLen origMultSS wSub) tType pct) = T_Port 
+      name (SWLen (origMultSS * (numComb `ceilDiv` par)) wSub) tType pct
 
 inPorts (RegDelay _ op) = inPorts op
 
 inPorts cPar@(ComposePar ops) = scalePorts 
-  (getSSScalingsForEachPortOfEachOp ops inPorts) 
+  (getSSScalingsForEachPortOfEachOp cPar ops inPorts) 
   (combineAllWarmups ops maximum inPorts) (unionPorts ops)
 -- this depends on only wiring up things that have matching throughputs
-inPorts cSeq(ComposeSeq ops@(hd:_)) = 
+inPorts cSeq@(ComposeSeq ops@(hd:_)) = 
   scalePorts (replicate (length $ inPorts hd) ssScaling) 
   (combineAllWarmups ops sum inPorts) (inPorts hd)
   where
@@ -363,23 +370,24 @@ outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array 
 outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" (SWLen outSLen 0) outType 2]
 
 outPorts (MapOp par op) = duplicatePorts par (outPorts op)
-outPorts (ReduceOp _ _ (_:tl)) = outPorts tl
+outPorts (ReduceOp _ _ op) = outPorts op
 
 outPorts (RegDelay _ op) = outPorts op
 
 outPorts cPar@(ComposePar ops) = scalePorts 
-  (getSSScalingsForEachPortOfEachOp ops outPorts) 
+  (getSSScalingsForEachPortOfEachOp cPar ops outPorts) 
   (combineAllWarmups ops maximum outPorts) (unionPorts ops)
-outPorts cSeq(ComposeSeq ops@(hd:_)) = 
-  scalePorts (replicate (length $ outPorts hd) ssScaling) 
-  (combineAllWarmups ops sum outPorts) (outPorts hd)
+outPorts cSeq@(ComposeSeq ops) = 
+  scalePorts (replicate (length $ outPorts lastOp) ssScaling) 
+  (combineAllWarmups ops sum outPorts) (outPorts lastOp)
   where
+    lastOp = last ops
     -- the first op in the seq which we're gonna scale the input ports of
     ssScaling = (steadyStateMultiplier $ cps cSeq) `ceilDiv` 
-      (steadyStateMultiplier $ cps hd)
+      (steadyStateMultiplier $ cps lastOp)
 outPorts (ComposeFailure _ _) = []
 
-isComb :: a -> Bool
+isComb :: Op -> Bool
 isComb (Add t) = True
 isComb (Sub t) = True
 isComb (Mul t) = True
@@ -394,8 +402,8 @@ isComb (Constant_Bit _) = True
 -- always combinational path through for first clock
 isComb (SequenceArrayController (inSLen, _) (outSLen, _)) = True
 
-isComb (MapOp _ _ op) = isComb op
-isComb (ReduceOp pEl totEl op) | pEl `mod` totEl == 0 = isComb op
+isComb (MapOp _ op) = isComb op
+isComb (ReduceOp par numComb op) | par == numComb = isComb op
 isComb (ReduceOp _ _ op) = False
 
 isComb (Underutil denom op) = isComb op
@@ -411,15 +419,10 @@ portThroughput :: Op -> PortType -> (TokenType, SteadyStateAndWarmupRatio)
 portThroughput op (T_Port _ sLen tType _) = (tType, SWRatio sLen $ cps op)
 
 inThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
-inThroughput op = map (portThroughput) $ inPorts op
+inThroughput op = map (portThroughput op) $ inPorts op
 
 outThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
-outThroughput op = map (portThroughput) $ outPorts op
-
--- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
--- all port types and latencies 
-data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
-  deriving (Eq, Show)
+outThroughput op = map (portThroughput op) $ outPorts op
 
 -- This is for making ComposeSeq
 (|.|) :: Op -> Op -> Op
