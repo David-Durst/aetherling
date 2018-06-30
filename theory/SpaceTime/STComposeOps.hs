@@ -24,7 +24,7 @@ import SpaceTime.STAnalysis
 (|.|) op0 op1 = ComposeFailure SeqPortMismatch (op0, op1)
 
 -- This is for making ComposePar
-(|&|) :: Maybe Op -> Maybe Op -> Maybe Op
+(|&|) :: Op -> Op -> Op
 -- if failed in earlier step, keep propagating failures
 (|&|) cf@(ComposeFailure _ _) op1 = ComposeFailure PriorFailure (cf, op1)
 (|&|) op0 cf@(ComposeFailure _ _) = ComposeFailure PriorFailure (op0, cf)
@@ -45,16 +45,14 @@ import SpaceTime.STAnalysis
 
 canComposeSeq :: Op -> Op -> Bool
 
--- only join two sequential nodes if token types match and throughputs are equal
-canComposeSeq op0 op1 | (seqTime . time) op0 > 0 && (seqTime . time) op1 > 0 =
-  -- this checks both token types and numTokens over all firing/stream combos
-  outPorts op0 == inPorts op1 && 
-  (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
-
--- can join a combinational node with another node if they do the same amount
--- every clock cycle
-canComposeSeq op0 op1 = ((map pTType) . outPorts) op0 ==
-  ((map pTType) . inPorts) op1
+-- only join two sequential nodes if same numbers of ports, toke types match,
+-- and steady state throughputs match
+canComposeSeq op0 op1 | (length . outPorts) op0 == (length . inPorts) op1 =
+  reduce (&&) True $ map portPairMatches (zip (outPorts op0) (inPorts op1))
+  where
+    portPairMatches (T_Port _ sLen0 tType0 _) (T_Port _ SLen1 tType1 _) = (sLen0 ==
+      sLen1) && (tType0 == tType1)
+canComposeSeq _ _ = False
 
 canComposePar :: Op -> Op -> Bool
 -- only join two nodes in parallel if same number of clocks
