@@ -4,15 +4,6 @@ from ..helpers.nameCleanup import cleanName
 from magma import Circuit, Array, ArrayKind, Kind, In, Out, Bit, wire
 
 """
-Instance* lbInst = def->addInstance("conv1DLineBuffer", "commonlib.linebuffer", {
-                    {"input_type", Const::make(c, lbInType)},
-                    {"output_type", Const::make(c, lbOutType)},
-                    {"image_type", Const::make(c, lbImgType)},
-                    {"has_valid", Const::make(c, true)}
-                });
-    """
-
-"""
 import coreir
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.linebuffer import *
@@ -20,9 +11,7 @@ from magma import *
 
 c = coreir.Context()
 cirb = CoreIRBackend(c)
-Linebuffer1DPartitioned(cirb, 1, 3, Array(3, Bit), Array(30, Array(3, Bit)))
-lb = Linebuffer(cirb, Array(1, Array(3, Bit)), Array(3, Array(3, Bit)), Array(10, Array(3, Bit)), Array(3, Bit))
-
+lb = Linebuffer1DPartitioned(cirb, 1, 3, Array(3, Bit), Array(30, Array(3, Bit)))
 """
 def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
                      imgType: ArrayKind, has_valid=False):
