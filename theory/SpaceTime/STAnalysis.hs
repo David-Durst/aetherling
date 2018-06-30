@@ -72,7 +72,7 @@ clocksPerSequence (Div t) = baseWithNoWarmupSequenceLen
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (MemWrite _) = baseWithNoWarmupSequenceLen
-clocksPerSequence (LineBuffer _ _ _) = baseWithNoWarmupSequenceLen
+clocksPerSequence (LineBuffer p w _) = SWLen 1 ((w + p - 1) `ceilDiv` p)
 clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)
@@ -288,7 +288,7 @@ inPorts (Div t) = twoInSimplePorts t
 inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
-inPorts (LineBuffer p _ t) = [T_Port "I" 1 (T_Array p t) 2]
+inPorts (LineBuffer p w t) = [T_Port "I" (SWLen 1 (w + p - 1)) (T_Array p t) 2]
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
 inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen 0) inType 2]
@@ -315,17 +315,17 @@ inPorts cSeq@(ComposeSeq ops@(hd:_)) =
 inPorts (ComposeFailure _ _) = []
 
 
-oneOutSimplePort t = [T_Port "O" baseWithNoWarmupSequenceLen t 2]
+oneOutSimplePort t = [T_Port "O" baseWithNoWarmupSequenceLen t 1]
 outPorts :: Op -> [PortType]
 outPorts (Add t) = oneOutSimplePort t
 outPorts (Sub t) = oneOutSimplePort t
 outPorts (Mul t) = oneOutSimplePort t
 outPorts (Div t) = oneOutSimplePort t
-outPorts (MemRead t) = [T_Port "O" 1 t 1]
+outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts (LineBuffer p w t) = [T_Port "O" (SWLen 1 ((w `ceilDiv` p) - 1)) (T_Array p (T_Array w t)) 2]
+outPorts (LineBuffer p w t) = [T_Port "O" (SWLen 1 (w + p - 1)) (T_Array p (T_Array w t)) 2]
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
 outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" (SWLen outSLen 0) outType 2]
