@@ -1,8 +1,6 @@
 module SpaceTime.STComposeOps where
 import SpaceTime.STTypes
-import SpaceTime.STMetrics
 import SpaceTime.STAST
-import SpaceTime.STAnalysis
 
 -- This is for making ComposeSeq
 (|.|) :: Op -> Op -> Op
@@ -23,21 +21,6 @@ import SpaceTime.STAnalysis
   ComposeSeq $ [op1] ++ [op0]
 (|.|) op0 op1 = ComposeFailure SeqPortMismatch (op0, op1)
 
--- This is for making ComposePar
-(|&|) :: Op -> Op -> Op
--- if failed in earlier step, keep propagating failures
-(|&|) cf@(ComposeFailure _ _) op1 = ComposeFailure PriorFailure (cf, op1)
-(|&|) op0 cf@(ComposeFailure _ _) = ComposeFailure PriorFailure (op0, cf)
-(|&|) (op0@(ComposePar ops0)) (op1@(ComposePar ops1)) | canComposePar op1 op0 == ComposeSuccess =
-  ComposePar $ ops0 ++ ops1
-(|&|) (op0@(ComposePar ops0)) (op1) | canComposePar op1 op0 == ComposeSuccess =
-  ComposePar $ [op1] ++ ops0
-(|&|) (op0) (op1@(ComposePar ops1)) | canComposePar op1 op0 == ComposeSuccess =
-  ComposePar $ ops1 ++ [op0]
-(|&|) (op0) (op1) | canComposePar op1 op0 == ComposeSuccess =
-  ComposePar $ [op1] ++ [op0]
-(|&|) op0 op1 = canComposePar op0 op1
-
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order
 (|>>=|) :: Op -> Op -> Op
@@ -54,19 +37,8 @@ canComposeSeq op0 op1 | (length . outPorts) op0 == (length . inPorts) op1 =
       sLen1) && (tType0 == tType1)
 canComposeSeq _ _ = False
 
-canComposePar :: Op -> Op -> Bool
--- only join two nodes in parallel if same number of clocks
--- don't think need equal lengths, just producing same amount every clock,
--- right?Do this however so can compute time more easily and easier to connect
--- composePar to other things. Users just need to underutilize one pipeline
--- which is explicit version of what allowing two different timed things to
--- run in parallel is anyway
-canComposePar op0 op1 = (seqTime . time) op0 == (seqTime . time) op1 && 
-  (numClocks . pipelineTime) op0 == (numClocks . pipelineTime) op1
-
--- Since can compose things with different numbers of firings as long as total 
--- numbers of tokens and time, need composes to each have 1 firing and put
--- children ops' firings in its stream lengths
--- portsScaledByFiringPerOp ::  => (a -> [PortType]) -> [a] -> [[PortType]]
--- portsScaledByFiringPerOp portGetter ops = map scalePerOp ops
---  where scalePerOp op = scalePortsStreamLens (numFirings op) $ portGetter op
+(|&|) :: Op -> Op -> Op
+(|&|) (ComposePar ops0) (ComposePar ops1) = ComposePar $ ops0 ++ ops1
+(|&|) (ComposePar ops0) op1 = ComposePar $ ops0 ++ [op1]
+(|&|) op0 (ComposePar ops1) = ComposePar $ [op0] ++ ops1
+(|&|) op0 op1 = ComposePar $ [op1] ++ [op0]

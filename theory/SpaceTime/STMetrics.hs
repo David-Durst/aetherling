@@ -50,9 +50,3 @@ instance Show SteadyStateAndWarmupRatio where
   show (SWRatio (SWLen numMult numWarmup) (SWLen denomMult denomWarmup)) | numWarmup == 0 &&
     denomWarmup == 0 = show (SWLen (numMult `ceilDiv` denomMult) 0)
   show (SWRatio num denom) = "(" ++ show num ++ ") / (" ++ show denom ++ ")"
-
---instance MergeOrScale SteadyStateAndWarmupLen where
---  addId = SeqLenConsts 0 0
---  (|+|) (SeqLenConsts op0M op0A) (SeqLenConsts op1M op1A) = 
---    SeqLenConsts (gcd op0M op1M) (op0A + op1A)
---  (|*) ()
