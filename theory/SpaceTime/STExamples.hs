@@ -1,31 +1,34 @@
 module SpaceTime.STExamples where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
-import SpaceTime.STOpClasses
-import SpaceTime.STOps
-
-exMemRead = Just (ComposeContainer $ MemRead 10 $ T_Int)
-exPart = Just (ComposeContainer $
-  StreamArrayController (1, T_Int) (1, T_Array 1 T_Int))
-exLB = Just (ComposeContainer $ LineBuffer 1 3 T_Int)
-exFlat = Just (ComposeContainer $ 
-  StreamArrayController (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
-exConst = Just (ComposeContainer $ RegDelay 3 0 $ IterOp 13 10 $ Constant_Int 1 [1, 1, 1])
+import SpaceTime.STAST
+import SpaceTime.STAnalysis
+import SpaceTime.STComposeOps
 
 conv1PxPerClock = 
   (
     (
-      exMemRead |>>=|
-      fmap (ComposeContainer . IterOp 10 10) (
-        exPart |>>=|
-        exLB |>>=|
-        exFlat
-      )
+      MemRead T_Int |>>=|
+      SequenceArrayController (1, T_Int) (1, T_Array 1 T_Int) |>>=|
+      LineBuffer 1 3 T_Int |>>=|
+      SequenceArrayController (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int))
     ) |&|
-    exConst
+    Constant_Int 1 [1, 1, 1]
   ) |>>=|
-  fmap (ComposeContainer . IterOp 10 10) (
-    Just (ComposeContainer $ MapOp 3 3 $ Add T_Int) |>>=|
-    Just (ComposeContainer $ ReduceOp 3 3 $ Add T_Int)
-  ) |>>=|
-  Just (ComposeContainer $ MemWrite 10 $ T_Int)
+  MapOp 3 3 (Add T_Int) |>>=|
+  ReduceOp 3 3 (Add T_Int) |>>=|
+  MemWrite T_Int
+
+describeMethod name op = do
+  print name
+  print $ "In Ports: " ++ inPorts op
+  print $ "Out Ports: " ++ outPorts op
+  print $ "Clocks Per Sequence " ++ cps op
+  print $ "Area: " ++ space op
+  print $ "Initial Latency: " ++ initialLatency op
+  print $ "Maximum Combinational Path: " ++ maxCombPath op
+  print $ "Utilization: " ++ util op
+  print " "
+
+main = do
+  describeMethod "1 Pixerl Per Clock 3 Pixel Stencil Convolution" conv1PxPerClock
