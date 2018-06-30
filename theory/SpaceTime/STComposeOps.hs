@@ -1,6 +1,7 @@
 module SpaceTime.STComposeOps where
 import SpaceTime.STTypes
 import SpaceTime.STAST
+import SpaceTime.STAnalysis
 
 -- This is for making ComposeSeq
 (|.|) :: Op -> Op -> Op
@@ -11,13 +12,13 @@ import SpaceTime.STAST
 -- ex. If each component is operating at one token per 10 clocks, sequence of 4
 -- parts will take 40 clocks, but should be able to add another component 
 -- operating at one token per 10 clocks to get a sequence of 5 parts at 50 clocks
-(|.|) (op0@(ComposeSeq ops0)) (op1@(ComposeSeq ops1)) 
-  | canComposeSeq op1 op0 == ComposeSuccess = ComposeSeq $ ops1 ++ ops0
-(|.|) (op0@(ComposeSeq ops0)) (op1) | canComposeSeq op1 op0 == ComposeSuccess =
+(|.|) op0@(ComposeSeq ops0) op1@(ComposeSeq ops1) | canComposeSeq op1 op0 = 
+  ComposeSeq $ ops1 ++ ops0
+(|.|) op0@(ComposeSeq ops0) op1 | canComposeSeq op1 op0 =
   ComposeSeq $ [op1] ++ ops0
-(|.|) (op0) (op1@(ComposeSeq ops1)) | canComposeSeq op1 op0 == ComposeSuccess =
+(|.|) op0 op1@(ComposeSeq ops1) | canComposeSeq op1 op0 =
   ComposeSeq $ ops1 ++ [op0]
-(|.|) (op0) (op1) | canComposeSeq op1 op0 == ComposeSuccess =
+(|.|) op0 op1 | canComposeSeq op1 op0 =
   ComposeSeq $ [op1] ++ [op0]
 (|.|) op0 op1 = ComposeFailure SeqPortMismatch (op0, op1)
 
@@ -26,14 +27,13 @@ import SpaceTime.STAST
 (|>>=|) :: Op -> Op -> Op
 (|>>=|) op0 op1 = op1 |.| op0
 
-canComposeSeq :: Op -> Op -> Bool
-
 -- only join two sequential nodes if same numbers of ports, toke types match,
 -- and steady state throughputs match
+canComposeSeq :: Op -> Op -> Bool
 canComposeSeq op0 op1 | (length . outPorts) op0 == (length . inPorts) op1 =
-  reduce (&&) True $ map portPairMatches (zip (outPorts op0) (inPorts op1))
+  foldl (&&) True $ map portPairMatches (zip (outPorts op0) (inPorts op1))
   where
-    portPairMatches (T_Port _ sLen0 tType0 _) (T_Port _ SLen1 tType1 _) = (sLen0 ==
+    portPairMatches (T_Port _ sLen0 tType0 _, T_Port _ sLen1 tType1 _) = (sLen0 ==
       sLen1) && (tType0 == tType1)
 canComposeSeq _ _ = False
 

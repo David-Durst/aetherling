@@ -36,5 +36,5 @@ data Op =
 
 -- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
 -- all port types and latencies 
-data ComposeResult = SeqPortMismatch | ParLatencyMismash | ComposeSuccess
+data ComposeResult = PriorFailure | SeqPortMismatch | ParLatencyMismash | ComposeSuccess
   deriving (Eq, Show)
