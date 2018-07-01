@@ -39,6 +39,9 @@ data Op =
 data ComposeResult = PriorFailure | SeqPortMismatch | ParLatencyMismash | ComposeSuccess
   deriving (Eq, Show)
 
+-- debugging help methods for parsing syntax tree
+-- get the ops contained inside other ops, for going down ComposeFailure trees
+getChildOp n op = getChildOps op !! n
 getChildOps :: Op -> [Op]
 getChildOps (Add t) = []
 getChildOps (Sub t) = []
@@ -57,3 +60,12 @@ getChildOps (RegDelay _ op) = [op]
 getChildOps (ComposePar ops) = ops
 getChildOps (ComposeSeq ops) = ops
 getChildOps (ComposeFailure _ (op0, op1)) = [op0, op1]
+
+-- Walk the failure tree and find the first one, preferring failures on the left
+-- over the right
+-- Will return the parent node if not failures
+getFirstError (ComposeFailure PriorFailure (cf@(ComposeFailure _ _), _)) = 
+  getFirstError cf
+getFirstError (ComposeFailure PriorFailure (_, cf@(ComposeFailure _ _))) = 
+  getFirstError cf
+getFirstError op = op
