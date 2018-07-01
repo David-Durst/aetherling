@@ -33,8 +33,8 @@ canComposeSeq :: Op -> Op -> Bool
 canComposeSeq op0 op1 | (length . outPorts) op0 == (length . inPorts) op1 =
   foldl (&&) True $ map portPairMatches (zip (outPorts op0) (inPorts op1))
   where
-    portPairMatches (T_Port _ sLen0 tType0 _, T_Port _ sLen1 tType1 _) = (sLen0 ==
-      sLen1) && (tType0 == tType1)
+    portPairMatches (portOp0, portOp1) = ssPortThroughput op0 portOp0 == 
+      ssPortThroughput op1 portOp1
 canComposeSeq _ _ = False
 
 (|&|) :: Op -> Op -> Op

@@ -72,7 +72,7 @@ clocksPerSequence (Div t) = baseWithNoWarmupSequenceLen
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (MemWrite _) = baseWithNoWarmupSequenceLen
-clocksPerSequence (LineBuffer p w _) = SWLen 1 ((w + p - 1) `ceilDiv` p - 1)
+clocksPerSequence (LineBuffer p w _) = SWLen 1 0
 clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)
@@ -378,6 +378,10 @@ isComb (ComposeFailure _ _) = True
 
 portThroughput :: Op -> PortType -> (TokenType, SteadyStateAndWarmupRatio)
 portThroughput op (T_Port _ sLen tType _) = (tType, SWRatio sLen $ cps op)
+
+-- This is throughput only considering steady state
+ssPortThroughput op (T_Port _ (SWLen ssMult _) tType _) = (tType, 
+  SWRatio (SWLen ssMult 0) $ cps op)
 
 inThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
 inThroughput op = map (portThroughput op) $ inPorts op
