@@ -13,7 +13,7 @@ space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
   where OWA _ wireArea = space (Add t)
 space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
   where OWA _ wireArea = space (Add t)
-space (MemRead t) = OWA 0 (len t)
+space (MemRead t) = OWA (len t) (len t)
 space (MemWrite t) = OWA (len t) (len t)
 -- need registers for storing intermediate values
 -- registers account for wiring as some registers receive input wires,

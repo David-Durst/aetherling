@@ -4,6 +4,7 @@ import SpaceTime.STMetrics
 import SpaceTime.STAST
 import SpaceTime.STAnalysis
 import SpaceTime.STComposeOps
+import Text.Pretty.Simple (pPrint)
 
 conv1PxPerClock = 
   (
@@ -20,15 +21,16 @@ conv1PxPerClock =
   MemWrite T_Int
 
 describeMethod name op = do
-  print name
+  print $ "Describing Module: " ++ name
+  pPrint op
   print $ "In Ports: " ++ show (inPorts op)
   print $ "Out Ports: " ++ show (outPorts op)
-  print $ "Clocks Per Sequence " ++ show (cps op)
-  print $ "Area: " ++ show (space op)
+  print $ "Clocks Per Sequence: " ++ show (cps op)
+  print $ "Space: " ++ show (space op)
   print $ "Initial Latency: " ++ show (initialLatency op)
   print $ "Maximum Combinational Path: " ++ show (maxCombPath op)
   print $ "Utilization: " ++ show (util op)
-  print " "
+  putStr "\n"
 
 main = do
   describeMethod "1 Pixerl Per Clock 3 Pixel Stencil Convolution" conv1PxPerClock
