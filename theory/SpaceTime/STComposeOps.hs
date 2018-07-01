@@ -6,8 +6,8 @@ import SpaceTime.STAnalysis
 -- This is for making ComposeSeq
 (|.|) :: Op -> Op -> Op
 -- if failed in earlier step, keep propagating failures
-(|.|) cf@(ComposeFailure _ _) op1 = ComposeFailure PriorFailure (cf, op1)
-(|.|) op0 cf@(ComposeFailure _ _) = ComposeFailure PriorFailure (op0, cf)
+(|.|) cf@(ComposeFailure _ _) op1 = ComposeFailure PriorFailure (op1, cf)
+(|.|) op0 cf@(ComposeFailure _ _) = ComposeFailure PriorFailure (cf, op0)
 -- when checking if can compose, need to match up individual elements, not whole list
 -- ex. If each component is operating at one token per 10 clocks, sequence of 4
 -- parts will take 40 clocks, but should be able to add another component 
@@ -41,4 +41,4 @@ canComposeSeq _ _ = False
 (|&|) (ComposePar ops0) (ComposePar ops1) = ComposePar $ ops0 ++ ops1
 (|&|) (ComposePar ops0) op1 = ComposePar $ ops0 ++ [op1]
 (|&|) op0 (ComposePar ops1) = ComposePar $ [op0] ++ ops1
-(|&|) op0 op1 = ComposePar $ [op1] ++ [op0]
+(|&|) op0 op1 = ComposePar $ [op0] ++ [op1]

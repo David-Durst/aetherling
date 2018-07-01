@@ -294,10 +294,16 @@ inPorts (Constant_Bit _) = []
 inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen 0) inType 2]
 
 inPorts (MapOp par op) = duplicatePorts par (inPorts op)
-inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $ inPorts op
+-- take the first port of the op and duplicate it par times, don't duplicate both
+-- ports of reducer as reducing numComb things in total, not per port
+inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $ 
+  portToDuplicate $ inPorts op
   where 
     scaleSSForReduce (T_Port name (SWLen origMultSS wSub) tType pct) = T_Port 
       name (SWLen (origMultSS * (numComb `ceilDiv` par)) wSub) tType pct
+    -- renamed the port to duplicate as op ports named for two input ports
+    -- and this only has one input port
+    portToDuplicate ((T_Port _ sLen tType pct):_) = [T_Port "I" sLen tType pct]
 
 inPorts (RegDelay _ op) = inPorts op
 
