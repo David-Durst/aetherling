@@ -38,3 +38,22 @@ data Op =
 -- all port types and latencies 
 data ComposeResult = PriorFailure | SeqPortMismatch | ParLatencyMismash | ComposeSuccess
   deriving (Eq, Show)
+
+getChildOps :: Op -> [Op]
+getChildOps (Add t) = []
+getChildOps (Sub t) = []
+getChildOps (Mul t) = []
+getChildOps (Div t) = []
+getChildOps (MemRead _) = []
+getChildOps (MemWrite _) = []
+getChildOps (LineBuffer _ _ _) = []
+getChildOps (Constant_Int _) = []
+getChildOps (Constant_Bit _) = []
+getChildOps (SequenceArrayController _ _) = []
+getChildOps (MapOp _ op) = [op]
+getChildOps (ReduceOp _ _ op) = [op]
+getChildOps (Underutil _ op) = [op]
+getChildOps (RegDelay _ op) = [op]
+getChildOps (ComposePar ops) = ops
+getChildOps (ComposeSeq ops) = ops
+getChildOps (ComposeFailure _ (op0, op1)) = [op0, op1]
