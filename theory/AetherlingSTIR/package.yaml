@@ -1,6 +1,6 @@
 name:                AetherlingSTIR
 version:             0.1.0.0
-github:              "David-Durst/AetherlingSTIR"
+github:              "David-Durst/Aetherling/theory/AetherlingSTIR"
 license:             BSD3
 author:              "David Durst"
 maintainer:          "davidbdurst@gmail.com"
@@ -17,18 +17,19 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/David-Durst/AetherlingSTIR#readme>
+description:         Please see the README on GitHub at <https://github.com/David-Durst/Aetherling/theory/AetherlingSTIR#readme>
 
 dependencies:
 - base >= 4.7 && < 5
+- pretty-simple >= 2.1.0.0 && < 2.2.0.0
 
 library:
-  source-dirs: src
+  source-dirs: src/lib/
 
 executables:
-  AetherlingSTIR-exe:
+  AetherlingSTIR-Example-exe:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:         src/examples/
     ghc-options:
     - -threaded
     - -rtsopts
