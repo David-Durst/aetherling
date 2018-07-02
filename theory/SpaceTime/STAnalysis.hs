@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fwarn-incomplete-patterns #-}
 module SpaceTime.STAnalysis where
 import SpaceTime.STTypes
 import SpaceTime.STMetrics
@@ -159,6 +160,8 @@ getMultiOpCombGroupings (ComposeSeq ops) =
     appendIfCombNewListIfSeq listOfCombLists nextOp = 
       init listOfCombLists ++ [last listOfCombLists ++ [nextOp]] ++
         bool [] [[nextOp]] (isComb nextOp)
+-- this is here to silence incomplete pattern warnings
+getMultiOpCombGroupings _ = undefined
 
 -- assuming here that all ports on a combinational module have the same comb
 -- path length. Not a valid assumption, but good enough to get started
@@ -305,13 +308,16 @@ inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $
     -- renamed the port to duplicate as op ports named for two input ports
     -- and this only has one input port
     portToDuplicate ((T_Port _ sLen tType pct):_) = [T_Port "I" sLen tType pct]
+    portToDuplicate [] = []
 
+inPorts (Underutil _ op) = inPorts op
 inPorts (RegDelay _ op) = inPorts op
 
 inPorts cPar@(ComposePar ops) = scalePorts 
   (getSSScalingsForEachPortOfEachOp cPar ops inPorts) 
   (combineAllWarmups ops maximum inPorts) (unionPorts inPorts ops)
 -- this depends on only wiring up things that have matching throughputs
+inPorts (ComposeSeq []) = []
 inPorts cSeq@(ComposeSeq ops@(hd:_)) = 
   scalePorts (replicate (length $ inPorts hd) ssScaling) 
   (combineAllWarmups ops sum inPorts) (inPorts hd)
@@ -340,11 +346,13 @@ outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" (SWLen out
 outPorts (MapOp par op) = duplicatePorts par (outPorts op)
 outPorts (ReduceOp _ _ op) = outPorts op
 
+outPorts (Underutil _ op) = outPorts op
 outPorts (RegDelay _ op) = outPorts op
 
 outPorts cPar@(ComposePar ops) = scalePorts 
   (getSSScalingsForEachPortOfEachOp cPar ops outPorts) 
   (combineAllWarmups ops maximum outPorts) (unionPorts outPorts ops)
+outPorts (ComposeSeq []) = []
 outPorts cSeq@(ComposeSeq ops) = 
   scalePorts (replicate (length $ outPorts lastOp) ssScaling) 
   (combineAllWarmups ops sum outPorts) (outPorts lastOp)
