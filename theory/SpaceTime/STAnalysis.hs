@@ -242,8 +242,8 @@ utilWeightedByArea ops = unnormalizedUtil / totalArea
         map (\op -> (fromIntegral $ opsArea $ space op) * (util op)) ops
       totalArea = foldl (+) 0 $ map (fromIntegral . opsArea . space) ops
 
-unionPorts :: [Op] -> [PortType]
-unionPorts ops = foldl (++) [] $ map inPorts ops
+unionPorts :: (Op -> [PortType]) -> [Op] -> [PortType]
+unionPorts portsGetter ops = foldl (++) [] $ map portsGetter ops
 
 -- for using some operator over a list of ints to combine all the warmups in one
 combineAllWarmups ops summarizer portGetter = summarizer 
@@ -310,7 +310,7 @@ inPorts (RegDelay _ op) = inPorts op
 
 inPorts cPar@(ComposePar ops) = scalePorts 
   (getSSScalingsForEachPortOfEachOp cPar ops inPorts) 
-  (combineAllWarmups ops maximum inPorts) (unionPorts ops)
+  (combineAllWarmups ops maximum inPorts) (unionPorts inPorts ops)
 -- this depends on only wiring up things that have matching throughputs
 inPorts cSeq@(ComposeSeq ops@(hd:_)) = 
   scalePorts (replicate (length $ inPorts hd) ssScaling) 
@@ -344,7 +344,7 @@ outPorts (RegDelay _ op) = outPorts op
 
 outPorts cPar@(ComposePar ops) = scalePorts 
   (getSSScalingsForEachPortOfEachOp cPar ops outPorts) 
-  (combineAllWarmups ops maximum outPorts) (unionPorts ops)
+  (combineAllWarmups ops maximum outPorts) (unionPorts outPorts ops)
 outPorts cSeq@(ComposeSeq ops) = 
   scalePorts (replicate (length $ outPorts lastOp) ssScaling) 
   (combineAllWarmups ops sum outPorts) (outPorts lastOp)
