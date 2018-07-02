@@ -20,7 +20,8 @@ import SpaceTime.STAnalysis
   ComposeSeq $ ops1 ++ [op0]
 (|.|) op0 op1 | canComposeSeq op1 op0 =
   ComposeSeq $ [op1] ++ [op0]
-(|.|) op0 op1 = ComposeFailure SeqPortMismatch (op1, op0)
+(|.|) op0 op1 = ComposeFailure (SeqPortMismatch (outThroughput op1) 
+  (inThroughput op0)) (op1, op0)
 
 -- This is in same spirit as Monad's >>=, kinda abusing notation
 -- It's |.| in reverse so that can create pipelines in right order

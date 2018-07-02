@@ -45,7 +45,8 @@ space rOp@(ReduceOp par numComb op) =
     -- thus, divide numComb by throuhgput in steady state to get clocks for
     -- numComb to be absorbed
     -- only need throughput from first port as all ports have same throuhgput
-    (_, SWRatio (SWLen numSSMult _) (SWLen denomSSMult _)) = portThroughput op $ head $ inPorts op
+    PortThroughput _ (SWRatio (SWLen numSSMult _) (SWLen denomSSMult _)) = 
+      portThroughput op $ head $ inPorts op
 
 space (Underutil denom op) = space op |+| counterSpace denom
 space (RegDelay dc op) = space op |+|
@@ -382,15 +383,15 @@ isComb (ComposeSeq ops) = length (filter isComb ops) > 0
 isComb (ComposeFailure _ _) = True
 
 
-portThroughput :: Op -> PortType -> (TokenType, SteadyStateAndWarmupRatio)
-portThroughput op (T_Port _ sLen tType _) = (tType, SWRatio sLen $ cps op)
+portThroughput :: Op -> PortType -> PortThroughput
+portThroughput op (T_Port _ sLen tType _) = PortThroughput tType (SWRatio sLen $ cps op)
 
 -- This is throughput only considering steady state
-ssPortThroughput op (T_Port _ (SWLen ssMult _) tType _) = (tType, 
-  SWRatio (SWLen ssMult 0) $ cps op)
+ssPortThroughput op (T_Port _ (SWLen ssMult _) tType _) = PortThroughput tType
+  (SWRatio (SWLen ssMult 0) $ cps op)
 
-inThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
+inThroughput :: Op -> [PortThroughput]
 inThroughput op = map (portThroughput op) $ inPorts op
 
-outThroughput :: Op -> [(TokenType, SteadyStateAndWarmupRatio)]
+outThroughput :: Op -> [PortThroughput]
 outThroughput op = map (portThroughput op) $ outPorts op

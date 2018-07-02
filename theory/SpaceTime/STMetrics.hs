@@ -50,3 +50,6 @@ instance Show SteadyStateAndWarmupRatio where
   show (SWRatio (SWLen numMult numWarmup) (SWLen denomMult denomWarmup)) | numWarmup == 0 &&
     denomWarmup == 0 = show (SWLen (numMult `ceilDiv` denomMult) 0)
   show (SWRatio num denom) = "(" ++ show num ++ ") / (" ++ show denom ++ ")"
+
+data PortThroughput = PortThroughput {throughputType :: TokenType, throughputClocks :: SteadyStateAndWarmupRatio}
+  deriving (Show, Eq)

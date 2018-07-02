@@ -1,5 +1,6 @@
 module SpaceTime.STAST where
 import SpaceTime.STTypes
+import SpaceTime.STMetrics
 
 -- These are leaf nodes that can be used in a higher order operator
 data Op =
@@ -36,7 +37,11 @@ data Op =
 
 -- SeqPortMismatch indicates couldn't do comopse as composeSeq requires 
 -- all port types and latencies 
-data ComposeResult = PriorFailure | SeqPortMismatch | ParLatencyMismash | ComposeSuccess
+data ComposeResult = 
+  PriorFailure 
+  | SeqPortMismatch {outPortsThroughput :: [PortThroughput], inPortsThroughput :: [PortThroughput]}
+  | ParLatencyMismash 
+  | ComposeSuccess
   deriving (Eq, Show)
 
 -- debugging help methods for parsing syntax tree
