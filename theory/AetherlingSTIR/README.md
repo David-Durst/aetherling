@@ -2,6 +2,10 @@
 To build this part of the project:
 1. Install the latest version of [stack](https://docs.haskellstack.org/en/stable/README/)
 2. Clone the entire [Aetherling repository](https://github.com/David-Durst/aetherling)
+3. Move to the subfolder for the Haskell IR:
+```
+cd theory/AetherlingSTIR/
+```
 3. Build the project:
 ```
 stack build
