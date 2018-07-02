@@ -6,7 +6,7 @@ To build this part of the project:
 ```
 stack build
 ```
-4. Look at the examples in (src/examples/Main.hs)
+4. Look at the examples in [src/examples/Main.hs]
 5. Either 
     1. Run the produced binary to see all the examples and their space/time requirements. You can find the binary by looking at the output of the build command
     2. Load the package in the Haskell interpreter and try out your own examples. This can be done by running:
