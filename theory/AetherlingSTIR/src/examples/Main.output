@@ -1,0 +1,251 @@
+"Describing Module: basic combinonal adder"
+Add T_Int
+"In Ports: [T_Port {pName = \"I0\", pSeqLen = 1n, pTType = T_Int, pCTime = 1},T_Port {pName = \"I1\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 8, wireArea = 16}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: fully parallel 4 ints per clock reduce"
+ReduceOp 
+    [1m[96m{[0m reduceParallelism = 4
+    [1m[96m,[0m reduceNumCombined = 4
+    [1m[96m,[0m reducedOp = Add T_Int
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n, pTType = T_Array 4 T_Int, pCTime = 1}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 24, wireArea = 48}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 2"
+"Utilization: 1.0"
+
+"Describing Module: register delayed, fully parallel 4 ints per clock reduce"
+RegDelay 
+    [1m[96m{[0m delayClocks = 2
+    [1m[96m,[0m delayedOp = ReduceOp 
+        [1m[93m{[0m reduceParallelism = 4
+        [1m[93m,[0m reduceNumCombined = 4
+        [1m[93m,[0m reducedOp = Add T_Int
+        [1m[93m}[0m 
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n, pTType = T_Array 4 T_Int, pCTime = 1}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 40, wireArea = 64}"
+"Initial Latency: 3"
+"Maximum Combinational Path: 2"
+"Utilization: 1.0"
+
+"Describing Module: fully sequential 4 ints per 4 clocks reduce"
+ReduceOp 
+    [1m[96m{[0m reduceParallelism = 4
+    [1m[96m,[0m reduceNumCombined = 1
+    [1m[96m,[0m reducedOp = Add T_Int
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n, pTType = T_Array 4 T_Int, pCTime = 1}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 40, wireArea = 72}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 2"
+"Utilization: 1.0"
+
+"Describing Module: 4 ints per clock map"
+MapOp 
+    [1m[96m{[0m mapParallelism = 4
+    [1m[96m,[0m mappedOp = Add T_Int
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I0\", pSeqLen = 1n, pTType = T_Array 4 T_Int, pCTime = 1},T_Port {pName = \"I1\", pSeqLen = 1n, pTType = T_Array 4 T_Int, pCTime = 1}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n, pTType = T_Array 4 T_Int, pCTime = 1}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 32, wireArea = 64}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: 1 pixel per clock, 3 pixel stencil linebuffer"
+LineBuffer 
+    [1m[96m{[0m pxPerClock = 1
+    [1m[96m,[0m windowWidth = 3
+    [1m[96m,[0m lbInT = T_Int
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n - 2, pTType = T_Array 1 T_Int, pCTime = 2}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n - 2, pTType = T_Array 1 (T_Array 3 T_Int), pCTime = 2}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 24, wireArea = 24}"
+"Initial Latency: 3"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: 2 pixels per clock, 3 pixel stencil linebuffer"
+LineBuffer 
+    [1m[96m{[0m pxPerClock = 2
+    [1m[96m,[0m windowWidth = 3
+    [1m[96m,[0m lbInT = T_Int
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n - 3, pTType = T_Array 2 T_Int, pCTime = 2}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n - 3, pTType = T_Array 2 (T_Array 3 T_Int), pCTime = 2}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 32, wireArea = 32}"
+"Initial Latency: 2"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: underutilized to only every other clock - 1 pixel per clock, 3 pixel stencil linebuffer"
+Underutil 
+    [1m[96m{[0m utilDenominator = 2
+    [1m[96m,[0m underutilizedOp = LineBuffer 
+        [1m[93m{[0m pxPerClock = 2
+        [1m[93m,[0m windowWidth = 3
+        [1m[93m,[0m lbInT = T_Int
+        [1m[93m}[0m 
+    [1m[96m}[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n - 3, pTType = T_Array 2 T_Int, pCTime = 2}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n - 3, pTType = T_Array 2 (T_Array 3 T_Int), pCTime = 2}]"
+"Clocks Per Sequence: 2n"
+"Space: OWA {opsArea = 33, wireArea = 33}"
+"Initial Latency: 2"
+"Maximum Combinational Path: 1"
+"Utilization: 0.5"
+
+"Describing Module: back-to-back 1 pixel per clock, 3 pixel stencil linebuffers"
+ComposeSeq 
+    [1m[96m[[0m Constant_Int [1m[93m{[0m intConstProduced = [35m[[0m 1 [35m][0m [1m[93m}[0m
+    [1m[96m,[0m LineBuffer 
+        [1m[93m{[0m pxPerClock = 1
+        [1m[93m,[0m windowWidth = 3
+        [1m[93m,[0m lbInT = T_Int
+        [1m[93m}[0m 
+    [1m[96m,[0m LineBuffer 
+        [1m[93m{[0m pxPerClock = 1
+        [1m[93m,[0m windowWidth = 3
+        [1m[93m,[0m lbInT = T_Array 3 T_Int
+        [1m[93m}[0m 
+    [1m[96m][0m 
+"In Ports: []"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n - 4, pTType = T_Array 1 (T_Array 3 (T_Array 3 T_Int)), pCTime = 2}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 104, wireArea = 96}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 2"
+"Utilization: 1.0"
+
+"Describing Module: basic memory reading one int per clock"
+MemRead T_Int
+"In Ports: []"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 8, wireArea = 8}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: basic memory writing one int per clock"
+MemWrite T_Int
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n, pTType = T_Int, pCTime = 1}]"
+"Out Ports: []"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 8, wireArea = 8}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: a SequenceArrayController converting int[2]{1} to int{2} every two clocks"
+SequenceArrayController 
+    [1m[96m([0m 1
+    [1m[96m,[0m T_Array 2 T_Int
+    [1m[96m)[0m 
+    [1m[96m([0m 2
+    [1m[96m,[0m T_Int
+    [1m[96m)[0m 
+"In Ports: [T_Port {pName = \"I\", pSeqLen = 1n, pTType = T_Array 2 T_Int, pCTime = 2}]"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 2n, pTType = T_Int, pCTime = 2}]"
+"Clocks Per Sequence: 2n"
+"Space: OWA {opsArea = 16, wireArea = 16}"
+"Initial Latency: 2"
+"Maximum Combinational Path: 1"
+"Utilization: 1.0"
+
+"Describing Module: a SequenceArrayController converting int[2]{1} to int{2} every two clocks and a an underuitilized constant generator to feed it"
+ComposeSeq 
+    [1m[96m[[0m Underutil 
+        [1m[93m{[0m utilDenominator = 3
+        [1m[93m,[0m underutilizedOp = Constant_Int 
+            [35m{[0m intConstProduced = 
+                [36m[[0m 1
+                [36m,[0m 1
+                [36m,[0m 1
+                [36m][0m 
+            [35m}[0m
+        [1m[93m}[0m 
+    [1m[96m,[0m SequenceArrayController 
+        [1m[93m([0m 1
+        [1m[93m,[0m T_Array 3 T_Int
+        [1m[93m)[0m 
+        [1m[93m([0m 3
+        [1m[93m,[0m T_Int
+        [1m[93m)[0m 
+    [1m[96m][0m 
+"In Ports: []"
+"Out Ports: [T_Port {pName = \"O\", pSeqLen = 3n, pTType = T_Int, pCTime = 2}]"
+"Clocks Per Sequence: 3n"
+"Space: OWA {opsArea = 50, wireArea = 26}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 2"
+"Utilization: 0.65333337"
+
+"Describing Module: 1 pixel per clock 3 pixel stencil convolution"
+ComposeSeq 
+    [1m[96m[[0m ComposePar 
+        [1m[93m[[0m ComposeSeq 
+            [35m[[0m MemRead T_Int
+            [35m,[0m SequenceArrayController 
+                [36m([0m 1
+                [36m,[0m T_Int
+                [36m)[0m 
+                [36m([0m 1
+                [36m,[0m T_Array 1 T_Int
+                [36m)[0m 
+            [35m,[0m LineBuffer 
+                [36m{[0m pxPerClock = 1
+                [36m,[0m windowWidth = 3
+                [36m,[0m lbInT = T_Int
+                [36m}[0m 
+            [35m,[0m SequenceArrayController 
+                [36m([0m 1
+                [36m,[0m T_Array 1 [33m([0m T_Array 3 T_Int [33m)[0m
+                [36m)[0m 
+                [36m([0m 1
+                [36m,[0m T_Array 3 T_Int
+                [36m)[0m 
+            [35m][0m 
+        [1m[93m,[0m Constant_Int 
+            [35m{[0m intConstProduced = 
+                [36m[[0m 1
+                [36m,[0m 1
+                [36m,[0m 1
+                [36m][0m 
+            [35m}[0m
+        [1m[93m][0m 
+    [1m[96m,[0m MapOp 
+        [1m[93m{[0m mapParallelism = 3
+        [1m[93m,[0m mappedOp = Add T_Int
+        [1m[93m}[0m 
+    [1m[96m,[0m ReduceOp 
+        [1m[93m{[0m reduceParallelism = 3
+        [1m[93m,[0m reduceNumCombined = 3
+        [1m[93m,[0m reducedOp = Add T_Int
+        [1m[93m}[0m 
+    [1m[96m,[0m MemWrite T_Int
+    [1m[96m][0m 
+"In Ports: []"
+"Out Ports: []"
+"Clocks Per Sequence: 1n"
+"Space: OWA {opsArea = 104, wireArea = 120}"
+"Initial Latency: 1"
+"Maximum Combinational Path: 3"
+"Utilization: 1.0"
+
