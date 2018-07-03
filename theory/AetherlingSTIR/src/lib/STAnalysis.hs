@@ -18,6 +18,14 @@ space (Not t) = OWA (len t) (len t)
 space (And t) = space (Add t)
 space (Or t) = space (Add t)
 space (XOr t) = space (Add t)
+space (Eq t) = space (Add t)
+space (Neq t) = space (Add t)
+space (Lt t) = space (Add t)
+space (Leq t) = space (Add t)
+space (Gt t) = space (Add t)
+space (Geq t) = space (Add t)
+
+
 space (MemRead t) = OWA (len t) (len t)
 space (MemWrite t) = OWA (len t) (len t)
 -- need registers for storing intermediate values
@@ -86,6 +94,12 @@ clocksPerSequence (Not t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (And t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Or t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (XOr t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Eq t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Neq t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Lt t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Leq t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Gt t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Geq t) = baseWithNoWarmupSequenceLen
 
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
@@ -133,6 +147,12 @@ initialLatency (Not t) = 1
 initialLatency (And t) = 1
 initialLatency (Or t) = 1
 initialLatency (XOr t) = 1
+initialLatency (Eq t) = 1
+initialLatency (Neq t) = 1
+initialLatency (Lt t) = 1
+initialLatency (Leq t) = 1
+initialLatency (Gt t) = 1
+initialLatency (Geq t) = 1
 
 initialLatency (MemRead _) = 1
 initialLatency (MemWrite _) = 1
@@ -210,6 +230,12 @@ maxCombPath (Not t) = 1
 maxCombPath (And t) = 1
 maxCombPath (Or t) = 1
 maxCombPath (XOr t) = 1
+maxCombPath (Eq t) = 1
+maxCombPath (Neq t) = 1
+maxCombPath (Lt t) = 1
+maxCombPath (Leq t) = 1
+maxCombPath (Gt t) = 1
+maxCombPath (Geq t) = 1
 
 maxCombPath (MemRead _) = 1
 maxCombPath (MemWrite _) = 1
@@ -253,6 +279,12 @@ util (Not t) = 1
 util (And t) = 1
 util (Or t) = 1
 util (XOr t) = 1
+util (Eq t) = 1
+util (Neq t) = 1
+util (Lt t) = 1
+util (Leq t) = 1
+util (Gt t) = 1
+util (Geq t) = 1
 
 util (MemRead _) = 1
 util (MemWrite _) = 1
@@ -328,6 +360,12 @@ inPorts (Not t) = twoInSimplePorts t
 inPorts (And t) = twoInSimplePorts t
 inPorts (Or t) = twoInSimplePorts t
 inPorts (XOr t) = twoInSimplePorts t
+inPorts (Eq t) = twoInSimplePorts t
+inPorts (Neq t) = twoInSimplePorts t
+inPorts (Lt t) = twoInSimplePorts t
+inPorts (Leq t) = twoInSimplePorts t
+inPorts (Gt t) = twoInSimplePorts t
+inPorts (Geq t) = twoInSimplePorts t
 
 inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
@@ -383,6 +421,12 @@ outPorts (Not t) = oneOutSimplePort t
 outPorts (And t) = oneOutSimplePort t
 outPorts (Or t) = oneOutSimplePort t
 outPorts (XOr t) = oneOutSimplePort t
+outPorts (Eq t) = oneOutSimplePort T_Bit
+outPorts (Neq t) = oneOutSimplePort T_Bit
+outPorts (Lt t) = oneOutSimplePort T_Bit
+outPorts (Leq t) = oneOutSimplePort T_Bit
+outPorts (Gt t) = oneOutSimplePort T_Bit
+outPorts (Geq t) = oneOutSimplePort T_Bit
 
 outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
@@ -426,6 +470,12 @@ isComb (Not t) = True
 isComb (And t) = True
 isComb (Or t) = True
 isComb (XOr t) = True
+isComb (Eq t) = True
+isComb (Neq t) = True
+isComb (Lt t) = True
+isComb (Leq t) = True
+isComb (Gt t) = True
+isComb (Geq t) = True
 
 -- this is meaningless for this units that don't have both and input and output
 isComb (MemRead _) = True

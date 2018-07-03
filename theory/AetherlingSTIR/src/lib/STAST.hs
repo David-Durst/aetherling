@@ -13,6 +13,12 @@ data Op =
   | And TokenType
   | Or TokenType
   | XOr TokenType
+  | Eq TokenType
+  | Neq TokenType
+  | Lt TokenType
+  | Leq TokenType
+  | Gt TokenType
+  | Geq TokenType
   | MemRead TokenType
   | MemWrite TokenType
   -- first Int is pixels per clock, second is window width, third int is 
