@@ -1,4 +1,5 @@
 .stack-work/
 AetherlingSTIR.cabal
+cabal.config
 *~
 *.iml
