@@ -39,7 +39,7 @@ constantToSAC =
   Underutil 3 (Constant_Int [1, 1, 1]) |>>=| 
   SequenceArrayController [(1, (T_Array 3 T_Int))] [(3, T_Int)]
 
-duplicateInt = Constant_Int [1, 1, 1] |>>=| Duplicate 3
+duplicateAdd = DuplicateOutputs 3 (Add T_Int)
 
 conv1PxPerClock = 
   (
@@ -81,4 +81,5 @@ main = do
   describeMethod "basic memory writing one int per clock" memWriteInt
   describeMethod "a SequenceArrayController converting int[2]{1} to int{2} every two clocks" sac2Int
   describeMethod "a SequenceArrayController converting int[2]{1} to int{2} every two clocks and a an underuitilized constant generator to feed it" constantToSAC
+  describeMethod "duplicating the outputs but not the inputs of an adder" duplicateAdd
   describeMethod "1 pixel per clock 3 pixel stencil convolution" conv1PxPerClock

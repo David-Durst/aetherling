@@ -37,7 +37,7 @@ space (SequenceArrayController inPortsAndSLens outPortsAndSLens) |
 space (SequenceArrayController inPortsAndSLens _) = foldl (|+|) addId $ map elSpace inPortsAndSLens
   where elSpace (inSLen, inType) = registerSpace [inType] |* inSLen
 -- since pass through with no logic and resulting ops will count input wire sizes, no need to account for any space here
-space (DuplicateOutputs _) = addId
+space (DuplicateOutputs _ _) = addId
 
 -- area of parallel map is area of all the copies
 space (MapOp par op) = (space op) |* par
@@ -96,7 +96,7 @@ clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)
 -- divide/group the input into the output, just take max as that is lcm
 clocksPerSequence sac@(SequenceArrayController _ _) = SWLen (maximum $ getAllSACSeqLens sac) 0
-clocksPerSequence (DuplicateOutputs _) = baseWithNoWarmupSequenceLen
+clocksPerSequence (DuplicateOutputs _ _) = baseWithNoWarmupSequenceLen
 
 clocksPerSequence (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
@@ -142,7 +142,7 @@ initialLatency (LineBuffer p w _) = (w + p - 1) `ceilDiv` p
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
 initialLatency sac@(SequenceArrayController _ _) = foldl lcm 1 $ getAllSACSeqLens sac
-initialLatency (DuplicateOutputs _) = 1
+initialLatency (DuplicateOutputs _ _) = 1
 
 initialLatency (MapOp _ op) = initialLatency op
 initialLatency (ReduceOp par numComb op) | par `mod` numComb == 0 && isComb op = 1
@@ -217,7 +217,7 @@ maxCombPath (LineBuffer _ _ _) = 1
 maxCombPath (Constant_Int _) = 1
 maxCombPath (Constant_Bit _) = 1
 maxCombPath (SequenceArrayController _ _) = 1
-maxCombPath (DuplicateOutputs _) = 1
+maxCombPath (DuplicateOutputs _ _) = 1
 
 maxCombPath (MapOp _ op) = maxCombPath op
 maxCombPath (ReduceOp par _ op) | isComb op = maxCombPath op * ceilLog par
@@ -260,7 +260,7 @@ util (LineBuffer _ _ _) = 1
 util (Constant_Int _) = 1
 util (Constant_Bit _) = 1
 util (SequenceArrayController _ _) = 1
-util (DuplicateOutputs _) = 1
+util (DuplicateOutputs _ _) = 1
 
 util (MapOp _ op) = util op
 util (ReduceOp _ _ op) = util op
@@ -340,10 +340,7 @@ inPorts (SequenceArrayController inputs _) = snd $ foldl makePort (0, []) inputs
   where
     makePort (n, ports) (sLen, tType) = (n+1, ports ++ [T_Port ("I" ++ show n) (SWLen sLen 0) tType 2])
 -- for in ports, no duplicates
-inPorts (Duplicate portsAndNumDuplicates) = snd $ foldl makePort (0, []) portTokenTypes
-  where
-    portTokenTypes = map snd portsAndNumDuplicates
-    makePort (n, ports) tType = (n+1, ports ++ [T_Port ("I" ++ show n) baseWithNoWarmupSequenceLen tType 1])
+inPorts (DuplicateOutputs _ op) = inPorts op
 
 inPorts (MapOp par op) = renamePorts "I" $ duplicatePorts par (inPorts op)
 -- take the first port of the op and duplicate it par times, don't duplicate both
@@ -398,11 +395,7 @@ outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array 
 outPorts (SequenceArrayController _ outputs) = snd $ foldl makePort (0, []) outputs
   where
     makePort (n, ports) (sLen, tType) = (n+1, ports ++ [T_Port ("O" ++ show n) (SWLen sLen 0) tType 2])
-outPorts (Duplicate portsAndNumDuplicates) = snd $ foldl makeDuplicatePorts (0, []) portsAndNumDuplicates
-  where
-    duplicateAPort n (copies, tType) = renamePorts ("O" ++ show n ++ "_") $
-      replicate copies (T_Port ("I" ++ show n) baseWithNoWarmupSequenceLen tType 1)
-    makeDuplicatePorts (n, ports) copiesAndTType = (n+1, ports ++ duplicateAPort n copiesAndTType)
+outPorts (DuplicateOutputs n op) = renamePorts "O" $ foldl (++) [] $ replicate n $ outPorts op
 
 outPorts (MapOp par op) = renamePorts "O" $ duplicatePorts par (outPorts op)
 outPorts (ReduceOp _ _ op) = renamePorts "O" $ outPorts op
@@ -443,7 +436,7 @@ isComb (Constant_Bit _) = True
 -- even if have sequential logic to store over multipel clocks,
 -- always combinational path through for first clock
 isComb (SequenceArrayController _ _) = True
-isComb (Duplicate _) = True
+isComb (DuplicateOutputs _ _) = True
 
 isComb (MapOp _ op) = isComb op
 isComb (ReduceOp par numComb op) | par == numComb = isComb op
