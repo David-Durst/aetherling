@@ -14,6 +14,10 @@ space (Mul t) = OWA (mulSpaceTimeIncreaser * len t) wireArea
   where OWA _ wireArea = space (Add t)
 space (Div t) = OWA (divSpaceTimeIncreaser * len t) wireArea
   where OWA _ wireArea = space (Add t)
+space (Not t) = OWA (len t) (len t)
+space (And t) = space (Add t)
+space (Or t) = space (Add t)
+space (XOr t) = space (Add t)
 space (MemRead t) = OWA (len t) (len t)
 space (MemWrite t) = OWA (len t) (len t)
 -- need registers for storing intermediate values
@@ -24,11 +28,16 @@ space (LineBuffer p w t) = registerSpace [T_Array (p + w - 1) t]
 space (Constant_Int consts) = OWA (len (T_Array (length consts) T_Int)) 0
 space (Constant_Bit consts) = OWA (len (T_Array (length consts) T_Bit)) 0
 -- just a pass through, so will get removed by CoreIR
-space (SequenceArrayController (inSLen, _) (outSLen, _)) | 
-  inSLen == 1 && outSLen == 1 = addId
+space (SequenceArrayController inPortsAndSLens outPortsAndSLens) |
+  numPortsWithSLen1 == (length inPortsAndSLens + length outPortsAndSLens) = addId
+  where
+    numPortsWithSLen1 = length $ filter ((==) 1) $ map fst $ inPortsAndSLens ++ outPortsAndSLens
 -- may need a more accurate approximate, but most conservative is storing
 -- entire input
-space (SequenceArrayController (inSLen, inType) _) = registerSpace [inType] |* inSLen
+space (SequenceArrayController inPortsAndSLens _) = foldl (|+|) addId $ map elSpace inPortsAndSLens
+  where elSpace (inSLen, inType) = registerSpace [inType] |* inSLen
+-- since pass through with no logic and resulting ops will count input wire sizes, no need to account for any space here
+space (DuplicateOutputs _) = addId
 
 -- area of parallel map is area of all the copies
 space (MapOp par op) = (space op) |* par
@@ -66,11 +75,18 @@ scaleCPS op n = SWLen (ssMult * n) (wSub * n)
 cps op = clocksPerSequence op
 clocksPerSequence :: Op -> SteadyStateAndWarmupLen
 registerCPS = baseWithNoWarmupSequenceLen
+getAllSACSeqLens (SequenceArrayController inputs outputs) = map fst $ inputs ++ outputs
+getAllSACSeqLens _ = undefined
 
 clocksPerSequence (Add t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Sub t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Mul t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Div t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Not t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (And t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (Or t) = baseWithNoWarmupSequenceLen
+clocksPerSequence (XOr t) = baseWithNoWarmupSequenceLen
+
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (MemWrite _) = baseWithNoWarmupSequenceLen
@@ -79,7 +95,8 @@ clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)
 -- divide/group the input into the output, just take max as that is lcm
-clocksPerSequence (SequenceArrayController (inSLen, _) (outSLen, _)) = SWLen (max inSLen outSLen) 0
+clocksPerSequence sac@(SequenceArrayController _ _) = SWLen (maximum $ getAllSACSeqLens sac) 0
+clocksPerSequence (DuplicateOutputs _) = baseWithNoWarmupSequenceLen
 
 clocksPerSequence (MapOp _ op) = cps op
 -- always can pipeline. Just reset register every numComb/par if not fully parallel
@@ -112,6 +129,11 @@ initialLatency (Add t) = 1
 initialLatency (Sub t) = 1
 initialLatency (Mul t) = 1
 initialLatency (Div t) = 1
+initialLatency (Not t) = 1
+initialLatency (And t) = 1
+initialLatency (Or t) = 1
+initialLatency (XOr t) = 1
+
 initialLatency (MemRead _) = 1
 initialLatency (MemWrite _) = 1
 -- for each extra element in per clock, first output is 1 larger, but get 1
@@ -119,7 +141,8 @@ initialLatency (MemWrite _) = 1
 initialLatency (LineBuffer p w _) = (w + p - 1) `ceilDiv` p
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
-initialLatency (SequenceArrayController (inSLen, _) (outSLen, _)) = lcm inSLen outSLen
+initialLatency sac@(SequenceArrayController _ _) = foldl lcm 1 $ getAllSACSeqLens sac
+initialLatency (DuplicateOutputs _) = 1
 
 initialLatency (MapOp _ op) = initialLatency op
 initialLatency (ReduceOp par numComb op) | par `mod` numComb == 0 && isComb op = 1
@@ -183,12 +206,18 @@ maxCombPath (Add t) = 1
 maxCombPath (Sub t) = 1
 maxCombPath (Mul t) = 1
 maxCombPath (Div t) = 1
+maxCombPath (Not t) = 1
+maxCombPath (And t) = 1
+maxCombPath (Or t) = 1
+maxCombPath (XOr t) = 1
+
 maxCombPath (MemRead _) = 1
 maxCombPath (MemWrite _) = 1
 maxCombPath (LineBuffer _ _ _) = 1
 maxCombPath (Constant_Int _) = 1
 maxCombPath (Constant_Bit _) = 1
-maxCombPath (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
+maxCombPath (SequenceArrayController _ _) = 1
+maxCombPath (DuplicateOutputs _) = 1
 
 maxCombPath (MapOp _ op) = maxCombPath op
 maxCombPath (ReduceOp par _ op) | isComb op = maxCombPath op * ceilLog par
@@ -220,12 +249,18 @@ util (Add t) = 1
 util (Sub t) = 1
 util (Mul t) = 1
 util (Div t) = 1
+util (Not t) = 1
+util (And t) = 1
+util (Or t) = 1
+util (XOr t) = 1
+
 util (MemRead _) = 1
 util (MemWrite _) = 1
 util (LineBuffer _ _ _) = 1
 util (Constant_Int _) = 1
 util (Constant_Bit _) = 1
-util (SequenceArrayController (inSLen, _) (outSLen, _)) = 1
+util (SequenceArrayController _ _) = 1
+util (DuplicateOutputs _) = 1
 
 util (MapOp _ op) = util op
 util (ReduceOp _ _ op) = util op
@@ -289,18 +324,31 @@ inPorts (Add t) = twoInSimplePorts t
 inPorts (Sub t) = twoInSimplePorts t
 inPorts (Mul t) = twoInSimplePorts t
 inPorts (Div t) = twoInSimplePorts t
+inPorts (Not t) = twoInSimplePorts t
+inPorts (And t) = twoInSimplePorts t
+inPorts (Or t) = twoInSimplePorts t
+inPorts (XOr t) = twoInSimplePorts t
+
 inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
 inPorts (LineBuffer p w t) = [T_Port "I" (SWLen 1 (w + p - 2)) (T_Array p t) 2]
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
-inPorts (SequenceArrayController (inSLen, inType) _) = [T_Port "I" (SWLen inSLen 0) inType 2]
 
-inPorts (MapOp par op) = duplicatePorts par (inPorts op)
+inPorts (SequenceArrayController inputs _) = snd $ foldl makePort (0, []) inputs
+  where
+    makePort (n, ports) (sLen, tType) = (n+1, ports ++ [T_Port ("I" ++ show n) (SWLen sLen 0) tType 2])
+-- for in ports, no duplicates
+inPorts (Duplicate portsAndNumDuplicates) = snd $ foldl makePort (0, []) portTokenTypes
+  where
+    portTokenTypes = map snd portsAndNumDuplicates
+    makePort (n, ports) tType = (n+1, ports ++ [T_Port ("I" ++ show n) baseWithNoWarmupSequenceLen tType 1])
+
+inPorts (MapOp par op) = renamePorts "I" $ duplicatePorts par (inPorts op)
 -- take the first port of the op and duplicate it par times, don't duplicate both
 -- ports of reducer as reducing numComb things in total, not per port
-inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $ 
+inPorts (ReduceOp par numComb op) = renamePorts "I" $ map scaleSSForReduce $ duplicatePorts par $
   portToDuplicate $ inPorts op
   where 
     scaleSSForReduce (T_Port name (SWLen origMultSS wSub) tType pct) = T_Port 
@@ -313,12 +361,12 @@ inPorts (ReduceOp par numComb op) = map scaleSSForReduce $ duplicatePorts par $
 inPorts (Underutil _ op) = inPorts op
 inPorts (RegDelay _ op) = inPorts op
 
-inPorts cPar@(ComposePar ops) = scalePorts 
+inPorts cPar@(ComposePar ops) = renamePorts "I" $ scalePorts
   (getSSScalingsForEachPortOfEachOp cPar ops inPorts) 
   (combineAllWarmups ops maximum inPorts) (unionPorts inPorts ops)
 -- this depends on only wiring up things that have matching throughputs
 inPorts (ComposeSeq []) = []
-inPorts cSeq@(ComposeSeq ops@(hd:_)) = 
+inPorts cSeq@(ComposeSeq ops@(hd:_)) = renamePorts "I" $
   scalePorts (replicate (length $ inPorts hd) ssScaling) 
   (combineAllWarmups ops sum inPorts) (inPorts hd)
   where
@@ -334,6 +382,11 @@ outPorts (Add t) = oneOutSimplePort t
 outPorts (Sub t) = oneOutSimplePort t
 outPorts (Mul t) = oneOutSimplePort t
 outPorts (Div t) = oneOutSimplePort t
+outPorts (Not t) = oneOutSimplePort t
+outPorts (And t) = oneOutSimplePort t
+outPorts (Or t) = oneOutSimplePort t
+outPorts (XOr t) = oneOutSimplePort t
+
 outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
@@ -341,19 +394,27 @@ outPorts (MemWrite _) = []
 outPorts (LineBuffer p w t) = [T_Port "O" (SWLen 1 (w + p - 2)) (T_Array p (T_Array w t)) 2]
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
-outPorts (SequenceArrayController _ (outSLen, outType)) = [T_Port "O" (SWLen outSLen 0) outType 2]
 
-outPorts (MapOp par op) = duplicatePorts par (outPorts op)
-outPorts (ReduceOp _ _ op) = outPorts op
+outPorts (SequenceArrayController _ outputs) = snd $ foldl makePort (0, []) outputs
+  where
+    makePort (n, ports) (sLen, tType) = (n+1, ports ++ [T_Port ("O" ++ show n) (SWLen sLen 0) tType 2])
+outPorts (Duplicate portsAndNumDuplicates) = snd $ foldl makeDuplicatePorts (0, []) portsAndNumDuplicates
+  where
+    duplicateAPort n (copies, tType) = renamePorts ("O" ++ show n ++ "_") $
+      replicate copies (T_Port ("I" ++ show n) baseWithNoWarmupSequenceLen tType 1)
+    makeDuplicatePorts (n, ports) copiesAndTType = (n+1, ports ++ duplicateAPort n copiesAndTType)
+
+outPorts (MapOp par op) = renamePorts "O" $ duplicatePorts par (outPorts op)
+outPorts (ReduceOp _ _ op) = renamePorts "O" $ outPorts op
 
 outPorts (Underutil _ op) = outPorts op
 outPorts (RegDelay _ op) = outPorts op
 
-outPorts cPar@(ComposePar ops) = scalePorts 
+outPorts cPar@(ComposePar ops) = renamePorts "O" $ scalePorts
   (getSSScalingsForEachPortOfEachOp cPar ops outPorts) 
   (combineAllWarmups ops maximum outPorts) (unionPorts outPorts ops)
 outPorts (ComposeSeq []) = []
-outPorts cSeq@(ComposeSeq ops) = 
+outPorts cSeq@(ComposeSeq ops) = renamePorts "O" $
   scalePorts (replicate (length $ outPorts lastOp) ssScaling) 
   (combineAllWarmups ops sum outPorts) (outPorts lastOp)
   where
@@ -368,6 +429,11 @@ isComb (Add t) = True
 isComb (Sub t) = True
 isComb (Mul t) = True
 isComb (Div t) = True
+isComb (Not t) = True
+isComb (And t) = True
+isComb (Or t) = True
+isComb (XOr t) = True
+
 -- this is meaningless for this units that don't have both and input and output
 isComb (MemRead _) = True
 isComb (MemWrite _) = True
@@ -376,7 +442,8 @@ isComb (Constant_Int _) = True
 isComb (Constant_Bit _) = True
 -- even if have sequential logic to store over multipel clocks,
 -- always combinational path through for first clock
-isComb (SequenceArrayController (inSLen, _) (outSLen, _)) = True
+isComb (SequenceArrayController _ _) = True
+isComb (Duplicate _) = True
 
 isComb (MapOp _ op) = isComb op
 isComb (ReduceOp par numComb op) | par == numComb = isComb op

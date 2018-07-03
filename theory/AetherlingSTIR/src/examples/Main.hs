@@ -33,19 +33,21 @@ memReadInt = MemRead T_Int
 
 memWriteInt = MemWrite T_Int
 
-sac2Int = SequenceArrayController (1, (T_Array 2 T_Int)) (2, T_Int)
+sac2Int = SequenceArrayController [(1, (T_Array 2 T_Int))] [(2, T_Int)]
 
 constantToSAC = 
   Underutil 3 (Constant_Int [1, 1, 1]) |>>=| 
-  SequenceArrayController (1, (T_Array 3 T_Int)) (3, T_Int)
+  SequenceArrayController [(1, (T_Array 3 T_Int))] [(3, T_Int)]
+
+duplicateInt = Constant_Int [1, 1, 1] |>>=| Duplicate 3
 
 conv1PxPerClock = 
   (
     (
       MemRead T_Int |>>=|
-      SequenceArrayController (1, T_Int) (1, T_Array 1 T_Int) |>>=|
+      SequenceArrayController [(1, T_Int)] [(1, T_Array 1 T_Int)] |>>=|
       LineBuffer 1 3 T_Int |>>=|
-      SequenceArrayController (1, T_Array 1 (T_Array 3 T_Int)) (1, T_Array 3 T_Int)
+      SequenceArrayController [(1, T_Array 1 (T_Array 3 T_Int))] [(1, T_Array 3 T_Int)]
     ) |&|
     Constant_Int [1, 1, 1]
   ) |>>=|

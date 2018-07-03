@@ -9,6 +9,10 @@ data Op =
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
+  | Not TokenType
+  | And TokenType
+  | Or TokenType
+  | XOr TokenType
   | MemRead TokenType
   | MemWrite TokenType
   -- first Int is pixels per clock, second is window width, third int is 
@@ -17,8 +21,12 @@ data Op =
   | Constant_Int {intConstProduced :: [Int]}
   -- Array is constant produced, int is sequence length
   | Constant_Bit {bitConstProduced :: [Bool]}
+
+  -- TYPE MANIPULATORS
   -- first pair is input subsequence length and tokens per element, second is output
-  | SequenceArrayController (Int, TokenType) (Int, TokenType)
+  | SequenceArrayController [(Int, TokenType)] [(Int, TokenType)]
+  | DuplicateOutputs Int Op
+
 
   -- HIGHER ORDER OPS
   | MapOp {mapParallelism :: Int, mappedOp :: Op}
