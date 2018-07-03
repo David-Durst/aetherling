@@ -9,6 +9,11 @@ data Op =
   | Sub TokenType
   | Mul TokenType
   | Div TokenType
+  | Max TokenType
+  | Min TokenType
+  | Ashr Int TokenType
+  | Shl Int TokenType
+  | Abs TokenType
   | Not TokenType
   | And TokenType
   | Or TokenType
