@@ -3,3 +3,5 @@ AetherlingSTIR.cabal
 cabal.config
 *~
 *.iml
+.idea
+.stack-work
