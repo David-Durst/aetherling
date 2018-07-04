@@ -88,3 +88,7 @@ duplicatePorts :: Int -> [PortType] -> [PortType]
 duplicatePorts n ports = map wrapInArray ports
   where wrapInArray (T_Port name sLen t pct) = T_Port name sLen (T_Array n t) pct
 
+renamePorts :: String -> [PortType] -> [PortType]
+renamePorts templateName ports = snd $ foldl renameAndIncrementCounter (0, []) ports
+  where renameAndIncrementCounter (curCounter, processedPorts) (T_Port _ sLen tType pct) =
+          (curCounter + 1, processedPorts ++ [T_Port (templateName ++ show curCounter) sLen tType pct])
