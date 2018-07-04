@@ -18,6 +18,44 @@ instance HasLen TokenType where
   len T_Bit = 1
   len (T_Array i t) = i * len t
 
+-- type used to pass values to the simulator.
+-- There is a V_Type value type corresponding to each T_Type TokenType.
+data ValueType =
+  V_Unit
+  | V_Int Int
+  | V_Bit Bool
+  | V_Array [ValueType]
+  deriving (Eq, Show)
+
+instance HasLen ValueType where
+  len V_Unit = 0
+  len (V_Int _) = 8
+  len (V_Bit _) = 1
+  len (V_Array list) = length list
+
+-- Function for checking that a ValueType instance matches the given
+-- TokenType instance. Also checks that arrays are the same length.
+-- V_Unit matches all types.
+vtTypesMatch :: ValueType -> TokenType -> Bool
+vtTypesMatch (V_Unit) t = True
+vtTypesMatch (V_Int _) T_Int = True
+vtTypesMatch (V_Bit _) T_Bit = True
+vtTypesMatch (V_Array []) (T_Array i t) = i == 0
+vtTypesMatch (V_Array (v:vs)) (T_Array i t) =
+    vtTypesMatch v t && vtTypesMatch (V_Array vs) (T_Array (i-1) t)
+vtTypesMatch _ _ = False
+
+-- Head and tail functions for V_Array type (no-op for V_Unit).
+valueTypeHead :: ValueType -> ValueType
+valueTypeHead V_Unit = V_Unit
+valueTypeHead (V_Array arr) = head arr
+valueTypeHead _ = error "valueTypeHead of non-array non-unit ValueType"
+
+valueTypeTail :: ValueType -> ValueType
+valueTypeTail V_Unit = V_Unit
+valueTypeTail (V_Array arr) = V_Array (tail arr)
+valueTypeTail _ = error "valueTypeTail of non-array non-unit ValueType"
+
 -- the constants for describing a number of clocks or elements that is 
 -- steadyStateMultiplier * n - warmupSub
 data SteadyStateAndWarmupLen = SWLen {steadyStateMultiplier :: Int, warmupSub :: Int}
