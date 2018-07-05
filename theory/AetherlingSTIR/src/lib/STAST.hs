@@ -18,19 +18,19 @@ data Op =
   | And TokenType
   | Or TokenType
   | XOr TokenType
-  | Eq TokenType
-  | Neq TokenType
-  | Lt TokenType
-  | Leq TokenType
-  | Gt TokenType
-  | Geq TokenType
+  | Eq
+  | Neq
+  | Lt
+  | Leq
+  | Gt
+  | Geq
   | MemRead TokenType
   | MemWrite TokenType
   -- first Int is pixels per clock, second is window width, third int is 
   | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
-  -- Array is constant produced, int is sequence length
+  -- Array is constant produced
   | Constant_Int {intConstProduced :: [Int]}
-  -- Array is constant produced, int is sequence length
+  -- Array is constant produced
   | Constant_Bit {bitConstProduced :: [Bool]}
 
   -- TYPE MANIPULATORS
