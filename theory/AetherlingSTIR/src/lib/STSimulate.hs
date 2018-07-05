@@ -89,6 +89,12 @@ simhl (Not t) inputs True = simhlCombinational simhlNot inputs
 simhl (And t) inputs True = simhlCombinational simhlAnd inputs
 simhl (Or t) inputs True = simhlCombinational simhlOr inputs
 simhl (XOr t) inputs True = simhlCombinational simhlXOr inputs
+simhl Eq inputs True = simhlCombinational simhlEq inputs
+simhl Neq inputs True = simhlCombinational simhlNeq inputs
+simhl Lt inputs True = simhlCombinational simhlLt inputs
+simhl Leq inputs True = simhlCombinational simhlLeq inputs
+simhl Gt inputs True = simhlCombinational simhlGt inputs
+simhl Geq inputs True = simhlCombinational simhlGeq inputs
 simhl (Constant_Int a) inputs True = simhlCombinational (simhlInt a) inputs
 simhl (Constant_Bit a) inputs True = simhlCombinational (simhlBit a) inputs
 simhl (MapOp par op) inputs True =
@@ -133,6 +139,12 @@ simhlUnaryOp intImpl bitImpl [V_Array xs] =
     [V_Array $ concat [simhlUnaryOp intImpl bitImpl [x] | x <- xs]]
 simhlUnaryOp _ _ _ = error "Aetherling internal error: unary op no match"
 
+-- Similar function for int comparison operators (int + int -> bool).
+simhlIntCmpOp :: (Int -> Int -> Bool) -> [ValueType] -> [ValueType]
+simhlIntCmpOp intImpl [V_Unit, _] = [V_Unit]
+simhlIntCmpOp intImpl [_, V_Unit] = [V_Unit]
+simhlIntCmpOp intImpl [V_Int x, V_Int y] = [V_Bit $ intImpl x y]
+simhlIntCmpOp _ _ = error "Aetherling internal error: int cmp op no match"
 
 -- Combinational device implementations.
 simhlAdd :: [ValueType] -> [ValueType]
@@ -154,10 +166,10 @@ simhlMin :: [ValueType] -> [ValueType]
 simhlMin = simhlBinaryOp min min
 
 simhlAshr :: Int -> [ValueType] -> [ValueType]
-simhlAshr c = simhlUnaryOp (\x -> div x 2^c) (\x -> x) -- XXX bit shift???
+simhlAshr c = simhlUnaryOp (\x -> div x (2^c)) (\x -> x) -- XXX bit shift???
 
 simhlShl :: Int -> [ValueType] -> [ValueType]
-simhlShl c = simhlUnaryOp (\x -> x * 2^c) (\x -> x && (c /= 0))
+simhlShl c = simhlUnaryOp (\x -> x * (2^c)) (\x -> x && (c /= 0))
 
 simhlAbs :: [ValueType] -> [ValueType]
 simhlAbs = simhlUnaryOp abs (\x -> x)
@@ -174,12 +186,30 @@ simhlOr = simhlBinaryOp (.|.) (.|.)
 simhlXOr :: [ValueType] -> [ValueType]
 simhlXOr = simhlBinaryOp xor xor
 
+simhlEq :: [ValueType] -> [ValueType]
+simhlEq = simhlIntCmpOp (==)
+
+simhlNeq :: [ValueType] -> [ValueType]
+simhlNeq = simhlIntCmpOp (/=)
+
+simhlLt :: [ValueType] -> [ValueType]
+simhlLt = simhlIntCmpOp (<)
+
+simhlLeq :: [ValueType] -> [ValueType]
+simhlLeq = simhlIntCmpOp (<=)
+
+simhlGt :: [ValueType] -> [ValueType]
+simhlGt = simhlIntCmpOp (>)
+
+simhlGeq :: [ValueType] -> [ValueType]
+simhlGeq = simhlIntCmpOp (>=)
+
 simhlInt :: [Int] -> [ValueType] -> [ValueType]
 simhlInt ints _ = [V_Array [V_Int i | i <- ints]]
 
 simhlBit :: [Bool] -> [ValueType] -> [ValueType]
 simhlBit bools _ = [V_Array [V_Bit b | b <- bools]]
-    
+
 -- Split the inputs to a MapOp into the inputs expected by each Op
 -- contained within the MapOp. If N is the parallelism of the MapOp,
 -- we expect the input to be a list of lists of V_Arrays of length N,
