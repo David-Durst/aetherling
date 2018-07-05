@@ -5,6 +5,7 @@ import STMetrics
 import STAST
 import STAnalysis
 import Data.Bool
+import Data.Bits
 import Data.List
 
 -- High level simulator for Aetherling pipelines (Op instances).
@@ -75,10 +76,19 @@ simhl :: Op -> [[ValueType]] -> Bool -> [[ValueType]]
 simhl op inputs False =
     error "Aetherling internal error: simhl function got False Bool value"
     -- If simhlCheckInputs was false, should have gotten proper error message.
-simhl (Add t) inputs True = simhlCombinational (simhlAdd t) inputs
-simhl (Sub t) inputs True = simhlCombinational (simhlSub t) inputs
-simhl (Mul t) inputs True = simhlCombinational (simhlMul t) inputs
-simhl (Div t) inputs True = simhlCombinational (simhlDiv t) inputs
+simhl (Add t) inputs True = simhlCombinational simhlAdd inputs
+simhl (Sub t) inputs True = simhlCombinational simhlSub inputs
+simhl (Mul t) inputs True = simhlCombinational simhlMul inputs
+simhl (Div t) inputs True = simhlCombinational simhlDiv inputs
+simhl (Max t) inputs True = simhlCombinational simhlMax inputs
+simhl (Min t) inputs True = simhlCombinational simhlMin inputs
+simhl (Ashr c t) inputs True = simhlCombinational (simhlAshr c) inputs
+simhl (Shl c t) inputs True = simhlCombinational (simhlShl c) inputs
+simhl (Abs t) inputs True = simhlCombinational simhlAbs inputs
+simhl (Not t) inputs True = simhlCombinational simhlNot inputs
+simhl (And t) inputs True = simhlCombinational simhlAnd inputs
+simhl (Or t) inputs True = simhlCombinational simhlOr inputs
+simhl (XOr t) inputs True = simhlCombinational simhlXOr inputs
 simhl (Constant_Int a) inputs True = simhlCombinational (simhlInt a) inputs
 simhl (Constant_Bit a) inputs True = simhlCombinational (simhlBit a) inputs
 simhl (MapOp par op) inputs True =
@@ -100,43 +110,69 @@ simhlCombinational impl [] = []
 simhlCombinational impl (input:inputs) =
     (impl input):(simhlCombinational impl inputs)
 
+-- Given implementations for Ints and Bools, create a [ValueType] -> [ValueType]
+-- function suitable for simhlCombinational.
+simhlBinaryOp :: (Int -> Int -> Int) -> (Bool -> Bool -> Bool)
+                  -> [ValueType] -> [ValueType]
+simhlBinaryOp intImpl bitImpl [V_Unit, _] = [V_Unit]
+simhlBinaryOp intImpl bitImpl [_, V_Unit] = [V_Unit]
+simhlBinaryOp intImpl bitImpl [V_Int x, V_Int y] = [V_Int $ intImpl x y]
+simhlBinaryOp intImpl bitImpl [V_Bit x, V_Bit y] = [V_Bit $ bitImpl x y]
+simhlBinaryOp intImpl bitImpl [V_Array xs, V_Array ys] =
+    [V_Array $ concat [simhlBinaryOp intImpl bitImpl [x, y]
+    | (x, y) <- zip xs ys]]
+simhlBinaryOp _ _ _ = error "Aetherling internal error: binary op no match"
+
+-- Similar function for unary operators.
+simhlUnaryOp :: (Int -> Int) -> (Bool -> Bool)
+                -> [ValueType] -> [ValueType]
+simhlUnaryOp intImpl bitImpl [V_Unit] = [V_Unit]
+simhlUnaryOp intImpl bitImpl [V_Int x] = [V_Int $ intImpl x]
+simhlUnaryOp intImpl bitImpl [V_Bit x] = [V_Bit $ bitImpl x]
+simhlUnaryOp intImpl bitImpl [V_Array xs] =
+    [V_Array $ concat [simhlUnaryOp intImpl bitImpl [x] | x <- xs]]
+simhlUnaryOp _ _ _ = error "Aetherling internal error: unary op no match"
+
+
 -- Combinational device implementations.
-simhlAdd :: TokenType -> [ValueType] -> [ValueType]
-simhlAdd t [V_Unit, _] = [V_Unit]
-simhlAdd t [_, V_Unit] = [V_Unit]
-simhlAdd T_Int [V_Int x, V_Int y] = [V_Int(x+y)]
-simhlAdd T_Bit [V_Bit x, V_Bit y] = [V_Bit(simhlXOR x y)]
-simhlAdd (T_Array n t) [V_Array vts0, V_Array vts1] =
-    [V_Array $ concat [simhlAdd t [vt0, vt1] | (vt0, vt1) <- zip vts0 vts1]]
-simhlAdd t v = error("Atherling internal error: simhlAdd " ++ show t ++ show v)
+simhlAdd :: [ValueType] -> [ValueType]
+simhlAdd = simhlBinaryOp (\x y -> x+y) xor
 
-simhlSub :: TokenType -> [ValueType] -> [ValueType]
-simhlSub t [V_Unit, _] = [V_Unit]
-simhlSub t [_, V_Unit] = [V_Unit]
-simhlSub T_Int [V_Int x, V_Int y] = [V_Int(x-y)]
-simhlSub T_Bit [V_Bit x, V_Bit y] = [V_Bit(simhlXOR x y)]
-simhlSub (T_Array n t) [V_Array vts0, V_Array vts1] =
-    [V_Array $ concat [simhlSub t [vt0, vt1] | (vt0, vt1) <- zip vts0 vts1]]
-simhlSub t v = error("Atherling internal error: simhlSub " ++ show t ++ show v)
+simhlSub :: [ValueType] -> [ValueType]
+simhlSub = simhlBinaryOp (\x y -> x-y) xor
 
-simhlMul :: TokenType -> [ValueType] -> [ValueType]
-simhlMul t [V_Unit, _] = [V_Unit]
-simhlMul t [_, V_Unit] = [V_Unit]
-simhlMul T_Int [V_Int x, V_Int y] = [V_Int(x*y)]
-simhlMul T_Bit [V_Bit x, V_Bit y] = [V_Bit(simhlAND x y)]
-simhlMul (T_Array n t) [V_Array vts0, V_Array vts1] =
-    [V_Array $ concat [simhlMul t [vt0, vt1] | (vt0, vt1) <- zip vts0 vts1]]
-simhlMul t v = error("Atherling internal error: simhlMul " ++ show t ++ show v)
+simhlMul :: [ValueType] -> [ValueType]
+simhlMul = simhlBinaryOp (\x y -> x*y) (\x y -> x && y)
 
-simhlDiv :: TokenType -> [ValueType] -> [ValueType]
-simhlDiv t [V_Unit, _] = [V_Unit]
-simhlDiv t [_, V_Unit] = [V_Unit]
-simhlDiv T_Int [V_Int x, V_Int y] = [V_Int $ div x y] -- XXX div correct???
-simhlDiv T_Bit [V_Bit x, V_Bit y] =                   -- XXX bit div?
-    error "Aetherling internal error: T_Bit division not implemented."
-simhlDiv (T_Array n t) [V_Array vts0, V_Array vts1] =
-    [V_Array $ concat [simhlDiv t [vt0, vt1] | (vt0, vt1) <- zip vts0 vts1]]
-simhlDiv t v = error("Atherling internal error: simhlDiv " ++ show t ++ show v)
+simhlDiv :: [ValueType] -> [ValueType]
+simhlDiv = simhlBinaryOp div (\x y -> x && y) -- XXX bit division???
+
+simhlMax :: [ValueType] -> [ValueType]
+simhlMax = simhlBinaryOp max max
+
+simhlMin :: [ValueType] -> [ValueType]
+simhlMin = simhlBinaryOp min min
+
+simhlAshr :: Int -> [ValueType] -> [ValueType]
+simhlAshr c = simhlUnaryOp (\x -> div x 2^c) (\x -> x) -- XXX bit shift???
+
+simhlShl :: Int -> [ValueType] -> [ValueType]
+simhlShl c = simhlUnaryOp (\x -> x * 2^c) (\x -> x && (c /= 0))
+
+simhlAbs :: [ValueType] -> [ValueType]
+simhlAbs = simhlUnaryOp abs (\x -> x)
+
+simhlNot :: [ValueType] -> [ValueType]
+simhlNot = simhlUnaryOp complement not
+
+simhlAnd :: [ValueType] -> [ValueType]
+simhlAnd = simhlBinaryOp (.&.) (.&.)
+
+simhlOr :: [ValueType] -> [ValueType]
+simhlOr = simhlBinaryOp (.|.) (.|.)
+
+simhlXOr :: [ValueType] -> [ValueType]
+simhlXOr = simhlBinaryOp xor xor
 
 simhlInt :: [Int] -> [ValueType] -> [ValueType]
 simhlInt ints _ = [V_Array [V_Int i | i <- ints]]
@@ -178,11 +214,3 @@ simhlJoinMapOutputs par (output:outputs) =
     ]
 simhlJoinMapOutputs _ _ = error "Aetherling internal error: broken map join."
 
--- Doodads
-simhlXOR :: Bool -> Bool -> Bool
-simhlXOR True x = not x
-simhlXOR False x = x
-
-simhlAND :: Bool -> Bool -> Bool
-simhlAND True True = True
-simhlAND _ _ = False
