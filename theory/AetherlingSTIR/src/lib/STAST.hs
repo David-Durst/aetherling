@@ -93,8 +93,9 @@ getChildOps (ComposeFailure _ (op0, op1)) = [op0, op1]
 -- Walk the failure tree and find the first one, preferring failures on the left
 -- over the right
 -- Will return the parent node if not failures
-getFirstError (ComposeFailure PriorFailure (cf@(ComposeFailure _ _), _)) = 
-  getFirstError cf
-getFirstError (ComposeFailure PriorFailure (_, cf@(ComposeFailure _ _))) = 
-  getFirstError cf
+isFailure (ComposeFailure _ _) = True
+isFailure _ = False
+hasChildWithError op = (<) 0 $ length $ filter (\i -> isFailure i || hasChildWithError i) $ getChildOps op
+getFirstError op | hasChildWithError op = head $ map getFirstError $ getChildOps op
+getFirstError op | isFailure op = op
 getFirstError op = op

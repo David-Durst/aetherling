@@ -418,9 +418,12 @@ inPorts (Geq t) = twoInSimplePorts t
 inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
-inPorts lb@(LineBuffer p _ _ t) = [T_Port "I" (SWLen 1 warmup) parallelType 1]
+inPorts lb@(LineBuffer p _ img t) = [T_Port "I" (SWLen numInputs warmup) parallelType 1]
   where
     parallelType = foldl (\innerType pDim -> T_Array pDim innerType) t p
+    -- need the number of inputs equal to product of all dimensions divided by
+    -- parallelism in each dimension
+    numInputs = foldl (\numSoFar (pDim, imgDim) -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
     warmup = warmupSub $ cps lb
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
@@ -488,9 +491,13 @@ outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts lb@(LineBuffer _ w _ t) = [T_Port "I" (SWLen 1 warmup) parallelType 1]
+outPorts lb@(LineBuffer p w img t) = [T_Port "I" (SWLen numOutputs warmup) parallelType 1]
   where
-    parallelType = foldl (\innerType pDim -> T_Array pDim innerType) t w
+    parallelType = foldl (\innerType wDim -> T_Array wDim innerType) t w
+    -- need the number of outputs equal to product of all dimensions divided by
+    -- parallelism in each dimension
+    -- numOutputs in steady state depends on inputs, so using pDim instead of wDim here
+    numOutputs = foldl (\numSoFar (pDim, imgDim) -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
     warmup = warmupSub $ cps lb
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
