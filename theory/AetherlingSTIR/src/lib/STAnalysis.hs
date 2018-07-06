@@ -354,9 +354,13 @@ unionPorts :: (Op -> [PortType]) -> [Op] -> [PortType]
 unionPorts portsGetter ops = foldl (++) [] $ map portsGetter ops
 
 -- for using some operator over a list of ints to combine all the warmups in one
+combineAllWarmups :: [Op] -> ([Int] -> Int) -> (Op -> [PortType]) -> Int
 combineAllWarmups ops summarizer portGetter = summarizer 
   -- can take head as assuming that all ports have same warmup for a module
-  $ map (warmupSub . pSeqLen . head . portGetter) ops
+  $ map (warmupSub . pSeqLen . head)
+  -- drop modules with no ports
+  $ filter ((>0) . length)
+  $ map portGetter ops
 
 -- Helper for in and out ports of composeSeq
 -- for each op in the list ops, get all the in or out ports 
