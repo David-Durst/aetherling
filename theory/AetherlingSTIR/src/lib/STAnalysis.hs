@@ -37,7 +37,10 @@ space (MemWrite t) = OWA (len t) (len t)
 -- registers account for wiring as some registers receive input wires,
 -- others get wires from other registers
 -- add |+| counterSpace (p `ceilDiv` w) when accounting for warmup counter
-space (LineBuffer p w t) = registerSpace [T_Array (p + w - 1) t]
+space (LineBuffer p w t) | length p == 0 = registerSpace t |* (pX + wX - 2)
+  where 
+    pX = head p
+    wX = head w
 space (Constant_Int consts) = OWA (len (T_Array (length consts) T_Int)) 0
 space (Constant_Bit consts) = OWA (len (T_Array (length consts) T_Bit)) 0
 -- just a pass through, so will get removed by CoreIR
@@ -114,7 +117,7 @@ clocksPerSequence (Geq t) = baseWithNoWarmupSequenceLen
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (MemWrite _) = baseWithNoWarmupSequenceLen
-clocksPerSequence (LineBuffer p w _) = SWLen 1 0
+clocksPerSequence (LineBuffer _ _ _) = SWLen 1 0
 clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)

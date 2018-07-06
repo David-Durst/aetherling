@@ -26,8 +26,12 @@ data Op =
   | Geq TokenType
   | MemRead TokenType
   | MemWrite TokenType
-  -- first Int is pixels per clock, second is window width, third int is 
-  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
+  -- first arg is pixels per clock in each dimension. First value in list is outer 
+  -- most dimension that iterating over (rows first, columns second in 2d case) 
+  -- second arg is window width in each dimension. Same indexing order 
+  -- Last is the type of the pixel element
+  -- need to have an image size, need to know image size to determine linebuffer size
+  | LineBuffer {pxPerClock :: [Int], windowWidth :: [Int], image lbInT :: TokenType}
   -- Array is constant produced, int is sequence length
   | Constant_Int {intConstProduced :: [Int]}
   -- Array is constant produced, int is sequence length
