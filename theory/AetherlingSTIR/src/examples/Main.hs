@@ -59,7 +59,9 @@ describeMethod name op = do
   print $ "Describing Module: " ++ name
   pPrint op
   print $ "In Ports: " ++ show (inPorts op)
+  print $ "Throuhgput In Ports: " ++ show (inThroughput op)
   print $ "Out Ports: " ++ show (outPorts op)
+  print $ "Throuhgput Out Ports: " ++ show (outThroughput op)
   print $ "Clocks Per Sequence: " ++ show (cps op)
   print $ "Space: " ++ show (space op)
   print $ "Initial Latency: " ++ show (initialLatency op)
