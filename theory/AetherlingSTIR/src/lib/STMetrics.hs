@@ -48,7 +48,7 @@ data SteadyStateAndWarmupRatio = SWRatio {swNumerator :: SteadyStateAndWarmupLen
 instance Show SteadyStateAndWarmupRatio where
   show (SWRatio num denom) | num == denom = "1"
   show (SWRatio (SWLen numMult numWarmup) (SWLen denomMult denomWarmup)) | numWarmup == 0 &&
-    denomWarmup == 0 = "(" ++ show numMult ++ "/" ++ show denomMult ++ ")"
+    denomWarmup == 0 = "(" ++ show numMult ++ "/" ++ show denomMult ++ ")n"
   show (SWRatio num denom) = "(" ++ show num ++ ") / (" ++ show denom ++ ")"
 
 data PortThroughput = PortThroughput {throughputType :: TokenType, throughputClocks :: SteadyStateAndWarmupRatio}
