@@ -17,3 +17,13 @@ stack build
     ```
     stack ghci
     ```
+
+Notes:
+compile with the following to get profiling for debugging and memory analysis:
+```
+stack install --executable-profiling --library-profiling
+```
+Then run the program with the following to get the call stack on a crash:
+```
+AetherlingSTIR-Example-exe +RTS -xc
+```

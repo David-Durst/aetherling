@@ -25,6 +25,9 @@ dependencies:
 
 library:
   source-dirs: src/lib/
+  ghc-options:
+  - -fprof-auto
+  - -fprof-cafs
 
 executables:
   AetherlingSTIR-Example-exe:
@@ -34,6 +37,8 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fprof-auto
+    - -fprof-cafs
     dependencies:
     - AetherlingSTIR
 

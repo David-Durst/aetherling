@@ -73,3 +73,7 @@ extra-deps:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+# remove this to remove debugging symbols if ever shipping this
+build:
+  library-profiling: true
+  executable-profiling: true
