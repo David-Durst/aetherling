@@ -577,7 +577,7 @@ portThroughput op (T_Port _ sLen tType _) = PortThroughput tType (SWRatio sLen $
 
 -- This is throughput only considering steady state
 ssPortThroughput op (T_Port _ (SWLen ssMult _) tType _) = PortThroughput tType
-  (SWRatio (SWLen ssMult 0) $ cps op)
+  (SWRatio (SWLen ssMult 0) $ (SWLen (steadyStateMultiplier $ cps op) 0))
 
 inThroughput :: Op -> [PortThroughput]
 inThroughput op = map (portThroughput op) $ inPorts op
