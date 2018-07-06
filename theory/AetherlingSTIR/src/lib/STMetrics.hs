@@ -35,6 +35,12 @@ registerSpace :: [TokenType] -> OpsWireArea
 registerSpace ts = OWA portsLen portsLen
   where portsLen = foldl (+) 0 $ map len ts
 
+-- A space for a linear shift register
+-- only need input and output wires (and not counting output wires by convention)
+-- as all buffers except first connect to each output of prior one
+rowbufferSpace :: Int -> TokenType -> OpsWireArea
+rowbufferSpace n ts = OWA (len ts * n) (len ts)
+
 instance MergeOrScale OpsWireArea where
   addId = OWA 0 0
   -- Note: need more realistic area approximation

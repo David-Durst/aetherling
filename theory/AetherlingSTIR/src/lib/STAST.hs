@@ -29,9 +29,10 @@ data Op =
   -- first arg is pixels per clock in each dimension. First value in list is outer 
   -- most dimension that iterating over (rows first, columns second in 2d case) 
   -- second arg is window width in each dimension. Same indexing order 
+  -- third arg is the size of the image. Saem indexing order. This is necessary
+  -- for internal buffer sizing
   -- Last is the type of the pixel element
-  -- need to have an image size, need to know image size to determine linebuffer size
-  | LineBuffer {pxPerClock :: [Int], windowWidth :: [Int], image lbInT :: TokenType}
+  | LineBuffer {pxPerClock :: [Int], windowWidth :: [Int], image :: [Int], lbInT :: TokenType}
   -- Array is constant produced, int is sequence length
   | Constant_Int {intConstProduced :: [Int]}
   -- Array is constant produced, int is sequence length
@@ -77,7 +78,7 @@ getChildOps (Mul t) = []
 getChildOps (Div t) = []
 getChildOps (MemRead _) = []
 getChildOps (MemWrite _) = []
-getChildOps (LineBuffer _ _ _) = []
+getChildOps (LineBuffer _ _ _ _) = []
 getChildOps (Constant_Int _) = []
 getChildOps (Constant_Bit _) = []
 getChildOps (SequenceArrayController _ _) = []

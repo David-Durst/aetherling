@@ -37,10 +37,14 @@ space (MemWrite t) = OWA (len t) (len t)
 -- registers account for wiring as some registers receive input wires,
 -- others get wires from other registers
 -- add |+| counterSpace (p `ceilDiv` w) when accounting for warmup counter
-space (LineBuffer p w t) | length p == 0 = registerSpace t |* (pX + wX - 2)
-  where 
-    pX = head p
-    wX = head w
+space (LineBuffer (pHd:[]) (wHd:[]) _ t) = registerSpace [t] |* (pHd + wHd - 2)
+-- unclear if this works in greater than 2d case, will come back for it later
+space (LineBuffer (pHd:pTl) (wHd:wTl) (_:imgTl) t) = 
+  (space (LineBuffer pTl wTl imgTl t) |* wHd) |+|
+  -- divide and muliplty by pTl (aka num cols) for banking rowbuffers for parallelism
+  -- to account for more wires
+  (rowbufferSpace (head imgTl `ceilDiv` head pTl) t |* (head pTl) |* (wHd - pHd)) 
+space (LineBuffer _ _ _ _) = addId
 space (Constant_Int consts) = OWA (len (T_Array (length consts) T_Int)) 0
 space (Constant_Bit consts) = OWA (len (T_Array (length consts) T_Bit)) 0
 -- just a pass through, so will get removed by CoreIR
@@ -117,7 +121,14 @@ clocksPerSequence (Geq t) = baseWithNoWarmupSequenceLen
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (MemWrite _) = baseWithNoWarmupSequenceLen
-clocksPerSequence (LineBuffer _ _ _) = SWLen 1 0
+
+clocksPerSequence (LineBuffer (pHd:[]) (wHd:[]) (imgHd:[]) t) = 
+  SWLen (imgHd `ceilDiv` pHd) (((wHd + pHd - 1) `ceilDiv` pHd) - 1) 
+clocksPerSequence (LineBuffer (pHd:pTl) (wHd:wTl) (imgHd:imgTl) t) = 
+  SWLen (childSSMult * (imgHd `ceilDiv` pHd)) (childWAdder * wHd)
+  where 
+    (SWLen childSSMult childWAdder) = clocksPerSequence $ LineBuffer pTl wTl imgTl t
+clocksPerSequence (LineBuffer _ _ _ _) = SWLen 0 0
 clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 -- since one of the lengths must divide the other (as must be able to cleanly)
@@ -174,9 +185,8 @@ initialLatency (Geq t) = 1
 
 initialLatency (MemRead _) = 1
 initialLatency (MemWrite _) = 1
--- for each extra element in per clock, first output is 1 larger, but get 1
--- extra every clock building up to first output
-initialLatency (LineBuffer p w _) = (w + p - 1) `ceilDiv` p
+-- intiial latency is just number of warmup clocks
+initialLatency lb@(LineBuffer p w _ _) = warmupSub $ cps lb
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
 initialLatency sac@(SequenceArrayController _ _) = foldl lcm 1 $ getAllSACSeqLens sac
@@ -262,7 +272,7 @@ maxCombPath (Geq t) = 1
 
 maxCombPath (MemRead _) = 1
 maxCombPath (MemWrite _) = 1
-maxCombPath (LineBuffer _ _ _) = 1
+maxCombPath (LineBuffer _ _ _ _) = 1
 maxCombPath (Constant_Int _) = 1
 maxCombPath (Constant_Bit _) = 1
 maxCombPath (SequenceArrayController _ _) = 1
@@ -316,7 +326,7 @@ util (Geq t) = 1
 
 util (MemRead _) = 1
 util (MemWrite _) = 1
-util (LineBuffer _ _ _) = 1
+util (LineBuffer _ _ _ _) = 1
 util (Constant_Int _) = 1
 util (Constant_Bit _) = 1
 util (SequenceArrayController _ _) = 1
@@ -404,7 +414,10 @@ inPorts (Geq t) = twoInSimplePorts t
 inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
-inPorts (LineBuffer p w t) = [T_Port "I" (SWLen 1 (w + p - 2)) (T_Array p t) 2]
+inPorts lb@(LineBuffer p _ _ t) = [T_Port "I" (SWLen 1 warmup) parallelType 1]
+  where
+    parallelType = foldl (\innerType pDim -> T_Array pDim innerType) t p
+    warmup = warmupSub $ cps lb
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
 
@@ -471,7 +484,10 @@ outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts (LineBuffer p w t) = [T_Port "O" (SWLen 1 (w + p - 2)) (T_Array p (T_Array w t)) 2]
+outPorts lb@(LineBuffer _ w _ t) = [T_Port "I" (SWLen 1 warmup) parallelType 1]
+  where
+    parallelType = foldl (\innerType pDim -> T_Array pDim innerType) t w
+    warmup = warmupSub $ cps lb
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
 
@@ -524,7 +540,7 @@ isComb (Geq t) = True
 -- this is meaningless for this units that don't have both and input and output
 isComb (MemRead _) = True
 isComb (MemWrite _) = True
-isComb (LineBuffer _ _ _) = True
+isComb (LineBuffer _ _ _ _) = True
 isComb (Constant_Int _) = True
 isComb (Constant_Bit _) = True
 -- even if have sequential logic to store over multipel clocks,
