@@ -85,25 +85,63 @@ simhl (Min t) inputs True = simhlCombinational simhlMin inputs
 simhl (Ashr c t) inputs True = simhlCombinational (simhlAshr c) inputs
 simhl (Shl c t) inputs True = simhlCombinational (simhlShl c) inputs
 simhl (Abs t) inputs True = simhlCombinational simhlAbs inputs
+
 simhl (Not t) inputs True = simhlCombinational simhlNot inputs
 simhl (And t) inputs True = simhlCombinational simhlAnd inputs
 simhl (Or t) inputs True = simhlCombinational simhlOr inputs
 simhl (XOr t) inputs True = simhlCombinational simhlXOr inputs
+
 simhl Eq inputs True = simhlCombinational simhlEq inputs
 simhl Neq inputs True = simhlCombinational simhlNeq inputs
 simhl Lt inputs True = simhlCombinational simhlLt inputs
 simhl Leq inputs True = simhlCombinational simhlLeq inputs
 simhl Gt inputs True = simhlCombinational simhlGt inputs
 simhl Geq inputs True = simhlCombinational simhlGeq inputs
+
 simhl (Constant_Int a) inputs True = simhlCombinational (simhlInt a) inputs
 simhl (Constant_Bit a) inputs True = simhlCombinational (simhlBit a) inputs
+
+simhl (DuplicateOutputs 0 op) inputs True = [[] | input <- inputs]
+simhl (DuplicateOutputs 1 op) inputs True = simhl op inputs True
+simhl (DuplicateOutputs count op) inputs True =
+    [
+        concat $ replicate count output
+        | output <- (simhl op inputs True)
+    ]
+
 simhl (MapOp par op) inputs True =
     simhlJoinMapOutputs par [simhl op laneInputs True
                        | laneInputs <- simhlSplitMapInputs par inputs]
+
 simhl (ComposeSeq []) inputs True = error "ComposeSeq with empty [Op]"
 simhl (ComposeSeq [op]) inputs True = simhl op inputs True
 simhl (ComposeSeq (op:ops)) inputs True =
     simhl (ComposeSeq ops) (simhl op inputs True) True
+
+simhl (ComposePar []) inputs True = [[] | input <- inputs]
+simhl (ComposePar (op:moreOps)) inputs True =
+    [
+        opCycleOutput ++ moreOpsCycleOutput
+        | (opCycleOutput, moreOpsCycleOutput) <-
+        zip
+        -- [[ValueType]] output through time of op.
+        (
+            simhl op
+                [fst $ splitAt (length $ inPorts op) i | i <- inputs] -- X
+                True
+        )
+        -- [[ValueType]] output through time of parallel compose of moreOps.
+        (
+            simhl (ComposePar moreOps)
+                [snd $ splitAt (length $ inPorts op) i | i <- inputs] -- Y
+                True
+        )
+        -- X is the [[ValueType]] inputs through time that (op) expects, and
+        -- Y is the list of remaining inputs unused by X.
+    ]
+
+simhl (ComposeFailure a b) inputs True =
+    error $ "Cannot simulate ComposeFaliure " ++ show (ComposeFailure a b)
     
 
 -- Helper function for simulating combinational devices.  Takes an
@@ -178,10 +216,10 @@ simhlNot :: [ValueType] -> [ValueType]
 simhlNot = simhlUnaryOp complement not
 
 simhlAnd :: [ValueType] -> [ValueType]
-simhlAnd = simhlBinaryOp (.&.) (.&.)
+simhlAnd = simhlBinaryOp (.&.) (&&)
 
 simhlOr :: [ValueType] -> [ValueType]
-simhlOr = simhlBinaryOp (.|.) (.|.)
+simhlOr = simhlBinaryOp (.|.) (||)
 
 simhlXOr :: [ValueType] -> [ValueType]
 simhlXOr = simhlBinaryOp xor xor
