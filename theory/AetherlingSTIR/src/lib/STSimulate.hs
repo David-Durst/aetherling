@@ -17,13 +17,28 @@ import Data.List
 -- entries are a list of ValueType, with each ValueType corresponding
 -- in order to one input port of the simulated Op.
 --
--- Output: Same format as input, with inner lists corresponding to
--- output ports.
+-- Memory input: list of lists of ValueType. The inner lists are
+-- "tapes" of input corresponding to one MemRead, which outputs the
+-- tape's values sequentially. Index i of the outer list corresponds to
+-- the input for the ith MemRead, which are numbered in the order they
+-- would be visited by a depth-first search of the AST (clearer explanation?)
 --
+-- Output: Tuple of [[ValueType]], [[ValueType]]. The first is the output
+-- of the simulated op's output ports, in the same format as the input.
+-- The second is the output of all MemWrites, in the same format as
+-- input memory, and same numbering scheme.
 -- TODO: More convenient error messages?
 simulateHighLevel :: Op -> [[ValueType]] -> [[ValueType]]
+    -> ([[ValueType]], [[ValueType]])
 -- Check that the types match, then delegate to simhl implementation.
-simulateHighLevel op inputs = simhl op inputs (simhlCheckInputs 0 op inputs)
+-- 1 is the underutil denominator.
+simulateHighLevel op portInputs memoryInputs = do {
+        let portOutputsAndState = simhl op portInputs
+                (SimhlState (simhlCheckInputs 0 op portInputs)
+                1 memoryInputs 0 [])
+       ;
+       (fst portOutputsAndState, simhlMemoryOut $ snd portOutputsAndState)
+}
 
 -- Inspect the inPorts of op and see if they match the sequences of ValueType
 -- passed by the user. (Integer argument used to keep track of which
@@ -68,80 +83,111 @@ simhlCheckPorts clkIndex portIndex op (port:ports) (value:values) =
            ++ " expected by Op instance "
            ++ show op)
 
+data SimhlState = SimhlState {
+    simhlTypesMatch :: Bool,
+    simhlUnderutil :: Int,
+    simhlMemoryIn :: [[ValueType]],
+    simhlMemoryIndex :: Int,           -- For error messages.
+    simhlMemoryOut :: [[ValueType]]
+}
+
 -- Implementation function for high level simulator.
--- The bool argument is the output of simhlCheckPorts, and should be true.
--- So, from this point we can just assume that all types are correct (however,
--- we should still be prepared to handle "garbage" V_Unit inputs).
-simhl :: Op -> [[ValueType]] -> Bool -> [[ValueType]]
-simhl op inputs False =
+-- There's some amount of state that needs to be taken care of by the
+-- SimhlState data type above.
+--   simhlTypesMatch : Bool result of simhlCheckInputs, should be True.
+--     So from this point on, we can assume all inputs' types match the
+--     input ports of the op being simulated (But memory inputs not checked).
+--   simhlUnderutil : Underutilization denominator at the point of the
+--     AST being simulated.
+--   simhlMemoryIn / simhlMemoryOut : List of "tapes" of inputs/outputs
+--     for MemRead / MemWrite. As mentioned above the input order corresponds
+--     to the order that the MemReads would be visited by DFS. Everything
+--     here is recursively implemented, so to support this ordering, each
+--     time a MemRead is encountered, remove the head of simhlMemoryIn, and
+--     each time a MemWrite is encountered, append to simhlMemoryOut.
+--
+-- Output is a tuple of [[ValueType]] and SimhlState, which is how the memory
+-- state changes explained above are carried on through the recursion.
+simhl :: Op -> [[ValueType]] -> SimhlState -> ([[ValueType]], SimhlState)
+simhl op inputs (SimhlState False _ _ _ _) =
     error "Aetherling internal error: simhl function got False Bool value"
-    -- If simhlCheckInputs was false, should have gotten proper error message.
-simhl (Add t) inputs True = simhlCombinational simhlAdd inputs
-simhl (Sub t) inputs True = simhlCombinational simhlSub inputs
-simhl (Mul t) inputs True = simhlCombinational simhlMul inputs
-simhl (Div t) inputs True = simhlCombinational simhlDiv inputs
-simhl (Max t) inputs True = simhlCombinational simhlMax inputs
-simhl (Min t) inputs True = simhlCombinational simhlMin inputs
-simhl (Ashr c t) inputs True = simhlCombinational (simhlAshr c) inputs
-simhl (Shl c t) inputs True = simhlCombinational (simhlShl c) inputs
-simhl (Abs t) inputs True = simhlCombinational simhlAbs inputs
+    -- If simhlCheckInputs were false, should have gotten proper error message.
+simhl (Add t) inputs state = (simhlCombinational simhlAdd inputs, state)
+simhl (Sub t) inputs state = (simhlCombinational simhlSub inputs, state)
+simhl (Mul t) inputs state = (simhlCombinational simhlMul inputs, state)
+simhl (Div t) inputs state = (simhlCombinational simhlDiv inputs, state)
+simhl (Max t) inputs state = (simhlCombinational simhlMax inputs, state)
+simhl (Min t) inputs state = (simhlCombinational simhlMin inputs, state)
+simhl (Ashr c t) inputs state = (simhlCombinational (simhlAshr c) inputs, state)
+simhl (Shl c t) inputs state = (simhlCombinational (simhlShl c) inputs, state)
+simhl (Abs t) inputs state = (simhlCombinational simhlAbs inputs, state)
 
-simhl (Not t) inputs True = simhlCombinational simhlNot inputs
-simhl (And t) inputs True = simhlCombinational simhlAnd inputs
-simhl (Or t) inputs True = simhlCombinational simhlOr inputs
-simhl (XOr t) inputs True = simhlCombinational simhlXOr inputs
+simhl (Not t) inputs state = (simhlCombinational simhlNot inputs, state)
+simhl (And t) inputs state = (simhlCombinational simhlAnd inputs, state)
+simhl (Or t) inputs state = (simhlCombinational simhlOr inputs, state)
+simhl (XOr t) inputs state = (simhlCombinational simhlXOr inputs, state)
 
-simhl Eq inputs True = simhlCombinational simhlEq inputs
-simhl Neq inputs True = simhlCombinational simhlNeq inputs
-simhl Lt inputs True = simhlCombinational simhlLt inputs
-simhl Leq inputs True = simhlCombinational simhlLeq inputs
-simhl Gt inputs True = simhlCombinational simhlGt inputs
-simhl Geq inputs True = simhlCombinational simhlGeq inputs
+simhl Eq inputs state = (simhlCombinational simhlEq inputs, state)
+simhl Neq inputs state = (simhlCombinational simhlNeq inputs, state)
+simhl Lt inputs state = (simhlCombinational simhlLt inputs, state)
+simhl Leq inputs state = (simhlCombinational simhlLeq inputs, state)
+simhl Gt inputs state = (simhlCombinational simhlGt inputs, state)
+simhl Geq inputs state = (simhlCombinational simhlGeq inputs, state)
 
-simhl (Constant_Int a) inputs True = simhlCombinational (simhlInt a) inputs
-simhl (Constant_Bit a) inputs True = simhlCombinational (simhlBit a) inputs
+simhl (Constant_Int a) inputs state =
+    (simhlCombinational (simhlInt a) inputs, state)
+simhl (Constant_Bit a) inputs state =
+    (simhlCombinational (simhlBit a) inputs, state)
 
-simhl (DuplicateOutputs 0 op) inputs True = [[] | input <- inputs]
-simhl (DuplicateOutputs 1 op) inputs True = simhl op inputs True
-simhl (DuplicateOutputs count op) inputs True =
-    [
+simhl (DuplicateOutputs 0 op) inputs state = ([[] | input <- inputs], state)
+simhl (DuplicateOutputs 1 op) inputs state = simhl op inputs state
+simhl (DuplicateOutputs count op) inputs state =
+    ([
         concat $ replicate count output
-        | output <- (simhl op inputs True)
-    ]
+        | output <- (fst $ simhl op inputs state)
+    ], state)
 
-simhl (MapOp par op) inputs True =
-    simhlJoinMapOutputs par [simhl op laneInputs True
-                       | laneInputs <- simhlSplitMapInputs par inputs]
+simhl (MapOp par op) inputs state = simhlMap par op inputs state
 
-simhl (ComposeSeq []) inputs True = error "ComposeSeq with empty [Op]"
-simhl (ComposeSeq [op]) inputs True = simhl op inputs True
-simhl (ComposeSeq (op:ops)) inputs True =
-    simhl (ComposeSeq ops) (simhl op inputs True) True
+simhl (Underutil uDenom op) inputs (SimhlState ok sDenom memIn memIdx memOut) =
+    simhl op inputs (SimhlState ok (uDenom * sDenom) memIn memIdx memOut)
 
-simhl (ComposePar []) inputs True = [[] | input <- inputs]
-simhl (ComposePar (op:moreOps)) inputs True =
-    [
-        opCycleOutput ++ moreOpsCycleOutput
-        | (opCycleOutput, moreOpsCycleOutput) <-
-        zip
-        -- [[ValueType]] output through time of op.
-        (
-            simhl op
-                [fst $ splitAt (length $ inPorts op) i | i <- inputs] -- X
-                True
-        )
-        -- [[ValueType]] output through time of parallel compose of moreOps.
-        (
-            simhl (ComposePar moreOps)
-                [snd $ splitAt (length $ inPorts op) i | i <- inputs] -- Y
-                True
-        )
+-- We have to multiply the register delay by the underutil denominator to get
+-- the actual delay in cycles (underutil is like a clock enable, if we have
+-- a RegDelay N and an underutil of M, then it's like we have N registers whose
+-- clock enable is high only once every M cycles).
+simhl (RegDelay delay op) inputs state =
+    (simhlDelay (delay * (simhlUnderutil state)) $ fst $ simhl op inputs state,
+     state)
+
+simhl (ComposeSeq []) inputs state = error "ComposeSeq with empty [Op]"
+simhl (ComposeSeq [op]) inputs state = simhl op inputs state
+simhl (ComposeSeq (op:ops)) inputs state =
+    do { let (nextInput, nextState) = simhl op inputs state
+       ; simhl (ComposeSeq ops) nextInput nextState
+    }
+
+simhl (ComposePar []) inputs state = ([[] | input <- inputs], state)
+simhl (ComposePar (op:moreOps)) inputs state =
+    do { let (thisOpOutput, nextState) = simhl op
+              [fst $ splitAt (length $ inPorts op) i | i <- inputs] -- X
+              state
+       ; let (moreOpsOutputs, endState) = simhl (ComposePar moreOps)
+              [snd $ splitAt (length $ inPorts op) i | i <- inputs] -- Y
+              nextState
+       ; (
+           [   -- Glue the port outputs of each clock cycle together.
+               opCycleOutput ++ moreOpsCycleOutput
+               | (opCycleOutput, moreOpsCycleOutput) <-
+               zip thisOpOutput moreOpsOutputs
+           ], endState
+         )
         -- X is the [[ValueType]] inputs through time that (op) expects, and
         -- Y is the list of remaining inputs unused by X.
-    ]
+    }
 
-simhl (ComposeFailure a b) inputs True =
-    error $ "Cannot simulate ComposeFaliure " ++ show (ComposeFailure a b)
+simhl (ComposeFailure foo bar) _ _ =
+    error $ "Cannot simulate ComposeFaliure " ++ show (ComposeFailure foo bar)
     
 
 -- Helper function for simulating combinational devices.  Takes an
@@ -282,3 +328,38 @@ simhlJoinMapOutputs par (output:outputs) =
     ]
 simhlJoinMapOutputs _ _ = error "Aetherling internal error: broken map join."
 
+-- Fold strategy for Map:
+-- We need to get one set of inputs in and one set of outputs to each Op
+-- in the map. However, the state must go through each Op in sequence
+-- (to preserve the DFS order of the memory state in the State object).
+-- So, the tuple has a [[[ValueType]]] that collects all the outputs of
+-- each op and a SimhlState that's passed through each op. The laneInput
+-- is the "slice" of the input array corresponding to this Op.
+simhlMapFoldLambda :: (Op, [[[ValueType]]], SimhlState)
+                   -> [[ValueType]]
+                   -> (Op, [[[ValueType]]], SimhlState)
+simhlMapFoldLambda lastTuple laneInput =
+    do { let (theMappedOp, lastOutputs, lastState) = lastTuple
+       ; let (thisOpOutputs, nextState) = simhl theMappedOp laneInput lastState
+       ; (theMappedOp, lastOutputs ++ [thisOpOutputs], nextState)
+    }
+
+-- Glue together the above 3 things to get the map operator simulated.
+simhlMap :: Int -> Op -> [[ValueType]] -> SimhlState
+         -> ( [[ValueType]], SimhlState )
+simhlMap par theMappedOp inputs state =
+    do { let (_, mapOutputs, endState) = foldl simhlMapFoldLambda
+                                               (theMappedOp, [], state)
+                                               (simhlSplitMapInputs par inputs)
+       ; (simhlJoinMapOutputs par mapOutputs, endState)
+    }
+
+-- Delay the input [[ValueType]] (in simulateHighLevel port input format) by
+-- N cycles. Do this by discarding the last N entries and prepending N entries
+-- of V_Unit lists.
+simhlDelay :: Int -> [[ValueType]] -> [[ValueType]]
+simhlDelay _ [] = []
+simhlDelay 0 inputs = inputs
+simhlDelay n inputs  =
+    if n < 0 then error "Negative register delay." else
+        simhlDelay (n-1)  ([V_Unit | x <- last inputs]:(init inputs))
