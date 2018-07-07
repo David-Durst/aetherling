@@ -491,9 +491,12 @@ outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts lb@(LineBuffer p w img t) = [T_Port "I" (SWLen numOutputs warmup) parallelType 1]
+outPorts lb@(LineBuffer p w img t) = [T_Port "I" (SWLen numOutputs warmup) parallelStencilType 1]
   where
-    parallelType = foldl (\innerType wDim -> T_Array wDim innerType) t w
+    -- make number of stencials equal to parallelism
+    -- first is just one stencil
+    singleStencilType = foldl (\innerType wDim -> T_Array wDim innerType) t w
+    parallelStencilType = foldl (\innerType pDim -> T_Array pDim innerType) singleStencilType p
     -- need the number of outputs equal to product of all dimensions divided by
     -- parallelism in each dimension
     -- numOutputs in steady state depends on inputs, so using pDim instead of wDim here
