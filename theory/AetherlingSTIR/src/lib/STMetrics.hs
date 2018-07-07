@@ -35,6 +35,12 @@ registerSpace :: [TokenType] -> OpsWireArea
 registerSpace ts = OWA portsLen portsLen
   where portsLen = foldl (+) 0 $ map len ts
 
+-- A space for a linear shift register
+-- only need input and output wires (and not counting output wires by convention)
+-- as all buffers except first connect to each output of prior one
+rowbufferSpace :: Int -> TokenType -> OpsWireArea
+rowbufferSpace n ts = OWA (len ts * n) (len ts)
+
 instance MergeOrScale OpsWireArea where
   addId = OWA 0 0
   -- Note: need more realistic area approximation
@@ -43,7 +49,6 @@ instance MergeOrScale OpsWireArea where
 
 data SteadyStateAndWarmupRatio = SWRatio {swNumerator :: SteadyStateAndWarmupLen, 
   swDenominator :: SteadyStateAndWarmupLen}
-  deriving (Eq)
 
 instance Show SteadyStateAndWarmupRatio where
   show (SWRatio num denom) | num == denom = "1"
@@ -51,5 +56,13 @@ instance Show SteadyStateAndWarmupRatio where
     denomWarmup == 0 = show (SWLen (numMult `ceilDiv` denomMult) 0)
   show (SWRatio num denom) = "(" ++ show num ++ ") / (" ++ show denom ++ ")"
 
-data PortThroughput = PortThroughput {throughputType :: TokenType, throughputClocks :: SteadyStateAndWarmupRatio}
-  deriving (Show, Eq)
+instance Eq SteadyStateAndWarmupRatio where
+  -- this is (an+b)/(cn+d) == (en+f)/(gn+h)
+  -- which is a*gn^2 + a*hn + b*gn + b*h == c*en^2 + c*fn + d*en + d*f
+  (==) (SWRatio (SWLen a b) (SWLen c d))
+    (SWRatio (SWLen e f) (SWLen g h))
+    = (a*g == c*e) && (a*h + b*g == c*f + d*e) && (b*h == d*f)
+  (/=) ratio0 ratio1 = not (ratio0 == ratio1) 
+
+data PortThroughput = PortThroughput {throughputType :: TokenType, 
+  throughputTypePerClock :: SteadyStateAndWarmupRatio} deriving (Show, Eq)

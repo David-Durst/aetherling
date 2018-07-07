@@ -26,8 +26,13 @@ data Op =
   | Geq TokenType
   | MemRead TokenType
   | MemWrite TokenType
-  -- first Int is pixels per clock, second is window width, third int is 
-  | LineBuffer {pxPerClock :: Int, windowWidth :: Int, lbInT :: TokenType}
+  -- first arg is pixels per clock in each dimension. First value in list is outer 
+  -- most dimension that iterating over (rows first, columns second in 2d case) 
+  -- second arg is window width in each dimension. Same indexing order 
+  -- third arg is the size of the image. Saem indexing order. This is necessary
+  -- for internal buffer sizing
+  -- Last is the type of the pixel element
+  | LineBuffer {pxPerClock :: [Int], windowWidth :: [Int], image :: [Int], lbInT :: TokenType}
   -- Array is constant produced, int is sequence length
   | Constant_Int {intConstProduced :: [Int]}
   -- Array is constant produced, int is sequence length
@@ -73,7 +78,7 @@ getChildOps (Mul t) = []
 getChildOps (Div t) = []
 getChildOps (MemRead _) = []
 getChildOps (MemWrite _) = []
-getChildOps (LineBuffer _ _ _) = []
+getChildOps (LineBuffer _ _ _ _) = []
 getChildOps (Constant_Int _) = []
 getChildOps (Constant_Bit _) = []
 getChildOps (SequenceArrayController _ _) = []
@@ -88,8 +93,9 @@ getChildOps (ComposeFailure _ (op0, op1)) = [op0, op1]
 -- Walk the failure tree and find the first one, preferring failures on the left
 -- over the right
 -- Will return the parent node if not failures
-getFirstError (ComposeFailure PriorFailure (cf@(ComposeFailure _ _), _)) = 
-  getFirstError cf
-getFirstError (ComposeFailure PriorFailure (_, cf@(ComposeFailure _ _))) = 
-  getFirstError cf
+isFailure (ComposeFailure _ _) = True
+isFailure _ = False
+hasChildWithError op = (<) 0 $ length $ filter (\i -> isFailure i || hasChildWithError i) $ getChildOps op
+getFirstError op | hasChildWithError op = head $ map getFirstError $ getChildOps op
+getFirstError op | isFailure op = op
 getFirstError op = op

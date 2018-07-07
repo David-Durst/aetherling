@@ -17,3 +17,9 @@ stack build
     ```
     stack ghci
     ```
+
+# Notes:
+run with the following to get profiling for debugging and memory analysis:
+```
+AetherlingSTIR-Example-exe +RTS -xc
+```

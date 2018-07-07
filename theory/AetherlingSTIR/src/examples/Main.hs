@@ -16,16 +16,16 @@ reduce41 = ReduceOp 4 1 (Add T_Int)
 
 map4 = MapOp 4 (Add T_Int)
 
-lb13 = LineBuffer 1 3 T_Int
+lb13 = LineBuffer [1] [3] [300] T_Int
 
-lb23 = LineBuffer 2 3 T_Int
+lb23 = LineBuffer [2] [3] [300] T_Int
 
-lb13Underutil = Underutil 2 $ LineBuffer 2 3 T_Int
+lb13Underutil = Underutil 2 $ LineBuffer [2] [3] [300] T_Int
 
 lbChain = 
   Constant_Int [1] |>>=|
-  LineBuffer 1 3 T_Int |>>=|
-  LineBuffer 1 3 (T_Array 3 T_Int)
+  LineBuffer [1] [3] [300] T_Int |>>=|
+  LineBuffer [1] [3] [300] (T_Array 3 T_Int)
 
 -- no support for 2D linebuffers yet
 
@@ -46,7 +46,7 @@ conv1PxPerClock =
     (
       MemRead T_Int |>>=|
       SequenceArrayController [(1, T_Int)] [(1, T_Array 1 T_Int)] |>>=|
-      LineBuffer 1 3 T_Int |>>=|
+      LineBuffer [1] [3] [300] T_Int |>>=|
       SequenceArrayController [(1, T_Array 1 (T_Array 3 T_Int))] [(1, T_Array 3 T_Int)]
     ) |&|
     Constant_Int [1, 1, 1]
