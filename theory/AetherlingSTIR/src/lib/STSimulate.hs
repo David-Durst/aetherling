@@ -333,7 +333,7 @@ simhlRead t inputs (SimhlState ok denom (inTape:inTapes) memIdx memOut) =
             | tapeEntry
             <- fst $ splitAt (length inputs) (inTape ++ repeat V_Unit)
         ],
-        SimhlState ok denom inTapes memIdx memOut
+        SimhlState ok denom inTapes (memIdx+1) memOut
     )
     else error("At MemRead number " ++ show memIdx
             ++ " (numbered using DFS, starting from 0), input "
@@ -353,7 +353,7 @@ simhlWrite inputs (SimhlState ok denom memIn memIdx memOut) =
           memIn
           memIdx
           (memOut ++ [[
-            v | ([v], idx) <- filter (\ (_, i) -> i `mod` denom == i-1)
+            v | ([v], idx) <- filter (\ (_, i) -> i `mod` denom == denom-1)
                               (zip inputs [1,2..])
           ]])
     )
