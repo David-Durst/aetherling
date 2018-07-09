@@ -90,6 +90,10 @@ simhlCheckPorts clkIndex portIndex op (port:ports) (value:values) =
            ++ " expected by Op instance "
            ++ show op)
 
+-- Note that this "state" is not the state of the circuit (we don't
+-- simulate the circuit in time order, instead, for each Op we calculate
+-- all its outputs through time in one step given all inputs through time).
+-- This is bookkeeping stuff for type checking and handling memory.
 data SimhlState = SimhlState {
     simhlTypesMatch :: Bool,
     simhlMemoryIn :: [[ValueType]],
@@ -159,8 +163,21 @@ simhl (DuplicateOutputs count op) inputs state =
 
 simhl (MapOp par op) inputs state = simhlMap par op inputs state
 
---simhl (Underutil uDenom op) inputs (SimhlState ok sDenom memIn memIdx memOut) =
---    simhl op inputs (SimhlState ok (uDenom * sDenom) memIn memIdx memOut)
+-- Note: it's not so clear what's supposed to happen if a MemRead
+-- is in the op being reduced. I'm not worrying about this for now.
+-- I'm also going to assume that the op is combinational (READ THIS!!!).
+simhl (ReduceOp par numComb op) inputs state =
+    if numComb `mod` par /= 0 || numComb == 0
+    then error("Simulator assumes paralellism of a reduce evenly divides "
+               ++ "its nonzero combine count (simulating "
+               ++ show (ReduceOp par numComb op)
+               ++ ")")
+    else if (length $ inPorts op) /= 2 || (length $ outPorts op) /= 1
+         then error("Simulator assumes ReduceOp op has 2 inputs/1 output. "
+                    ++ "simulating ("
+                    ++ show (ReduceOp par numComb op)
+                    ++ ")")
+         else simhlReduce par numComb op inputs state
 
 -- (Underutil N) operator (by my understanding) is implemented by
 -- holding clock enable high once every N cycles (that one time being
@@ -217,7 +234,7 @@ simhl (ComposePar (op:moreOps)) inputs inState =
 
 simhl (ComposeFailure foo bar) _ _ =
     error $ "Cannot simulate ComposeFaliure " ++ show (ComposeFailure foo bar)
-    
+
 
 -- Helper function for simulating combinational devices.  Takes an
 -- implementation function ([ValueType]->[ValueType]) and a list of
@@ -366,11 +383,21 @@ simhlWrite inputs (SimhlState ok memIn memIdx memOut) =
           (memOut ++ [boxedValue | boxedValue <- inputs])
     )
 
+-- Implementation of simhl MapOp
+
 -- Split the inputs to a MapOp into the inputs expected by each Op
 -- contained within the MapOp. If N is the parallelism of the MapOp,
 -- we expect the input to be a list of lists of V_Arrays of length N,
 -- and the output will be a list of N (lists of lists of ValueType).
 -- par argument is parallelism, used for checking.
+--
+-- Output [[[ValueType]]] format.
+--   Outermost level is the lanes. Lane 0 is input [[ValueType]]
+--   for the 0th op, lane 1 is input [[ValueType]] for 1st op, etc.
+--   Middle level is the clock cycles. 0th is clock cycle 0 input, etc.
+--   Inner level corresponds to the ports.
+-- Note that the middle/inner level corresponds to the outer/inner level
+-- of the simulateHighLevel input format.
 simhlSplitMapInputs :: Int -> [[ValueType]] -> [[[ValueType]]]
 simhlSplitMapInputs 0 inputs =
     if all (\i -> all (\v -> v == V_Unit || v == V_Array []) i) inputs then []
@@ -400,13 +427,14 @@ simhlJoinMapOutputs par (output:outputs) =
     ]
 simhlJoinMapOutputs _ _ = error "Aetherling internal error: broken map join."
 
--- Fold strategy for Map:
--- We need to get one set of inputs in and one set of outputs to each Op
--- in the map. However, the state must go through each Op in sequence
--- (to preserve the DFS order of the memory state in the State object).
--- So, the tuple has a [[[ValueType]]] that collects all the outputs of
--- each op and a SimhlState that's passed through each op. The laneInput
--- is the "slice" of the input array corresponding to this Op.
+-- Fold strategy for Map: We need to get one set of inputs in and one
+-- set of outputs to each Op in the map. However, the state must go
+-- through each Op in sequence (to preserve the DFS order of the
+-- memory state in the State object).  So, the tuple has a
+-- [[[ValueType]]] that collects all the outputs of each op and a
+-- SimhlState that's passed through each op. The laneInput is the
+-- "slice" of the input array corresponding to this Op's inputs
+-- through time.
 simhlMapFoldLambda :: (Op, [[[ValueType]]], SimhlState)
                    -> [[ValueType]]
                    -> (Op, [[[ValueType]]], SimhlState)
@@ -425,6 +453,118 @@ simhlMap par theMappedOp inputs state =
                                                (simhlSplitMapInputs par inputs)
        ; (simhlJoinMapOutputs par mapOutputs, endState)
     }
+
+
+-- Implementation of simhl ReduceOp
+-- A Reduce circuit has 2 parts generally.
+--   1. A tree of reducedOps that takes par (paralellism) inputs and
+--   makes one output.
+--   2. A register whose input is the output of a reducedOp, which itself
+--   takes the output of said register and the tree as inputs (this part
+--   can be omitted if numComb == par, i.e. the reduce is combinational,
+--   assuming combinational ops.
+-- After (numComb/par) cycles, the reg's input contains the result of reducing
+-- numComb inputs. The reg should be cleared for the next set of numComb inputs.
+
+-- Part 1: The tree of reducedOps. Takes a [[[ValueType]]] input as
+-- returned by simhlSplitMapInputs (recycling it for reduce). Since
+-- the innermost list corresponds to reducedOp's input ports, each
+-- should be a 2-list of ValueType.  Returns [[ValueType]] output of
+-- this tree (tree outputs through time); here, the inner list should
+-- just be a 1-list of ValueType.
+--
+-- Note: the implementation is messy because I don't assume that the
+-- reduced op device is combinational. I said that I do assume earlier
+-- but I don't. So, there's my ugly list-of-lists of all outputs
+-- through time everywhere.
+simhlReduceTree :: Op -> [[[ValueType]]] -> SimhlState
+                -> ( [[ValueType]], SimhlState )
+simhlReduceTree theReducedOp splitInputs inState =
+    do { let ([treeOutputs], outState) =
+               simhlReduceRecurse theReducedOp splitInputs inState
+       ; (treeOutputs, outState)
+    }
+
+-- Each level of recursion corresponds to one level of the tree circuit,
+-- in which the number of inputs is halved.
+simhlReduceRecurse :: Op -> [[[ValueType]]] -> SimhlState
+                   -> ( [[[ValueType]]], SimhlState )
+simhlReduceRecurse theReducedOp [] state =
+    error "Aetherling internal error: 0-input reduce in simulator."
+simhlReduceRecurse theReducedOp [oneInput] state = ([oneInput], state)
+simhlReduceRecurse theReducedOp splitInputs inState =
+    do { let (halfInputs, halfState) =
+               simhlReduceTreeLevel theReducedOp splitInputs inState
+       ; simhlReduceRecurse theReducedOp halfInputs halfState
+    }
+
+simhlReduceTreeLevel :: Op -> [[[ValueType]]] -> SimhlState
+                     -> ( [[[ValueType]]], SimhlState )
+simhlReduceTreeLevel theReducedOp [] state = ([], state)
+simhlReduceTreeLevel theReducedOp [oneInput] state = ([oneInput], state)
+simhlReduceTreeLevel theReducedOp (inputs0:inputs1:inputsBeyond) inState =
+       -- a and b are 1-lists of ValueType, corresponding to 2 entries
+       -- of the input array of the full Reduce in one clock cycle (or
+       -- intermediate values). Glue a and b together to get a 2-list
+       -- of the input port values to theReducedOp for 1 cycle. The
+       -- full list is the list of 2 inputs for all cycles.
+    do { let opInputs = [a ++ b | (a,b) <- zip inputs0 inputs1]
+       ; let (opOutputs, opOutState) = simhl theReducedOp opInputs inState
+       ; let (outputsBeyond, outState) =
+               simhlReduceTreeLevel theReducedOp inputsBeyond opOutState
+       ; (opOutputs:outputsBeyond, outState)
+    }
+
+-- Lambda for simulating one clock cycle of the register/reducedOp loop.
+-- Here, I have to assume that the reducedOp device is combinational.
+-- So, if par /= numComb, don't use stateful reduce ops (actually, why
+-- would anyone ever do that, anyway?)
+--
+-- Since we're assuming the device is combinational, we're sorta freed
+-- from the tyranny of the ugly [[ValueType]] things. The tuple is
+--   (reducedOp, cycles per output,
+--       register value, outputs so far in typical format, state)
+-- note that the state should not be modified.
+-- the ValueType argument should be the output of the tree this cycle.
+simhlReduceRegLambda :: (Op, Int, ValueType, [[ValueType]], SimhlState)
+                     -> ValueType
+                     -> (Op, Int, ValueType, [[ValueType]], SimhlState)
+simhlReduceRegLambda (theReducedOp, cycleLen, regOut, outputs, state) treeOut =
+    if (length outputs) `mod` cycleLen == 0
+    then (theReducedOp, cycleLen, treeOut, outputs ++ [[V_Unit]], state)
+    else do { let combinationalInput = [[treeOut, regOut]] -- 1 cycle, 2 ports.
+            ; let ([[opOutput]], nextState) =
+                     simhl theReducedOp combinationalInput state
+            -- Some warning about non-combinational devices? Note that
+            -- state isn't "circuit state" so unchanged by most devices.
+            --
+            -- At the end of a cycleLen period of clock ticks, reset the
+            -- register and output the reduce result. Otherwise output
+            -- garbage and update the register.
+            ; if (length outputs + 1) `mod` cycleLen == 0
+              then (theReducedOp, cycleLen, V_Unit,
+                    outputs ++ [[opOutput]], state)
+              else (theReducedOp, cycleLen, opOutput, outputs, state)
+    }
+
+simhlReduce :: Int -> Int -> Op -> [[ValueType]] -> SimhlState
+            -> ( [[ValueType]], SimhlState )
+simhlReduce par numComb theReducedOp inputs inState =
+    do { let splitInputs = simhlSplitMapInputs par inputs
+       ; let (treeOutputs, treeState) =
+               simhlReduceTree theReducedOp splitInputs inState
+       ; if numComb == par
+         then (treeOutputs, treeState) -- Combinational reduce operator.
+         else do { let initTuple =
+                         (theReducedOp, numComb `div` par, V_Unit, [], inState)
+                 ; let (_, _, _, finalOutputs, outState) =
+                                  foldl simhlReduceRegLambda
+                                        initTuple
+                                        [v | [v] <- treeOutputs]
+                 ; (finalOutputs, outState)
+              }
+    }
+
 
 -- Delay the input [[ValueType]] (in simulateHighLevel port input format) by
 -- N cycles. Do this by discarding the last N entries and prepending N entries
