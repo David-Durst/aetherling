@@ -26,21 +26,23 @@ import Data.List
 -- Note: The port input and memory inputs are sort of "transposed"
 -- unfortunately. The issue is that due to underutil memory
 -- reads/writes don't always happen every cycle so we can't input them
--- the way that the port inputs are formatted.
+-- the way that the port inputs are formatted. I was going to implement
+-- the portInputs the other way but David Durst convinced me to switch.
+--     (read: send any hate mail to Durst)
 --
--- Output: Tuple of [[ValueType]], [[ValueType]]. The first is the output
--- of the simulated op's output ports, in the same format as the input.
--- The second is the output of all MemWrites, in the same format as
--- input memory, and same numbering scheme.
+-- Output: Tuple of [[ValueType]], [[ValueType]]. The first is the
+-- output of the simulated op's output ports, in the same format as
+-- the port inputs.  The second is the output of all MemWrites, in the
+-- same format as input memory, and same numbering scheme.
+--
 -- TODO: More convenient error messages?
 simulateHighLevel :: Op -> [[ValueType]] -> [[ValueType]]
     -> ([[ValueType]], [[ValueType]])
 -- Check that the types match, then delegate to simhl implementation.
--- 1 is the underutil denominator.
 simulateHighLevel op portInputs memoryInputs = do {
         let portOutputsAndState = simhl op portInputs
                 (SimhlState (simhlCheckInputs 0 op portInputs)
-                1 memoryInputs 0 [])
+                memoryInputs 0 [])
        ;
        (fst portOutputsAndState, simhlMemoryOut $ snd portOutputsAndState)
 }
@@ -90,7 +92,6 @@ simhlCheckPorts clkIndex portIndex op (port:ports) (value:values) =
 
 data SimhlState = SimhlState {
     simhlTypesMatch :: Bool,
-    simhlUnderutil :: Int,
     simhlMemoryIn :: [[ValueType]],
     simhlMemoryIndex :: Int,           -- For error messages.
     simhlMemoryOut :: [[ValueType]]
@@ -102,8 +103,6 @@ data SimhlState = SimhlState {
 --   simhlTypesMatch : Bool result of simhlCheckInputs, should be True.
 --     So from this point on, we can assume all inputs' types match the
 --     input ports of the op being simulated (But memory inputs not checked).
---   simhlUnderutil : Underutilization denominator at the point of the
---     AST being simulated.
 --   simhlMemoryIn / simhlMemoryOut : List of "tapes" of inputs/outputs
 --     for MemRead / MemWrite. As mentioned above the input order corresponds
 --     to the order that the MemReads would be visited by DFS. Everything
@@ -114,7 +113,7 @@ data SimhlState = SimhlState {
 -- Output is a tuple of [[ValueType]] and SimhlState, which is how the memory
 -- state changes explained above are carried on through the recursion.
 simhl :: Op -> [[ValueType]] -> SimhlState -> ([[ValueType]], SimhlState)
-simhl op inputs (SimhlState False _ _ _ _) =
+simhl op inputs (SimhlState False _ _ _) =
     error "Aetherling internal error: simhl function got False Bool value"
     -- If simhlCheckInputs were false, should have gotten proper error message.
 simhl (Add t) inputs state = (simhlCombinational simhlAdd inputs, state)
@@ -160,30 +159,48 @@ simhl (DuplicateOutputs count op) inputs state =
 
 simhl (MapOp par op) inputs state = simhlMap par op inputs state
 
-simhl (Underutil uDenom op) inputs (SimhlState ok sDenom memIn memIdx memOut) =
-    simhl op inputs (SimhlState ok (uDenom * sDenom) memIn memIdx memOut)
+--simhl (Underutil uDenom op) inputs (SimhlState ok sDenom memIn memIdx memOut) =
+--    simhl op inputs (SimhlState ok (uDenom * sDenom) memIn memIdx memOut)
 
--- We have to multiply the register delay by the underutil denominator to get
--- the actual delay in cycles (underutil is like a clock enable, if we have
--- a RegDelay N and an underutil of M, then it's like we have N registers whose
--- clock enable is high only once every M cycles).
+-- (Underutil N) operator (by my understanding) is implemented by
+-- holding clock enable high once every N cycles (that one time being
+-- at the end of every N cycle periods, i.e., for N = 3, CE is high on
+-- cycle 2, 5,...  but not 0, 1, 3, 4, ...). So, implement Underutil
+-- by removing ignored inputs (0...N-2, N...2N-2, ...) and filling the
+-- outputs back up with V_Unit (i.e, we recursively simulate the op
+-- with lower clock rate).
+simhl (Underutil n op) inputs inState =
+    do { let filteredInputs = map fst $
+               filter (\(a,i) -> i `mod` n == (n-1)) (zip inputs [0,1..])
+       ; let (filteredOutputs, outState) = simhl op filteredInputs inState
+       -- On skipped cycles (CE low), there's one garbage output for each port.
+       ; let garbageOutput = [V_Unit | x <- outPorts op]
+       ; let toConcat = [
+                replicate (n-1) garbageOutput ++ [usefulOutput]
+                | usefulOutput <- filteredOutputs
+              ] ++ [[garbageOutput | x <- [1..((length inputs) `mod` n)] ]]
+         -- The last line is to make sure that the output length (i.e. number
+         -- of clock cycles) matches input list length exactly.
+       ; (concat toConcat, outState)
+    }
+
 simhl (RegDelay delay op) inputs state =
     do { let (rawOutputs, nextState) = simhl op inputs state
-       ; (simhlDelay (delay * (simhlUnderutil state)) rawOutputs, nextState)
+       ; (simhlDelay delay rawOutputs, nextState)
     }
 
 simhl (ComposeSeq []) inputs state = error "ComposeSeq with empty [Op]"
 simhl (ComposeSeq [op]) inputs state = simhl op inputs state
-simhl (ComposeSeq (op:ops)) inputs state =
-    do { let (nextInput, nextState) = simhl op inputs state
+simhl (ComposeSeq (op:ops)) inputs inState =
+    do { let (nextInput, nextState) = simhl op inputs inState
        ; simhl (ComposeSeq ops) nextInput nextState
     }
 
 simhl (ComposePar []) inputs state = ([[] | input <- inputs], state)
-simhl (ComposePar (op:moreOps)) inputs state =
+simhl (ComposePar (op:moreOps)) inputs inState =
     do { let (thisOpOutput, nextState) = simhl op
               [fst $ splitAt (length $ inPorts op) i | i <- inputs] -- X
-              state
+              inState
        ; let (moreOpsOutputs, endState) = simhl (ComposePar moreOps)
               [snd $ splitAt (length $ inPorts op) i | i <- inputs] -- Y
               nextState
@@ -307,33 +324,29 @@ simhlBit :: [Bool] -> [ValueType] -> [ValueType]
 simhlBit bools _ = [V_Array [V_Bit b | b <- bools]]
 
 -- Memory read and write implementations.
--- Three things need to happen to the state object:
---   * Take into account the underutil denominator d. Only read or write
---     on clock cycles N where (N = d-1) mod d.
+-- Two things need to happen to the state object:
 --   * Either remove the first tape entry from memIn or append a tape
---     of output to memOut. See DFS comment.
+--     of output to memOut, and return the modified state. See DFS comment.
 --   * If reading, update the memIdx. This is for error reporting.
 simhlRead :: TokenType -> [[ValueType]] -> SimhlState
           -> ([[ValueType]], SimhlState)
-simhlRead _ _ (SimhlState _ _ [] memIdx _) =
-    error("Ran out of memory input at MemRead number "
+simhlRead _ _ (SimhlState _ [] memIdx _) =
+    error("Memory argument too short -- no tape left at MemRead number "
            ++ show memIdx
            ++ " (numbered using DFS starting at 0)."
     )
-simhlRead t inputs (SimhlState ok denom (inTape:inTapes) memIdx memOut) =
+simhlRead t inputs (SimhlState ok (inTape:inTapes) memIdx memOut) =
     -- Look at the inputs (should just be a list of empty lists). Its
     -- length tells us how many outputs we should create. Then just
-    -- peel off the first, pad with (denom-1) V_Units before each
-    -- item, doing type checking and padding with extra V_Units if we
-    -- run out.
+    -- peel off the first, box each entry in a 1-entry list
+    -- (corresponding to the one output port of MemRead), doing type
+    -- checking and padding with extra V_Units if we run out.
     if all (\v -> v == V_Unit || vtTypesMatch v t) inTape then
     (
-        concat [
-            (replicate (denom-1) [V_Unit]) ++ [[tapeEntry]]
-            | tapeEntry
-            <- fst $ splitAt (length inputs) (inTape ++ repeat V_Unit)
+        [ [tapeEntry] | tapeEntry
+          <- fst $ splitAt (length inputs) (inTape ++ repeat V_Unit)
         ],
-        SimhlState ok denom inTapes (memIdx+1) memOut
+        SimhlState ok inTapes (memIdx+1) memOut
     )
     else error("At MemRead number " ++ show memIdx
             ++ " (numbered using DFS, starting from 0), input "
@@ -343,19 +356,14 @@ simhlRead t inputs (SimhlState ok denom (inTape:inTapes) memIdx memOut) =
 
 simhlWrite :: [[ValueType]] -> SimhlState
            -> ( [[ValueType]], SimhlState )
-simhlWrite inputs (SimhlState ok denom memIn memIdx memOut) =
-    -- Take every denom'th input and write it to a new memOut entry in state.
+simhlWrite inputs (SimhlState ok memIn memIdx memOut) =
     (
         replicate (length inputs) [],
         SimhlState
           ok
-          denom
           memIn
           memIdx
-          (memOut ++ [[
-            v | ([v], idx) <- filter (\ (_, i) -> i `mod` denom == denom-1)
-                              (zip inputs [1,2..])
-          ]])
+          (memOut ++ [boxedValue | boxedValue <- inputs])
     )
 
 -- Split the inputs to a MapOp into the inputs expected by each Op
