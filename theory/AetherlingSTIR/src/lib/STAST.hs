@@ -39,15 +39,18 @@ data Op =
   | Constant_Bit {bitConstProduced :: [Bool]}
 
   -- TYPE MANIPULATORS
-  -- Reshapes an input array sequence through space and time.
-  -- Buffers inputs and emits output only when sufficient outputs are ready.
-  -- Args: input tuple, output tuple, array entry type. Tuple consists of
-  --  (sequence length, array length)
-  -- Array type may be another array; if so, it's treated as atomic
-  -- and not split between two output cycles.
+  --
+  -- Reshapes an input array sequence through space and time.  Buffers
+  -- inputs (left-to-right) and emits output only when sufficient
+  -- outputs are ready.  Args: input tuple, output tuple, array entry
+  -- type. Tuple consists of (sequence length, array length) for the
+  -- one input or one output port. Array type may be another array; if
+  -- so, it's treated as atomic and not split between two output
+  -- cycles.
   | SequenceArrayRepack (Int, Int) (Int, Int) TokenType
   -- First is list of input port types, second is output.
-  -- Pure combinational device, wires inputs in order to outputs.
+  -- Pure combinational device: decomposes the input and output arrays to
+  -- a sequence of wires, and wires up inputs to outputs in order.
   | ArrayReshape [TokenType] [TokenType]
   | DuplicateOutputs Int Op
 

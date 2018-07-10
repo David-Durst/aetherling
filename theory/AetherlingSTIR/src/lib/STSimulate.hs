@@ -132,6 +132,13 @@ simhl (Constant_Int a) inSeqs state =
 simhl (Constant_Bit a) inSeqs state =
     (simhlCombinational (simhlBit a) inSeqs, state)    
 
+simhl (SequenceArrayRepack (a,b) (c,d) t) inSeqs state =
+    (simhlRepack (a,b) (c,d) t inSeqs, state)
+
+simhl (ArrayReshape inTypes outTypes) inSeqs state =
+    (simhlCombinational (simhlReshape (ArrayReshape inTypes outTypes)) inSeqs,
+     state)
+
 simhl (MemRead t) inSeqs state = simhlRead t inSeqs state
 
 simhl (MemWrite t) inSeqs state = simhlWrite inSeqs state
@@ -285,6 +292,121 @@ simhlInt ints _ = [V_Array [V_Int i | i <- ints]]
 simhlBit :: [Bool] -> [ValueType] -> [ValueType]
 simhlBit bools _ = [V_Array [V_Bit b | b <- bools]]
 
+-- Reshape sequence of arrays through space and time.
+simhlRepack :: (Int,Int) -> (Int,Int) -> TokenType -> [[ValueType]]
+            -> [[ValueType]]
+simhlRepack (inSeqLen, inWidth) (outSeqLen, outWidth) t [inSeq] =
+    if inSeqLen * inWidth /= outSeqLen * outWidth || inSeqLen * inWidth == 0
+    then error("Need product of sequence length and array width to be nonzero "
+           ++  "and equal in input and output. Simulating "
+           ++ show (SequenceArrayRepack (inSeqLen, inWidth) (outSeqLen, outWidth) t))
+    else do { let allInputs = simhlRepackUnpack inWidth inSeq
+            ; [simhlRepackRepack outWidth allInputs]
+         }
+simhlRepack _ _ _ _ = error "Aetherling internal error: broken array repack."
+
+-- Glue together all inputs, ordered by time then by left-to-right.
+simhlRepackUnpack :: Int -> [ValueType] -> [ValueType]
+simhlRepackUnpack inWidth [] = []
+simhlRepackUnpack inWidth (V_Unit:futureArrays) =
+    (replicate inWidth V_Unit)++(simhlRepackUnpack inWidth futureArrays)
+simhlRepackUnpack inWidth ((V_Array array):futureArrays) =
+    if length array == inWidth
+    then array ++ (simhlRepackUnpack inWidth futureArrays)
+    else error "Aetherling internal error: wrong array length in repack."
+simhlRepackUnpack _ _ = error "Aetherling internal error: broken array unpack."
+
+-- Split up all input through time and space into a sequence of output arrays
+-- of length outSeqLen. Truncate leftover output.
+simhlRepackRepack :: Int -> [ValueType] -> [ValueType]
+simhlRepackRepack outWidth values =
+    do { let (nowArray, futureValues) = splitAt outWidth values
+       ; if length nowArray == outWidth
+         then (V_Array nowArray):(simhlRepackRepack outWidth futureValues)
+         else []
+    }
+
+-- Combinational device that decomposes arrays into fundamental types
+-- and puts them back together in a different order. This function
+-- takes an ArrayReshape Op and returns an implementation function
+-- suitable for simhlCombinational (list of in port values in one
+-- clock -> out port values in one clock).
+simhlReshape :: Op -> [ValueType] -> [ValueType]
+simhlReshape (ArrayReshape inTypes outTypes) nowInputs =
+    do { let serial = concat $ map (uncurry simhlSerializeArray)
+                                   (zip inTypes nowInputs)
+       ; simhlDeserializeArrays (ArrayReshape inTypes outTypes) serial
+    }
+simhlReshape _ _ =
+    error "Aetherling internal error: expected ArrayReshape Op."
+
+-- Take one instance of (possible nested) V_Arrays and a TokenType
+-- describing the intended type of the array, and recursively flatten
+-- it down to a list of ValueType.
+simhlSerializeArray :: TokenType -> ValueType -> [ValueType]
+simhlSerializeArray (T_Array n t) V_Unit =
+    concat $ replicate n (simhlSerializeArray t V_Unit)
+simhlSerializeArray (T_Array n t) (V_Array array) =
+    concat $ map (simhlSerializeArray t) array
+simhlSerializeArray (T_Array _ _) value =
+    error "Aethering internal error: broken array serialization."
+simhlSerializeArray t value = [value]
+
+
+-- Takes the ArrayReshape op and a list of serialized values, and
+-- packs it into a list of V_Arrays (or scalar types) depending on
+-- the output types of the ArrayReshape.
+simhlDeserializeArrays :: Op -> [ValueType]
+                       -> [ValueType]
+simhlDeserializeArrays (ArrayReshape inTypes outTypes) serialValues =
+    do { let initTuple = (ArrayReshape inTypes outTypes, [], serialValues)
+       ; let (_, result, _) = foldl simhlDeserializeLambda initTuple outTypes
+       ; result
+    }
+simhlDeserializeArrays _ _ =
+    error "Aetherling internal error: expected ArrayReshape Op."
+
+-- Fold lambda for deserialize.
+-- Tuple Op arg is the ArrayReshape being done, used just for error messages.
+-- First [ValueType] is the list of V_Arrays (or scalar type) being
+-- constructed based on outTypes. Second [ValueType] is the list of serialized
+-- values from before. The TokenType tells us what kind of value to construct
+-- and append to the first [ValueType] list this time.
+simhlDeserializeLambda :: (Op, [ValueType], [ValueType]) -> TokenType
+                           -> (Op, [ValueType], [ValueType])
+simhlDeserializeLambda (op, packedValues, serialValues) t =
+    do { let (packedValue, leftover) = simhlMunchArray op t serialValues
+       ; (op, packedValues ++ [packedValue], leftover)
+    }
+
+
+-- Take some of the start of the [ValueType] input and construct a V_Array
+-- (or scalar type) based on TokenType. Return the constructed value and
+-- unused input as a tuple.
+simhlMunchArray :: Op -> TokenType -> [ValueType] -> (ValueType, [ValueType])
+simhlMunchArray op (T_Array 0 t) values = (V_Array [], values)
+simhlMunchArray op (T_Array n t) values =
+    do { let (oneEntry, oneLeftover) = simhlMunchArray op t values
+       ; let (V_Array otherEntries, otherLeftover) =
+               simhlMunchArray op (T_Array (n-1) t) oneLeftover
+       ; (V_Array (oneEntry:otherEntries), otherLeftover)
+    }
+simhlMunchArray op t (value:values) =
+    if vtTypesMatch value t
+    then (value, values)
+    else error(
+      show value
+      ++ " didn't match expected token type "
+      ++ show t
+      ++ "; either a bug, or something's wrong about the operator "
+      ++ show op
+      -- This error message is a disgrace. "something's wrong" could be
+      -- because there's an int input wired to a bit output or some other
+      -- type mismatch, which ArrayReshape doesn't check for.
+    )
+simhlMunchArray op _ _ =
+    error ("Aetherling internal error: broken munch for " ++ show op)
+
 -- Memory read and write implementations.
 -- Two things need to happen to the state object:
 --   * Either remove the first tape entry from memIn or append a tape
@@ -392,7 +514,7 @@ simhlMap par theMappedOp inSeqs inState =
 --   (assuming combinational reducedOp).
 -- After (numComb/par) cycles, the reg's input contains the result of reducing
 -- numComb inputs. The reg should be cleared for the next set of numComb inputs.
-
+--
 -- Part 1: The tree of reducedOps. Takes a [[[ValueType]]] input as
 -- returned by simhlSplitMapInputs (recycling it for reduce). Since a
 -- ReduceOp is defined to take exactly one par-array as input (which
@@ -481,7 +603,8 @@ simhlReduceReg par numComb theReducedOp treeOutSeq =
       }
   -- Reduce a subsequence of the tree output sequence (subseq length =
   -- cycles needed per output) into one output. Use foldl since it's
-  -- the same order the actual circuit will evaluate the outputs.
+  -- the same order the actual circuit will evaluate the outputs
+  -- (past-to-future).
   where reduceList valList =
           foldl
           (\x y -> head $ head $ fst $
@@ -490,3 +613,15 @@ simhlReduceReg par numComb theReducedOp treeOutSeq =
           (head valList)
           (tail valList)
              
+-- Helper functions for making it easier to create ValueType instances.
+vBits :: [Bool] -> [ValueType]
+vBits bools = map V_Bit bools
+
+vInts :: [Int] -> [ValueType]
+vInts ints = map V_Int ints
+
+vBitArray :: [Bool] -> ValueType
+vBitArray bools = V_Array $ vBits bools
+
+vIntArray :: [Int] -> ValueType
+vIntArray ints = V_Array $ vInts ints
