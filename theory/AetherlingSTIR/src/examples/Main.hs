@@ -33,11 +33,13 @@ memReadInt = MemRead T_Int
 
 memWriteInt = MemWrite T_Int
 
-sac2Int = SequenceArrayController [(1, (T_Array 2 T_Int))] [(2, T_Int)]
+spaceAndTimeReshape = SequenceArrayRepack (1, 2, T_Int) (2, 1, T_Int) |>>=|
+  ArrayReshape [T_Array 1 T_Int] [T_Int]
 
-constantToSAC = 
+constantSpaceTimeReshape = 
   Underutil 3 (Constant_Int [1, 1, 1]) |>>=| 
-  SequenceArrayController [(1, (T_Array 3 T_Int))] [(3, T_Int)]
+  SequenceArrayRepack (1, 3, T_Int) (3, 1, T_Int) |>>=|
+  ArrayReshape [T_Array 1 T_Int] [T_Int]
 
 duplicateAdd = DuplicateOutputs 3 (Add T_Int)
 
@@ -45,9 +47,9 @@ conv1PxPerClock =
   (
     (
       MemRead T_Int |>>=|
-      SequenceArrayController [(1, T_Int)] [(1, T_Array 1 T_Int)] |>>=|
+      ArrayReshape [T_Int] [T_Array 1 T_Int] |>>=|
       LineBuffer [1] [3] [300] T_Int |>>=|
-      SequenceArrayController [(1, T_Array 1 (T_Array 3 T_Int))] [(1, T_Array 3 T_Int)]
+      ArrayReshape [T_Array 1 (T_Array 3 T_Int)] [T_Array 3 T_Int]
     ) |&|
     Constant_Int [1, 1, 1]
   ) |>>=|
@@ -81,7 +83,7 @@ main = do
   describeMethod "back-to-back 1 pixel per clock, 3 pixel stencil linebuffers" lbChain
   describeMethod "basic memory reading one int per clock" memReadInt
   describeMethod "basic memory writing one int per clock" memWriteInt
-  describeMethod "a SequenceArrayController converting int[2]{1} to int{2} every two clocks" sac2Int
-  describeMethod "a SequenceArrayController converting int[2]{1} to int{2} every two clocks and a an underuitilized constant generator to feed it" constantToSAC
+  describeMethod "A reshape converting int[2]{1} to int{2} every two clocks" spaceAndTimeReshape
+  describeMethod "Reshape converting int[3]{1} to int{3} every three clocks and a an underuitilized constant generator to feed it" constantSpaceTimeReshape
   describeMethod "duplicating the outputs but not the inputs of an adder" duplicateAdd
   describeMethod "1 pixel per clock 3 pixel stencil convolution" conv1PxPerClock

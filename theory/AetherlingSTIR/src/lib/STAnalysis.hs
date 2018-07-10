@@ -94,8 +94,6 @@ scaleCPS op n = SWLen (ssMult * n) (wSub * n)
 cps op = clocksPerSequence op
 clocksPerSequence :: Op -> SteadyStateAndWarmupLen
 registerCPS = baseWithNoWarmupSequenceLen
-getAllSACSeqLens (SequenceArrayController inputs outputs) = map fst $ inputs ++ outputs
-getAllSACSeqLens _ = undefined
 
 clocksPerSequence (Add t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Sub t) = baseWithNoWarmupSequenceLen
@@ -133,8 +131,8 @@ clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 
 -- Assuming either the input or output is fully utilized (dense), the
 -- clocks taken per sequence is just the longer sequence of the two.
-clocksPerSequence (SequenceArrayRepack (inSeq, _, _) (outSeq, _, _) =
-  max inSeq outSeq
+clocksPerSequence (SequenceArrayRepack (inSeq, _, _) (outSeq, _, _)) =
+  SWLen (max inSeq outSeq) 0
 clocksPerSequence (ArrayReshape _ _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (DuplicateOutputs _ _) = baseWithNoWarmupSequenceLen
 
@@ -191,7 +189,7 @@ initialLatency (MemWrite _) = 1
 initialLatency lb@(LineBuffer p w _ _) = warmupSub $ cps lb
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
-initialLatency (SequenceArrayRepack (inSeq, _, _) (outSeq, _, _) =
+initialLatency (SequenceArrayRepack (inSeq, _, _) (outSeq, _, _)) =
   outSeq `ceilDiv` inSeq
 initialLatency (ArrayReshape _ _) = 1
 initialLatency (DuplicateOutputs _ _) = 1
@@ -426,10 +424,10 @@ inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
 inPorts lb@(LineBuffer p _ img t) = [T_Port "I" (SWLen numInputs warmup) parallelType 1]
   where
-    parallelType = foldl (\innerType pDim -> T_Array pDim innerType) t p
+    parallelType = foldr (\pDim innerType -> T_Array pDim innerType) t p
     -- need the number of inputs equal to product of all dimensions divided by
     -- parallelism in each dimension
-    numInputs = foldl (\numSoFar (pDim, imgDim) -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
+    numInputs = foldr (\(pDim, imgDim) numSoFar -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
     warmup = warmupSub $ cps lb
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
@@ -437,7 +435,7 @@ inPorts (Constant_Bit _) = []
 inPorts (SequenceArrayRepack (inSeq, inWidth, inType) _) =
   [T_Port "I" (SWLen inSeq 0) (T_Array inWidth inType) 1]
 inPorts (ArrayReshape inTypes _) = renamePorts "I" $ map makePort inTypes
-  where makePort t = oneInSimplePort t
+  where makePort t = head $ oneInSimplePort t
 -- for in ports, no duplicates
 inPorts (DuplicateOutputs _ op) = inPorts op
 
@@ -498,24 +496,24 @@ outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts lb@(LineBuffer p w img t) = [T_Port "I" (SWLen numOutputs warmup) parallelStencilType 1]
+outPorts lb@(LineBuffer p w img t) = [T_Port "O" (SWLen numOutputs warmup) parallelStencilType 1]
   where
     -- make number of stencials equal to parallelism
     -- first is just one stencil
-    singleStencilType = foldl (\innerType wDim -> T_Array wDim innerType) t w
-    parallelStencilType = foldl (\innerType pDim -> T_Array pDim innerType) singleStencilType p
+    singleStencilType = foldr (\wDim innerType -> T_Array wDim innerType) t w
+    parallelStencilType = foldr (\pDim innerType -> T_Array pDim innerType) singleStencilType p
     -- need the number of outputs equal to product of all dimensions divided by
     -- parallelism in each dimension
     -- numOutputs in steady state depends on inputs, so using pDim instead of wDim here
-    numOutputs = foldl (\numSoFar (pDim, imgDim) -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
+    numOutputs = foldr (\(pDim, imgDim) numSoFar -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
     warmup = warmupSub $ cps lb
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
 
-outPorts (SequenceArrayRepack _ (outSeq, outWidth, outType) =
+outPorts (SequenceArrayRepack _ (outSeq, outWidth, outType)) =
   [T_Port "O" (SWLen outSeq 0) (T_Array outWidth outType) 1]
 outPorts (ArrayReshape _ outTypes) = renamePorts "O" $ map makePort outTypes
-  where makePort t = oneSimpleOutPort t
+  where makePort t = head $ oneOutSimplePort t
 
 outPorts (DuplicateOutputs n op) = renamePorts "O" $ foldl (++) [] $ replicate n $ outPorts op
 
