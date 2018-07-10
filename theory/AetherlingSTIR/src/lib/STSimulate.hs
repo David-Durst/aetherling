@@ -136,8 +136,10 @@ simhl (MemRead t) inSeqs state = simhlRead t inSeqs state
 
 simhl (MemWrite t) inSeqs state = simhlWrite inSeqs state
 
-simhl (DuplicateOutputs n op) inSeqs state =
-    (concat $ replicate n inSeqs, state)
+simhl (DuplicateOutputs n op) inSeqs inState =
+    do { let (rawOutSeqs, outState) = simhl op inSeqs inState
+       ; (concat $ replicate n rawOutSeqs, outState)
+    }
 
 simhl (MapOp par op) inSeqs state = simhlMap par op inSeqs state
 simhl (ReduceOp par numComb op) inSeqs state =
@@ -147,8 +149,8 @@ simhl (ReduceOp par numComb op) inSeqs state =
 -- underutil and register delays should be no-ops in this high level
 -- simulator -- dealing with the details of clock scheduling and clock
 -- enable is something that we worry about elsewhere.
-simhl (Underutil n op) inSeqs state = (inSeqs, state)
-simhl (RegDelay delay op) inSeqs state = (inSeqs, state)
+simhl (Underutil n op) inSeqs state = simhl op inSeqs state
+simhl (RegDelay delay op) inSeqs state = simhl op inSeqs state
 
 simhl (ComposeSeq []) inSeqs state = error "ComposeSeq with empty [Op]"
 simhl (ComposeSeq [op]) inSeqs state = simhl op inSeqs state
@@ -336,13 +338,19 @@ simhlSplitMapInputs par inSeqs =
 -- Inverse operation of simhlSplitMapInputs.
 simhlJoinMapOutputs :: Int -> [[[ValueType]]] -> [[ValueType]]
 simhlJoinMapOutputs 0 _ = []
+simhlJoinMapOutputs 1 [lastLaneValues] =
+    [
+        [V_Array [nowValue] | nowValue <- portSeq]
+        | portSeq <- lastLaneValues
+    ]
 simhlJoinMapOutputs _ [] = error "Aetherling internal error: broken map join."
 simhlJoinMapOutputs par (thisLane:rightLanes) =
     do { let rightJoined = simhlJoinMapOutputs (par-1) rightLanes
-       ; [ [V_Array(nowLaneOut:nowLanesOut)
-           |(nowLaneOut, V_Array nowLanesOut) <- zip laneOut lanesOut
-           ]
-         |(laneOut, lanesOut) <- zip thisLane rightJoined
+       ; [
+             [V_Array (nowValue:moreNowValues)
+             |(nowValue, V_Array moreNowValues) <- zip portSeq morePortSeqs
+             ]
+         |(portSeq, morePortSeqs) <- zip thisLane rightJoined
          ]
     }
 

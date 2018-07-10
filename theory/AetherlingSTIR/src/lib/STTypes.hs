@@ -35,7 +35,7 @@ instance HasLen ValueType where
 
 -- Function for checking that a ValueType instance matches the given
 -- TokenType instance. Also checks that arrays are the same length.
--- V_Unit matches all types.
+-- V_Unit matches all types (should it really be this way?).
 vtTypesMatch :: ValueType -> TokenType -> Bool
 vtTypesMatch (V_Unit) t = True
 vtTypesMatch (V_Int _) T_Int = True
