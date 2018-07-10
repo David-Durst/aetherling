@@ -41,11 +41,11 @@ data Op =
   -- TYPE MANIPULATORS
   -- Reshapes an input array sequence through space and time.
   -- Buffers inputs and emits output only when sufficient outputs are ready.
-  -- Args: input tuple, output tuple. Tuple consists of
-  --  (sequence length, array length, array type)
+  -- Args: input tuple, output tuple, array entry type. Tuple consists of
+  --  (sequence length, array length)
   -- Array type may be another array; if so, it's treated as atomic
   -- and not split between two output cycles.
-  | SequenceArrayRepack (Int, Int, TokenType) (Int, Int, TokenType)
+  | SequenceArrayRepack (Int, Int) (Int, Int) TokenType
   -- First is list of input port types, second is output.
   -- Pure combinational device, wires inputs in order to outputs.
   | ArrayReshape [TokenType] [TokenType]
@@ -89,7 +89,7 @@ getChildOps (MemWrite _) = []
 getChildOps (LineBuffer _ _ _ _) = []
 getChildOps (Constant_Int _) = []
 getChildOps (Constant_Bit _) = []
-getChildOps (SequenceArrayRepack _ _) = []
+getChildOps (SequenceArrayRepack _ _ _) = []
 getChildOps (ArrayReshape _ _) = []
 getChildOps (MapOp _ op) = [op]
 getChildOps (ReduceOp _ _ op) = [op]

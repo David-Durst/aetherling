@@ -33,12 +33,12 @@ memReadInt = MemRead T_Int
 
 memWriteInt = MemWrite T_Int
 
-spaceAndTimeReshape = SequenceArrayRepack (1, 2, T_Int) (2, 1, T_Int) |>>=|
+spaceAndTimeReshape = SequenceArrayRepack (1, 2) (2, 1) T_Int |>>=|
   ArrayReshape [T_Array 1 T_Int] [T_Int]
 
 constantSpaceTimeReshape = 
   Underutil 3 (Constant_Int [1, 1, 1]) |>>=| 
-  SequenceArrayRepack (1, 3, T_Int) (3, 1, T_Int) |>>=|
+  SequenceArrayRepack (1, 3) (3, 1) T_Int |>>=|
   ArrayReshape [T_Array 1 T_Int] [T_Int]
 
 duplicateAdd = DuplicateOutputs 3 (Add T_Int)

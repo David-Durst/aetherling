@@ -147,6 +147,10 @@ simhl (Constant_Int a) inputs state =
 simhl (Constant_Bit a) inputs state =
     (simhlCombinational (simhlBit a) inputs, state)
 
+--simhl (SequenceArrayRepack (inSeq, inWidth) (outSeq, outWidth) arrayType) inputs state =
+--    simhlSequenceArrayRepack 
+    
+
 simhl (MemRead t) inputs state = simhlRead t inputs state
 
 simhl (MemWrite t) inputs state = simhlWrite inputs state

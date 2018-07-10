@@ -50,7 +50,7 @@ space (Constant_Bit consts) = OWA (len (T_Array (length consts) T_Bit)) 0
 
 -- may need a more accurate approximate, but most conservative is storing
 -- entire input.
-space (SequenceArrayRepack (inSeq, inWidth, inType) (outSeq, outWidth, outType)) =
+space (SequenceArrayRepack (inSeq, inWidth) (outSeq, outWidth) inType) =
   registerSpace [T_Array inWidth inType] |* inSeq
 
 -- just a pass through, so will get removed by CoreIR
@@ -131,7 +131,7 @@ clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
 
 -- Assuming either the input or output is fully utilized (dense), the
 -- clocks taken per sequence is just the longer sequence of the two.
-clocksPerSequence (SequenceArrayRepack (inSeq, _, _) (outSeq, _, _)) =
+clocksPerSequence (SequenceArrayRepack (inSeq, _) (outSeq, _) _) =
   SWLen (max inSeq outSeq) 0
 clocksPerSequence (ArrayReshape _ _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (DuplicateOutputs _ _) = baseWithNoWarmupSequenceLen
@@ -144,9 +144,11 @@ clocksPerSequence (ReduceOp par numComb op) = SWLen (ssMult * (numComb `ceilDiv`
   (wSub * (ceilLog par + (bool 1 0 (par == numComb))))
   where (SWLen ssMult wSub) = cps op
 
-clocksPerSequence (Underutil denom op) = multToSteadyState denom $ clocksPerSequence op
+clocksPerSequence (Underutil denom op) = SWLen (denom * ssMult) (denom * wSub)
+  where (SWLen ssMult wSub) = cps op
 -- since pipelined, this doesn't affect clocks per stream
-clocksPerSequence (RegDelay _ op) = clocksPerSequence op
+clocksPerSequence (RegDelay numDelay op) = SWLen ssMult (numDelay + wSub)
+  where (SWLen ssMult wSub) = clocksPerSequence op
 
 clocksPerSequence (ComposePar ops) = SWLen lcmSteadyState maxWarmup
   where 
@@ -189,7 +191,7 @@ initialLatency (MemWrite _) = 1
 initialLatency lb@(LineBuffer p w _ _) = warmupSub $ cps lb
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
-initialLatency (SequenceArrayRepack (inSeq, _, _) (outSeq, _, _)) =
+initialLatency (SequenceArrayRepack (inSeq, _) (outSeq, _) _) =
   outSeq `ceilDiv` inSeq
 initialLatency (ArrayReshape _ _) = 1
 initialLatency (DuplicateOutputs _ _) = 1
@@ -277,7 +279,7 @@ maxCombPath (MemWrite _) = 1
 maxCombPath (LineBuffer _ _ _ _) = 1
 maxCombPath (Constant_Int _) = 1
 maxCombPath (Constant_Bit _) = 1
-maxCombPath (SequenceArrayRepack _ _) = 1
+maxCombPath (SequenceArrayRepack _ _ _) = 1
 maxCombPath (ArrayReshape _ _) = 1
 maxCombPath (DuplicateOutputs _ _) = 1
 
@@ -332,7 +334,7 @@ util (MemWrite _) = 1
 util (LineBuffer _ _ _ _) = 1
 util (Constant_Int _) = 1
 util (Constant_Bit _) = 1
-util (SequenceArrayRepack _ _) = 1
+util (SequenceArrayRepack _ _ _) = 1
 util (ArrayReshape _ _) = 1
 util (DuplicateOutputs _ _) = 1
 
@@ -432,7 +434,7 @@ inPorts lb@(LineBuffer p _ img t) = [T_Port "I" (SWLen numInputs warmup) paralle
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
 
-inPorts (SequenceArrayRepack (inSeq, inWidth, inType) _) =
+inPorts (SequenceArrayRepack (inSeq, inWidth) _ inType) =
   [T_Port "I" (SWLen inSeq 0) (T_Array inWidth inType) 1]
 inPorts (ArrayReshape inTypes _) = renamePorts "I" $ map makePort inTypes
   where makePort t = head $ oneInSimplePort t
@@ -510,7 +512,7 @@ outPorts lb@(LineBuffer p w img t) = [T_Port "O" (SWLen numOutputs warmup) paral
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
 
-outPorts (SequenceArrayRepack _ (outSeq, outWidth, outType)) =
+outPorts (SequenceArrayRepack _ (outSeq, outWidth) outType) =
   [T_Port "O" (SWLen outSeq 0) (T_Array outWidth outType) 1]
 outPorts (ArrayReshape _ outTypes) = renamePorts "O" $ map makePort outTypes
   where makePort t = head $ oneOutSimplePort t
@@ -565,7 +567,7 @@ isComb (LineBuffer _ _ _ _) = True
 isComb (Constant_Int _) = True
 isComb (Constant_Bit _) = True
 
-isComb (SequenceArrayRepack _ _) = False
+isComb (SequenceArrayRepack _ _ _) = False
 isComb (ArrayReshape _ _) = True
 isComb (DuplicateOutputs _ _) = True
 
