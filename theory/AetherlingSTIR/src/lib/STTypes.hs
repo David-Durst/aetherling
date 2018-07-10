@@ -21,7 +21,7 @@ instance HasLen TokenType where
 -- type used to pass values to the simulator.
 -- There is a V_Type value type corresponding to each T_Type TokenType.
 data ValueType =
-  V_Unit
+  V_Unit 
   | V_Int Int
   | V_Bit Bool
   | V_Array [ValueType]
@@ -44,6 +44,10 @@ vtTypesMatch (V_Array []) (T_Array i t) = i == 0
 vtTypesMatch (V_Array (v:vs)) (T_Array i t) =
     vtTypesMatch v t && vtTypesMatch (V_Array vs) (T_Array (i-1) t)
 vtTypesMatch _ _ = False
+
+-- Reverse argument order of above.
+tvTypesMatch :: TokenType -> ValueType -> Bool
+tvTypesMatch t v = vtTypesMatch v t
 
 -- Head and tail functions for V_Array type (no-op for V_Unit).
 valueTypeHead :: ValueType -> ValueType
