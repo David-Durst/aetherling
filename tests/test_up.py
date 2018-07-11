@@ -1,7 +1,7 @@
 from aetherling.modules.upsample import UpsampleSequential, UpsampleParallel
 from magma import *
 from magma.clock import *
-from magma.backend.coreir_ import CoreIRBackend
+from magma.backend.coreir_ import CoreIRBackend, compile
 from magma.bitutils import *
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
@@ -120,7 +120,7 @@ EndCircuit()
 
 sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
-#coreir_testcircuit = coreir_compile(testcircuit, context=c)
+#coreir_testcircuit = compile(testcircuit, context=c)
 
 #c.run_passes(["rungenerators", "verifyconnectivity-onlyinputs-noclkrst",
                     #"wireclocks-coreir", "flatten", "flattentypes", "verifyconnectivity",

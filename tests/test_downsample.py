@@ -2,7 +2,6 @@ from aetherling.modules.downsample import DownsampleSequential, DownsampleParall
 from magma.frontend.coreir_ import GetCoreIRModule
 from magma.simulator import PythonSimulator
 from magma import *
-from magma.backend import coreir_compile
 from magma.clock import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
