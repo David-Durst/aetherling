@@ -18,12 +18,12 @@ data Op =
   | And TokenType
   | Or TokenType
   | XOr TokenType
-  | Eq TokenType
-  | Neq TokenType
-  | Lt TokenType
-  | Leq TokenType
-  | Gt TokenType
-  | Geq TokenType
+  | Eq
+  | Neq
+  | Lt
+  | Leq
+  | Gt
+  | Geq
   | MemRead TokenType
   | MemWrite TokenType
   -- first arg is pixels per clock in each dimension. First value in list is outer 
@@ -35,12 +35,23 @@ data Op =
   | LineBuffer {pxPerClock :: [Int], windowWidth :: [Int], image :: [Int], lbInT :: TokenType}
   -- Array is constant produced, int is sequence length
   | Constant_Int {intConstProduced :: [Int]}
-  -- Array is constant produced, int is sequence length
+  -- Array is constant produced
   | Constant_Bit {bitConstProduced :: [Bool]}
 
   -- TYPE MANIPULATORS
-  -- first pair is input subsequence length and tokens per element, second is output
-  | SequenceArrayController [(Int, TokenType)] [(Int, TokenType)]
+  --
+  -- Reshapes an input array sequence through space and time.  Buffers
+  -- inputs (left-to-right) and emits output only when sufficient
+  -- outputs are ready.  Args: input tuple, output tuple, array entry
+  -- type. Tuple consists of (sequence length, array length) for the
+  -- one input or one output port. Array type may be another array; if
+  -- so, it's treated as atomic and not split between two output
+  -- cycles.
+  | SequenceArrayRepack (Int, Int) (Int, Int) TokenType
+  -- First is list of input port types, second is output.
+  -- Pure combinational device: decomposes the input and output arrays to
+  -- a sequence of wires, and wires up inputs to outputs in order.
+  | ArrayReshape [TokenType] [TokenType]
   | DuplicateOutputs Int Op
 
 
@@ -81,7 +92,8 @@ getChildOps (MemWrite _) = []
 getChildOps (LineBuffer _ _ _ _) = []
 getChildOps (Constant_Int _) = []
 getChildOps (Constant_Bit _) = []
-getChildOps (SequenceArrayController _ _) = []
+getChildOps (SequenceArrayRepack _ _ _) = []
+getChildOps (ArrayReshape _ _) = []
 getChildOps (MapOp _ op) = [op]
 getChildOps (ReduceOp _ _ op) = [op]
 getChildOps (Underutil _ op) = [op]

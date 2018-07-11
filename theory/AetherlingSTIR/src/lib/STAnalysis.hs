@@ -23,12 +23,12 @@ space (Not t) = space (Abs t)
 space (And t) = space (Add t)
 space (Or t) = space (Add t)
 space (XOr t) = space (Add t)
-space (Eq t) = space (Add t)
-space (Neq t) = space (Add t)
-space (Lt t) = space (Add t)
-space (Leq t) = space (Add t)
-space (Gt t) = space (Add t)
-space (Geq t) = space (Add t)
+space Eq = space (Add T_Int)
+space Neq = space (Add T_Int)
+space Lt = space (Add T_Int)
+space Leq = space (Add T_Int)
+space Gt = space (Add T_Int)
+space Geq = space (Add T_Int)
 
 
 space (MemRead t) = OWA (len t) (len t)
@@ -47,15 +47,14 @@ space (LineBuffer (pHd:pTl) (wHd:wTl) (_:imgTl) t) =
 space (LineBuffer _ _ _ _) = addId
 space (Constant_Int consts) = OWA (len (T_Array (length consts) T_Int)) 0
 space (Constant_Bit consts) = OWA (len (T_Array (length consts) T_Bit)) 0
--- just a pass through, so will get removed by CoreIR
-space (SequenceArrayController inPortsAndSLens outPortsAndSLens) |
-  numPortsWithSLen1 == (length inPortsAndSLens + length outPortsAndSLens) = addId
-  where
-    numPortsWithSLen1 = length $ filter ((==) 1) $ map fst $ inPortsAndSLens ++ outPortsAndSLens
+
 -- may need a more accurate approximate, but most conservative is storing
--- entire input
-space (SequenceArrayController inPortsAndSLens _) = foldl (|+|) addId $ map elSpace inPortsAndSLens
-  where elSpace (inSLen, inType) = registerSpace [inType] |* inSLen
+-- entire input.
+space (SequenceArrayRepack (inSeq, inWidth) (outSeq, outWidth) inType) =
+  registerSpace [T_Array inWidth inType] |* inSeq
+
+-- just a pass through, so will get removed by CoreIR
+space (ArrayReshape _ _) = addId
 -- since pass through with no logic and resulting ops will count input wire sizes, no need to account for any space here
 space (DuplicateOutputs _ _) = addId
 
@@ -95,8 +94,6 @@ scaleCPS op n = SWLen (ssMult * n) (wSub * n)
 cps op = clocksPerSequence op
 clocksPerSequence :: Op -> SteadyStateAndWarmupLen
 registerCPS = baseWithNoWarmupSequenceLen
-getAllSACSeqLens (SequenceArrayController inputs outputs) = map fst $ inputs ++ outputs
-getAllSACSeqLens _ = undefined
 
 clocksPerSequence (Add t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Sub t) = baseWithNoWarmupSequenceLen
@@ -111,12 +108,12 @@ clocksPerSequence (Not t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (And t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Or t) = baseWithNoWarmupSequenceLen
 clocksPerSequence (XOr t) = baseWithNoWarmupSequenceLen
-clocksPerSequence (Eq t) = baseWithNoWarmupSequenceLen
-clocksPerSequence (Neq t) = baseWithNoWarmupSequenceLen
-clocksPerSequence (Lt t) = baseWithNoWarmupSequenceLen
-clocksPerSequence (Leq t) = baseWithNoWarmupSequenceLen
-clocksPerSequence (Gt t) = baseWithNoWarmupSequenceLen
-clocksPerSequence (Geq t) = baseWithNoWarmupSequenceLen
+clocksPerSequence Eq = baseWithNoWarmupSequenceLen
+clocksPerSequence Neq = baseWithNoWarmupSequenceLen
+clocksPerSequence Lt = baseWithNoWarmupSequenceLen
+clocksPerSequence Leq = baseWithNoWarmupSequenceLen
+clocksPerSequence Gt = baseWithNoWarmupSequenceLen
+clocksPerSequence Geq = baseWithNoWarmupSequenceLen
 
 -- to what degree can we pipeline MemRead and MemWrite
 clocksPerSequence (MemRead _) = baseWithNoWarmupSequenceLen
@@ -131,9 +128,12 @@ clocksPerSequence (LineBuffer (pHd:pTl) (wHd:wTl) (imgHd:imgTl) t) =
 clocksPerSequence (LineBuffer _ _ _ _) = SWLen 0 0
 clocksPerSequence (Constant_Int _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (Constant_Bit _) = baseWithNoWarmupSequenceLen
--- since one of the lengths must divide the other (as must be able to cleanly)
--- divide/group the input into the output, just take max as that is lcm
-clocksPerSequence sac@(SequenceArrayController _ _) = SWLen (maximum $ getAllSACSeqLens sac) 0
+
+-- Assuming either the input or output is fully utilized (dense), the
+-- clocks taken per sequence is just the longer sequence of the two.
+clocksPerSequence (SequenceArrayRepack (inSeq, _) (outSeq, _) _) =
+  SWLen (max inSeq outSeq) 0
+clocksPerSequence (ArrayReshape _ _) = baseWithNoWarmupSequenceLen
 clocksPerSequence (DuplicateOutputs _ _) = baseWithNoWarmupSequenceLen
 
 clocksPerSequence (MapOp _ op) = cps op
@@ -144,9 +144,11 @@ clocksPerSequence (ReduceOp par numComb op) = SWLen (ssMult * (numComb `ceilDiv`
   (wSub * (ceilLog par + (bool 1 0 (par == numComb))))
   where (SWLen ssMult wSub) = cps op
 
-clocksPerSequence (Underutil denom op) = multToSteadyState denom $ clocksPerSequence op
+clocksPerSequence (Underutil denom op) = SWLen (denom * ssMult) (denom * wSub)
+  where (SWLen ssMult wSub) = cps op
 -- since pipelined, this doesn't affect clocks per stream
-clocksPerSequence (RegDelay _ op) = clocksPerSequence op
+clocksPerSequence (RegDelay numDelay op) = SWLen ssMult (numDelay + wSub)
+  where (SWLen ssMult wSub) = clocksPerSequence op
 
 clocksPerSequence (ComposePar ops) = SWLen lcmSteadyState maxWarmup
   where 
@@ -176,12 +178,12 @@ initialLatency (Not t) = 1
 initialLatency (And t) = 1
 initialLatency (Or t) = 1
 initialLatency (XOr t) = 1
-initialLatency (Eq t) = 1
-initialLatency (Neq t) = 1
-initialLatency (Lt t) = 1
-initialLatency (Leq t) = 1
-initialLatency (Gt t) = 1
-initialLatency (Geq t) = 1
+initialLatency Eq = 1
+initialLatency Neq = 1
+initialLatency Lt = 1
+initialLatency Leq = 1
+initialLatency Gt = 1
+initialLatency Geq = 1
 
 initialLatency (MemRead _) = 1
 initialLatency (MemWrite _) = 1
@@ -189,7 +191,9 @@ initialLatency (MemWrite _) = 1
 initialLatency lb@(LineBuffer p w _ _) = warmupSub $ cps lb
 initialLatency (Constant_Int _) = 1
 initialLatency (Constant_Bit _) = 1
-initialLatency sac@(SequenceArrayController _ _) = foldl lcm 1 $ getAllSACSeqLens sac
+initialLatency (SequenceArrayRepack (inSeq, _) (outSeq, _) _) =
+  outSeq `ceilDiv` inSeq
+initialLatency (ArrayReshape _ _) = 1
 initialLatency (DuplicateOutputs _ _) = 1
 
 initialLatency (MapOp _ op) = initialLatency op
@@ -263,19 +267,20 @@ maxCombPath (Not t) = 1
 maxCombPath (And t) = 1
 maxCombPath (Or t) = 1
 maxCombPath (XOr t) = 1
-maxCombPath (Eq t) = 1
-maxCombPath (Neq t) = 1
-maxCombPath (Lt t) = 1
-maxCombPath (Leq t) = 1
-maxCombPath (Gt t) = 1
-maxCombPath (Geq t) = 1
+maxCombPath Eq = 1
+maxCombPath Neq = 1
+maxCombPath Lt = 1
+maxCombPath Leq = 1
+maxCombPath Gt = 1
+maxCombPath Geq = 1
 
 maxCombPath (MemRead _) = 1
 maxCombPath (MemWrite _) = 1
 maxCombPath (LineBuffer _ _ _ _) = 1
 maxCombPath (Constant_Int _) = 1
 maxCombPath (Constant_Bit _) = 1
-maxCombPath (SequenceArrayController _ _) = 1
+maxCombPath (SequenceArrayRepack _ _ _) = 1
+maxCombPath (ArrayReshape _ _) = 1
 maxCombPath (DuplicateOutputs _ _) = 1
 
 maxCombPath (MapOp _ op) = maxCombPath op
@@ -317,19 +322,20 @@ util (Not t) = 1
 util (And t) = 1
 util (Or t) = 1
 util (XOr t) = 1
-util (Eq t) = 1
-util (Neq t) = 1
-util (Lt t) = 1
-util (Leq t) = 1
-util (Gt t) = 1
-util (Geq t) = 1
+util Eq = 1
+util Neq = 1
+util Lt = 1
+util Leq = 1
+util Gt = 1
+util Geq = 1
 
 util (MemRead _) = 1
 util (MemWrite _) = 1
 util (LineBuffer _ _ _ _) = 1
 util (Constant_Int _) = 1
 util (Constant_Bit _) = 1
-util (SequenceArrayController _ _) = 1
+util (SequenceArrayRepack _ _ _) = 1
+util (ArrayReshape _ _) = 1
 util (DuplicateOutputs _ _) = 1
 
 util (MapOp _ op) = util op
@@ -408,29 +414,30 @@ inPorts (Not t) = oneInSimplePort t
 inPorts (And t) = twoInSimplePorts t
 inPorts (Or t) = twoInSimplePorts t
 inPorts (XOr t) = twoInSimplePorts t
-inPorts (Eq t) = twoInSimplePorts t
-inPorts (Neq t) = twoInSimplePorts t
-inPorts (Lt t) = twoInSimplePorts t
-inPorts (Leq t) = twoInSimplePorts t
-inPorts (Gt t) = twoInSimplePorts t
-inPorts (Geq t) = twoInSimplePorts t
+inPorts Eq = twoInSimplePorts T_Int
+inPorts Neq = twoInSimplePorts T_Int
+inPorts Lt = twoInSimplePorts T_Int
+inPorts Leq = twoInSimplePorts T_Int
+inPorts Gt = twoInSimplePorts T_Int
+inPorts Geq = twoInSimplePorts T_Int
 
 inPorts (MemRead _) = []
 inPorts (MemWrite t) = [T_Port "I" baseWithNoWarmupSequenceLen t 1]
 -- 2 as it goes straight through LB
 inPorts lb@(LineBuffer p _ img t) = [T_Port "I" (SWLen numInputs warmup) parallelType 1]
   where
-    parallelType = foldl (\innerType pDim -> T_Array pDim innerType) t p
+    parallelType = foldr (\pDim innerType -> T_Array pDim innerType) t p
     -- need the number of inputs equal to product of all dimensions divided by
     -- parallelism in each dimension
-    numInputs = foldl (\numSoFar (pDim, imgDim) -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
+    numInputs = foldr (\(pDim, imgDim) numSoFar -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
     warmup = warmupSub $ cps lb
 inPorts (Constant_Int _) = []
 inPorts (Constant_Bit _) = []
 
-inPorts (SequenceArrayController inputs _) = snd $ foldl makePort (0, []) inputs
-  where
-    makePort (n, ports) (sLen, tType) = (n+1, ports ++ [T_Port ("I" ++ show n) (SWLen sLen 0) tType 2])
+inPorts (SequenceArrayRepack (inSeq, inWidth) _ inType) =
+  [T_Port "I" (SWLen inSeq 0) (T_Array inWidth inType) 1]
+inPorts (ArrayReshape inTypes _) = renamePorts "I" $ map makePort inTypes
+  where makePort t = head $ oneInSimplePort t
 -- for in ports, no duplicates
 inPorts (DuplicateOutputs _ op) = inPorts op
 
@@ -480,34 +487,36 @@ outPorts (Not t) = oneOutSimplePort t
 outPorts (And t) = oneOutSimplePort t
 outPorts (Or t) = oneOutSimplePort t
 outPorts (XOr t) = oneOutSimplePort t
-outPorts (Eq t) = oneOutSimplePort T_Bit
-outPorts (Neq t) = oneOutSimplePort T_Bit
-outPorts (Lt t) = oneOutSimplePort T_Bit
-outPorts (Leq t) = oneOutSimplePort T_Bit
-outPorts (Gt t) = oneOutSimplePort T_Bit
-outPorts (Geq t) = oneOutSimplePort T_Bit
+outPorts Eq = oneOutSimplePort T_Bit
+outPorts Neq  = oneOutSimplePort T_Bit
+outPorts Lt = oneOutSimplePort T_Bit
+outPorts Leq = oneOutSimplePort T_Bit
+outPorts Gt = oneOutSimplePort T_Bit
+outPorts Geq = oneOutSimplePort T_Bit
 
 outPorts (MemRead t) = oneOutSimplePort t
 outPorts (MemWrite _) = []
 -- go back to (sLen - ((w `ceilDiv` p) - 1)) for out stream length when 
 -- including warmup and shutdown
-outPorts lb@(LineBuffer p w img t) = [T_Port "I" (SWLen numOutputs warmup) parallelStencilType 1]
+outPorts lb@(LineBuffer p w img t) = [T_Port "O" (SWLen numOutputs warmup) parallelStencilType 1]
   where
     -- make number of stencials equal to parallelism
     -- first is just one stencil
-    singleStencilType = foldl (\innerType wDim -> T_Array wDim innerType) t w
-    parallelStencilType = foldl (\innerType pDim -> T_Array pDim innerType) singleStencilType p
+    singleStencilType = foldr (\wDim innerType -> T_Array wDim innerType) t w
+    parallelStencilType = foldr (\pDim innerType -> T_Array pDim innerType) singleStencilType p
     -- need the number of outputs equal to product of all dimensions divided by
     -- parallelism in each dimension
     -- numOutputs in steady state depends on inputs, so using pDim instead of wDim here
-    numOutputs = foldl (\numSoFar (pDim, imgDim) -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
+    numOutputs = foldr (\(pDim, imgDim) numSoFar -> numSoFar * (imgDim `ceilDiv` pDim)) 1 (zip p img)
     warmup = warmupSub $ cps lb
 outPorts (Constant_Int ints) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length ints) T_Int) 1]
 outPorts (Constant_Bit bits) = [T_Port "O" baseWithNoWarmupSequenceLen (T_Array (length bits) T_Bit) 1]
 
-outPorts (SequenceArrayController _ outputs) = snd $ foldl makePort (0, []) outputs
-  where
-    makePort (n, ports) (sLen, tType) = (n+1, ports ++ [T_Port ("O" ++ show n) (SWLen sLen 0) tType 2])
+outPorts (SequenceArrayRepack _ (outSeq, outWidth) outType) =
+  [T_Port "O" (SWLen outSeq 0) (T_Array outWidth outType) 1]
+outPorts (ArrayReshape _ outTypes) = renamePorts "O" $ map makePort outTypes
+  where makePort t = head $ oneOutSimplePort t
+
 outPorts (DuplicateOutputs n op) = renamePorts "O" $ foldl (++) [] $ replicate n $ outPorts op
 
 outPorts (MapOp par op) = renamePorts "O" $ duplicatePorts par (outPorts op)
@@ -544,12 +553,12 @@ isComb (Not t) = True
 isComb (And t) = True
 isComb (Or t) = True
 isComb (XOr t) = True
-isComb (Eq t) = True
-isComb (Neq t) = True
-isComb (Lt t) = True
-isComb (Leq t) = True
-isComb (Gt t) = True
-isComb (Geq t) = True
+isComb Eq = True
+isComb Neq = True
+isComb Lt = True
+isComb Leq = True
+isComb Gt = True
+isComb Geq = True
 
 -- this is meaningless for this units that don't have both and input and output
 isComb (MemRead _) = True
@@ -557,9 +566,9 @@ isComb (MemWrite _) = True
 isComb (LineBuffer _ _ _ _) = True
 isComb (Constant_Int _) = True
 isComb (Constant_Bit _) = True
--- even if have sequential logic to store over multipel clocks,
--- always combinational path through for first clock
-isComb (SequenceArrayController _ _) = True
+
+isComb (SequenceArrayRepack _ _ _) = False
+isComb (ArrayReshape _ _) = True
 isComb (DuplicateOutputs _ _) = True
 
 isComb (MapOp _ op) = isComb op
