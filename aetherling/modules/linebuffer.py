@@ -57,9 +57,8 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
                                                   cleanName(str(imgType)),
                                                   strForValid)
     # this is the linebuffer with the outputs as a flat array, unsplit
-    defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "commonlib", "linebuffer",
+    defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "commonlib", "linebuffer", "unioned_" + name,
                                                          ["mantle", "coreir", "global"],
-                                                         "unioned_" + name,
                                                          {"input_type": cirInType,
                                                           "output_type": cirOutType,
                                                           "image_type": cirImgType,
@@ -114,8 +113,8 @@ def DefineLinebuffer1DPartitioned(cirb: CoreIRBackend, pxPerClock: int, stencilW
         def definition(cls):
             lb = Linebuffer(cirb, Array(pxPerClock, elementType), Array(stencilWidth + pxPerClock - 1, elementType), imgType)
             overlapPartition = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "overlapPartition",
-                                                             ["commonlib", "mantle", "coreir", "global"],
                                                              "overlapPartition_" + cls.name,
+                                                             ["commonlib", "mantle", "coreir", "global"],
                                                              {"elementType": cls.cirElementType,
                                                               "numOverlapped": pxPerClock,
                                                               "arrayLen": stencilWidth})()

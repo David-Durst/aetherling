@@ -49,9 +49,9 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
             dehydrate = MapParallel(cirb, N, DefineDehydrate(cirb, T))
             hydrate = Hydrate(cirb, T)
             coreirSerializer = CircuitInstanceFromGeneratorWrapper(cirb, "commonlib", "serializer",
-                                                         ["mantle", "coreir", "global"],
-                                                         "dehydrated_" + serializer.name,
-                                                         {"width": hydrate.size, "rate": N})
+                                                                   "dehydrated_" + serializer.name,
+                                                                   ["mantle", "coreir", "global"],
+                                                                   {"width": hydrate.size, "rate": N})
 
             wire(serializer.I, dehydrate.I)
             wire(dehydrate.out, coreirSerializer.I)
@@ -129,9 +129,9 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
             hydrate = MapParallel(cirb, N, DefineHydrate(cirb, T))
             dehydrate = Dehydrate(cirb, T)
             coreirDeserializer = CircuitInstanceFromGeneratorWrapper(cirb, "commonlib", "deserializer",
-                                                         ["mantle", "coreir", "global"],
-                                                         "dehydrated_" + serializer.name,
-                                                         {"width": hydrate.size, "rate": N})
+                                                                     "dehydrated_" + serializer.name,
+                                                                     ["mantle", "coreir", "global"],
+                                                                     {"width": hydrate.size, "rate": N})
 
             wire(serializer.I, hydrate.I)
             wire(hydrate.out, coreirDeserializer.I)

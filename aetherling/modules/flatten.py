@@ -21,9 +21,8 @@ def Flatten(cirb: CoreIRBackend, inputType: Kind, singleElementOutputType: Kind)
     cirInputType = cirb.get_type(inputType, True)
     cirSingleEleementOutputType = cirb.get_type(singleElementOutputType, True)
     name = "dehydrate_tin{}_tout".format(cleanName(str(cirInputType)), cleanName(str(singleElementOutputType)))
-    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "flatten",
+    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "flatten", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
-                                                         name,
                                                          {"inputType": cirInputType,
                                                           "singleElementOutputType": cirSingleEleementOutputType})
     return moduleToReturn
