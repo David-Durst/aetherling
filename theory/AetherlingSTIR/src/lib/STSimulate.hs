@@ -149,8 +149,22 @@ simhl (DuplicateOutputs n op) inSeqs inState =
     }
 
 simhl (MapOp par op) inSeqs state = simhlMap par op inSeqs state
+
+-- Note: it's not so clear what's supposed to happen if a MemRead
+-- is in the op being reduced. I'm not worrying about this for now.
+-- I'm also going to assume that the op is combinational (READ THIS!!!).
 simhl (ReduceOp par numComb op) inSeqs state =
-    simhlReduce par numComb op inSeqs state
+    if numComb `mod` par /= 0 || numComb == 0
+    then error("Simulator assumes paralellism of a reduce evenly divides "
+               ++ "its nonzero combine count (simulating "
+               ++ show (ReduceOp par numComb op)
+               ++ ")")
+    else if (length $ inPorts op) /= 2 || (length $ outPorts op) /= 1
+         then error("Simulator assumes ReduceOp op has 2 inputs/1 output. "
+                    ++ "simulating ("
+                    ++ show (ReduceOp par numComb op)
+                    ++ ")")
+         else simhlReduce par numComb op inSeqs state
 
 -- We only care about meaningful inputs and outputs.  Therefore,
 -- underutil and register delays should be no-ops in this high level
@@ -564,20 +578,11 @@ simhlReduceTreeLevel theReducedOp ([inSeq0]:[inSeq1]:moreInSeqs) inState =
                simhlReduceTreeLevel theReducedOp moreInSeqs inState
        ; (oneOutSeq:outputsBeyond, outState)
     }
-simhlReduceTreeLevel _ _ _ = error "Aethering internal error: something happened."
-
-simhlReduce :: Int -> Int -> Op -> [[ValueType]] -> SimhlState
-            -> ( [[ValueType]], SimhlState )
-simhlReduce par numComb theReducedOp inSeqs inState =
-    do { let laneInSeqs = simhlSplitMapInputs par inSeqs
-       ; let (treeOutSeq, outState)
-               = simhlReduceTree theReducedOp laneInSeqs inState
-       ; if par == numComb
-         then ([treeOutSeq], outState) -- Part 2 device unused.
-         else ([simhlReduceReg par numComb theReducedOp treeOutSeq], outState)
-         -- We have to put the output sequence in a 1-list for the 1
-         -- output port of ReduceOp.
-    }
+simhlReduceTreeLevel theReducedOp inLanes _ = error(
+        "Aethering internal error: broken reduce tree "
+        ++ show theReducedOp
+        ++ show inLanes
+    )
 
 -- Function that sorta simulates the register/op cycle (part 2) of the
 -- ReduceOp device. Takes a sequence of tree outputs and produces the
@@ -612,7 +617,20 @@ simhlReduceReg par numComb theReducedOp treeOutSeq =
           )
           (head valList)
           (tail valList)
-             
+
+simhlReduce :: Int -> Int -> Op -> [[ValueType]] -> SimhlState
+            -> ( [[ValueType]], SimhlState )
+simhlReduce par numComb theReducedOp inSeqs inState =
+    do { let laneInSeqs = simhlSplitMapInputs par inSeqs
+       ; let (treeOutSeq, outState)
+               = simhlReduceTree theReducedOp laneInSeqs inState
+       ; if par == numComb
+         then ([treeOutSeq], outState) -- Part 2 device unused.
+         else ([simhlReduceReg par numComb theReducedOp treeOutSeq], outState)
+         -- We have to put the output sequence in a 1-list for the 1
+         -- output port of ReduceOp.
+    }
+
 -- Helper functions for making it easier to create ValueType instances.
 vBits :: [Bool] -> [ValueType]
 vBits bools = map V_Bit bools
