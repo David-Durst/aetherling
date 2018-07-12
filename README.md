@@ -1,4 +1,5 @@
 # Aetherling
+[![Build Status](https://travis-ci.com/David-Durst/aetherling.svg?branch=master)](https://travis-ci.com/David-Durst/aetherling)
 
 ## Overview
 Aetherling is a library for creating data-parallel pipelines in hardware. Aetherling will eventually offer two APIs:
