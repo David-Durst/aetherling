@@ -131,7 +131,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
             coreirDeserializer = CircuitInstanceFromGeneratorWrapper(cirb, "commonlib", "deserializer",
                                                                      "dehydrated_" + serializer.name,
                                                                      ["mantle", "coreir", "global"],
-                                                                     {"width": hydrate.size, "rate": N})
+                                                                     {"width": dehydrate.size, "rate": N})
 
             wire(serializer.I, hydrate.I)
             wire(hydrate.out, coreirDeserializer.I)
