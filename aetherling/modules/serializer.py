@@ -126,17 +126,17 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
         def definition(serializer):
             # CoreIR serializer works on arrays of arrays of bits, where each T is an array of bits
             # so need to hydrate and dehydrate
-            hydrate = MapParallel(cirb, N, DefineHydrate(cirb, T))
             dehydrate = Dehydrate(cirb, T)
+            hydrate = MapParallel(cirb, N, DefineHydrate(cirb, T))
             coreirDeserializer = CircuitInstanceFromGeneratorWrapper(cirb, "commonlib", "deserializer",
                                                                      "dehydrated_" + serializer.name,
                                                                      ["mantle", "coreir", "global"],
                                                                      {"width": dehydrate.size, "rate": N})
 
-            wire(serializer.I, hydrate.I)
-            wire(hydrate.out, coreirDeserializer.I)
-            wire(coreirDeserializer.out, dehydrate.I)
-            wire(dehydrate.out, serializer.out)
+            wire(serializer.I, dehydrate.I)
+            wire(dehydrate.out, coreirDeserializer.I)
+            wire(coreirDeserializer.out, hydrate.I)
+            wire(hydrate.out, serializer.out)
             wire(coreirDeserializer.valid, serializer.valid)
 
             if has_ce:

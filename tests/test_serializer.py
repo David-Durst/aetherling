@@ -27,7 +27,7 @@ def test_serializer():
     wire(testcircuit.ready, serializer.ready)
 
     EndCircuit()
-   
+
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
@@ -54,7 +54,7 @@ def test_deserializer():
 
     testcircuit = DefineCircuit('Test_Deserializer', *args)
 
-    deserializer = Deserializer(cirb, inType.T, numIn)
+    deserializer = Deserializer(cirb, inType, numIn)
     wire(deserializer.I, testcircuit.I)
     wire(testcircuit.O, deserializer.out)
     wire(testcircuit.valid, deserializer.valid)
