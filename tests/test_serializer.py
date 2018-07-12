@@ -33,6 +33,7 @@ def test_serializer():
 
     for i in range(numIn):
         sim.set_value(testcircuit.I[i], int2seq(i, width), scope)
+        sim.evaluate()
 
     for i in range(numIn):
         assert sim.get_value(testcircuit.ready, scope) == (i == 0)
