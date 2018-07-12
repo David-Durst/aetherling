@@ -1,0 +1,23 @@
+language: python
+python:
+    - "3.6"
+env:
+    - export MANTLE=coreir
+
+sudo: true  # Needed for coreir-dev branch building coreir from source (installing g++-4.9 through apt)
+
+before_install:
+    - git clone https://github.com/phanrahan/magma.git
+    - pip install -e magma
+    - source magma/.travis/install_coreir.sh
+    - git clone https://github.com/phanrahan/mantle.git
+    - pip install pytest-cov
+    - pip install fabricate delegator.py
+    - pip install -e mantle
+
+install:
+    - pip install -r requirements.txt
+    - pip install -e .
+
+script:
+    - pytest -s tests
