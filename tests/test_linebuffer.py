@@ -51,24 +51,7 @@ def test_linebuffer_2pxPerClock_4pxWindow():
     wire(lb.valid_chain, validChainTerm.I[0])
 
     EndCircuit()
-
-    module = GetCoreIRModule(cirb, testcircuit)
-    module.save_to_file("test_linebuffer24.json")
-    print("running generators")
-    c.run_passes(["rungenerators"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    print("generators didn't fail")
-    print("running wireclocks")
-    c.run_passes(["wireclocks-coreir"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    print("wireclocks didn't fail")
-    print("running verifyconnectivity-noclkrst")
-    c.run_passes(["verifyconnectivity-noclkrst"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    print("verifyconnectivity didn't fail")
-    c.run_passes(["flattentypes", "flatten"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    print("flattening didn't fail")
-    c.run_passes(["verifyconnectivity-noclkrst", "deletedeadinstances"],
-                      ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-    print("verify connectivty and delete dead instances didn't fail")
-
+    
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
