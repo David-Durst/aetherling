@@ -8,6 +8,7 @@ from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
 from magma.frontend.coreir_ import GetCoreIRModule
+from mantle.coreir.type_helpers import Term
 
 def test_linebuffer_1pxPerClock_3pxWindow():
     c = coreir.Context()
@@ -46,6 +47,8 @@ def test_linebuffer_2pxPerClock_4pxWindow():
 
     wire(1, lb.wen)
     wire(lb.valid, testcircuit.valid)
+    validChainTerm = Term(cirb, 1)
+    wire(lb.valid_chain, validChainTerm.I[0])
 
     EndCircuit()
 
@@ -70,14 +73,18 @@ def test_linebuffer_2pxPerClock_4pxWindow():
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(3):
-        assert sim.get_value(testcircuit.valid, scope) == (i >= 2)
-        if i >= 2:
-            assert seq2int(sim.get_value(testcircuit.O[0], scope)) == (i-2)*2
-            assert seq2int(sim.get_value(testcircuit.O[0], scope)) == (i-2)*2+1
         sim.set_value(testcircuit.I[0], int2seq(2*i, width), scope)
         sim.set_value(testcircuit.I[1], int2seq(2*i+1, width), scope)
         sim.evaluate()
+        assert sim.get_value(testcircuit.valid, scope) == (i >= 1)
+        if i >= 1:
+            assert seq2int(sim.get_value(testcircuit.O[0], scope)) == (i-1)*2
+            assert seq2int(sim.get_value(testcircuit.O[1], scope)) == (i-1)*2+1
+            assert seq2int(sim.get_value(testcircuit.O[2], scope)) == i*2
+            assert seq2int(sim.get_value(testcircuit.O[3], scope)) == i*2+1
         sim.advance_cycle()
+        sim.evaluate()
+
 
 def test_linebuffer_2pxPerClock_3pxWindow():
     c = coreir.Context()
