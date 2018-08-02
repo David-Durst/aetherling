@@ -233,19 +233,19 @@ cycles, inner dim = array entries.
         nonlocal value_third
         value_third += 1
         return value_third == 3
-    
+
     value_fifth = -1
     def every_fifth_false():
         nonlocal value_fifth
         value_fifth += 1
         return value_fifth % 5 != 0
-    
+
     bit_generators = [alternating, third_true, every_fifth_false]
     bit_generators += [
         lambda: rng.random() >= 0.5 for rng in
         [random.Random(seed) for seed in [2001, 1, 6]] # <3
     ]
-    
+
     # For each generator create a test set.
     return [
         generate_one_test_data_set_1D(
