@@ -13,7 +13,7 @@ def DefineOneBitOneDimensionalLineBuffer(
         image_size: int,
         stride: int,
         origin: int,
-        last_row: bool = False) -> Circuit:
+        last_row: bool = True) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
     :param pixel_per_clock: The number of pixels (bits in this case) that the
@@ -24,6 +24,7 @@ def DefineOneBitOneDimensionalLineBuffer(
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
     :param origin: The index of the first pixel of the first window relative to
+    the top left corner of the image
     :param last_row: True if this is the last 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should probably leave this to true. Its used for adding extra ports when putting these in
     larger matrices.
@@ -32,8 +33,9 @@ def DefineOneBitOneDimensionalLineBuffer(
     1. image_size % pixel_per_clock == 0
     2. image_size % stride == 0
     3. stride % pixel_per_clock == 0 OR pixel_per_clock % stride == 0
-    4. window_width > origin >= 0
-    5. window_width < image_size
+    4. window_width > |origin|
+    5. origin <= 0
+    6. window_width < image_size
 
     :return: A 1D, 1 Bit Linebuffer
     """
@@ -69,14 +71,14 @@ def DefineOneBitOneDimensionalLineBuffer(
         # which is meaningless
         # origin can't go into image as that is just crop, unsupported
         # functionality
-        if origin >= window_width:
+        if abs(origin) >= window_width:
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: origin {} greater than or equal to"
-                            "window width {}".format(origin,
+                            "parameters: |origin| {} greater than or equal to"
+                            "window width {}".format(abs(origin),
                                                       window_width))
-        if origin < 0:
+        if origin > 0:
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: origin {} less than"
+                            "parameters: origin {} greater than"
                             "0".format(origin))
 
         # need window width outputs, if smaller than image, this is a weird
@@ -94,17 +96,18 @@ def DefineOneBitOneDimensionalLineBuffer(
         )
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
-        window_per_active_clock = max(pixel_per_clock / stride, 1)
+        window_per_active_clock = max(pixel_per_clock // stride, 1)
         IO = ['I', In(Array(pixel_per_clock, Bit)),
               'O', Out(Array(window_per_active_clock, Array(window_width, Bit))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True) + \
-             [] if last_row else ['next_row', Out(Array(pixel_per_clock, Bit))]
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)
+        if not last_row:
+            IO += ['next_row', Out(Array(pixel_per_clock, Bit))]
 
         @classmethod
         def definition(cls):
 
             shift_register = MapParallel(cirb, pixel_per_clock,
-                                         SIPO(image_size / pixel_per_clock, 0, has_ce=True))
+                                         SIPO(image_size // pixel_per_clock, 0, has_ce=True))
             wire(cls.I, shift_register.I)
 
             # wire up each window, walking first across parallel inputs (across shift registers)
@@ -131,7 +134,7 @@ def DefineOneBitOneDimensionalLineBuffer(
             for current_window_index in range(cls.window_per_active_clock)[::-1]:
                 set_shift_register_location_using_1D_coordinates(
                     stride * (cls.window_per_active_clock - current_window_index - 1) +
-                    origin
+                    origin * -1
                 )
                 # wire up a window while still entries in it
                 for index_in_window in range(window_width):
@@ -150,7 +153,12 @@ def DefineOneBitOneDimensionalLineBuffer(
             # if not last row, have output ports for ends of all shift_registers so next
             # 1D can accept them
             if not last_row:
-                wire(cls.next_row, shift_register.O[:][len(shift_register.O[0]) - 1])
+                for i in range(pixel_per_clock):
+                    current_location = (len(shift_register.O) - 1) * pixel_per_clock + i
+                    set_shift_register_location_using_1D_coordinates(current_location)
+                    wire(cls.next_row,
+                         shift_register.O[current_shift_register][index_in_shift_register])
+                    used_coordinates.add(current_location)
 
             # wire up all non-used coordinates to terms
             for i in range(image_size):
@@ -162,20 +170,25 @@ def DefineOneBitOneDimensionalLineBuffer(
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
-            valid_counter = SizedCounterModM(max(used_coordinates) - 1 - origin, has_ce=True)
+            valid_counter = SizedCounterModM(max(used_coordinates) + 1 - origin, has_ce=True)
 
-            wire(valid_counter.CE, cls.CE)
+            wire(valid_counter.CE &
+                 (valid_counter.O < max(used_coordinates) - origin), cls.CE)
             wire(valid_counter.valid, cls.valid)
 
     return _LB
 
 
-def OneBitOneDimensionalLineBuffer(pixel_per_clock: int,
-                                   window_width: int,
-                                   image_size: int,
-                                   output_stride: int,
-                                   origin: int) -> Circuit:
+def OneBitOneDimensionalLineBuffer(
+        cirb: CoreIRBackend,
+        pixel_per_clock: int,
+        window_width: int,
+        image_size: int,
+        output_stride: int,
+        origin: int,
+        last_row: bool = True) -> Circuit:
     """
+    :param cirb: The CoreIR backend currently be used
     :param pixel_per_clock: The number of pixels (bits in this case) that the
     linebuffer receives as input each clock.
     :param window_width: The size of the stencils that are emitted
@@ -184,12 +197,18 @@ def OneBitOneDimensionalLineBuffer(pixel_per_clock: int,
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
     :param origin: The index of the currently provided pixel
+    :param last_row: True if this is the last 1D row in a 2D matrix or the only one in a 2D matrix.
+    Users should probably leave this to true. Its used for adding extra ports when putting these in
+    larger matrices.
+
     :return:
     """
     return DefineOneBitOneDimensionalLineBuffer(
+        cirb,
         pixel_per_clock,
         window_width,
         image_size,
         output_stride,
-        origin
+        origin,
+        last_row
     )()
