@@ -4,11 +4,18 @@ import sys
 import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
+from magma.backend.coreir_ import CoreIRBackend
 import coreir
 from magma.scope import Scope
+from aetherling.modules.native_linebuffer import OneBitOneDimensionalLineBuffer
 
 def test_1D_bit_line_buffer():
     """Run tests for the 1D bit line buffer."""
+
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+
     
     # Parameters of test line buffers.
     # pixels/clock window image stride origin
@@ -30,9 +37,11 @@ def test_1D_bit_line_buffer():
     for params in param_tuples:
         ppc, _, img, _, _ = params
         for in_arrays in generate_test_data_sets_1D_bits(ppc, img):
-            a_1D_bit_line_buffer_test(in_arrays, *params)
+            a_1D_bit_line_buffer_test(cirb, scope, in_arrays, *params)
 
 def a_1D_bit_line_buffer_test(
+    cirb,
+    scope,
     in_arrays,
     pixels_per_clock: int,
     window_width: int,
@@ -53,15 +62,12 @@ def a_1D_bit_line_buffer_test(
         pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    # Need these two for some reason.
-    c = coreir.Context()
-    scope = Scope()
-
-    LineBufferType = DefineOneBitOneDimensionalLineBuffer(
-        pixels_per_clock, window_widt, image_size, output_stride, origin
+    LineBufferType = OneBitOneDimensionalLineBuffer(
+        cirb, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    sim = CoreIRSimulator(LineBufferType, LineBufferType.CLK)
+    sim = CoreIRSimulator(LineBufferType, LineBufferType.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     # List for recording sequence of valid outputs (in the same format
     # as specified by expected_valid_outputs_1D), and a helper function
