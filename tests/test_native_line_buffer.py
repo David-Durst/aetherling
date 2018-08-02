@@ -190,14 +190,15 @@ is that the module is allowed to output anything when the expected
 value is None (i.e. we expect garbage)."""
     stderr = lambda *args: print(*args, file=sys.stderr)
 
-    def windows_match(actual, expected):
+    def windows_match(tup):
+        actual, expected = tup
         if len(actual) != len(expected):
             stderr("Window sizes don't match")
             return False
-        return all(
-            lambda a, e: e == None or a == e,
+        return all(map(
+            lambda tup: tup[1] == None or tup[0] == tup[1],
             zip(actual, expected)
-        )
+        ))
 
     if len(actual) != len(expected):
         stderr("Different number of valid outputs.")
@@ -208,7 +209,7 @@ value is None (i.e. we expect garbage)."""
                 stderr("Different parallelism (i.e. output bus width.)")
                 return False
             else:
-                return all(windows_match, zip(actual_par, expected_par))
+                return all(map(windows_match, zip(actual_par, expected_par)))
 
 def generate_test_data_sets_1D_bits(
     pixels_per_clock: int,
@@ -221,26 +222,38 @@ cycles, inner dim = array entries.
     """
     
     # Make some random bit generators and some simple predictable generators.
-    def alternating(value=[False]):
-        value[0] = not value[0]
-        return value[0]
+    alternating_value = True
+    def alternating():
+        nonlocal alternating_value
+        alternating_value = not alternating_value
+        return alternating_value
+
+    value_third = -1
+    def third_true():
+        nonlocal value_third
+        value_third += 1
+        return value_third == 3
     
-    def third_true(value=-1):
-        value += 1
-        return value == 3
+    value_fifth = -1
+    def every_fifth_false():
+        nonlocal value_fifth
+        value_fifth += 1
+        return value_fifth % 5 != 0
     
-    def every_fifth_false(value=-1):
-        value += 1
-        return value % 5 != 0
+    bit_generators = [alternating, third_true, every_fifth_false]
+    bit_generators += [
+        lambda: rng.random() >= 0.5 for rng in
+        [random.Random(seed) for seed in [2001, 1, 6]] # <3
+    ]
     
-    generators += [random.Random(seed) for seed in [2001, 1, 6]] # <3
+    # For each generator create a test set.
     return [
         generate_one_test_data_set_1D(
-            lambda: generator.random() >= 0.5,
+            generator,
             pixels_per_clock,
             image_size
         )
-        for generator in 
+        for generator in bit_generators
     ]
 
 def generate_one_test_data_set_1D(
