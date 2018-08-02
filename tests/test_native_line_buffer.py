@@ -1,0 +1,265 @@
+"""My (Akeley's) attempt at writing a test for a 1D bit line buffer."""
+
+import sys
+import random
+from itertools import chain
+from magma.simulator.coreir_simulator import CoreIRSimulator
+import coreir
+from magma.scope import Scope
+
+def test_1D_bit_line_buffer():
+    """Run tests for the 1D bit line buffer."""
+    
+    # Parameters of test line buffers.
+    # pixels/clock window image stride origin
+    param_tuples = (
+        #ppc win img str org
+        (3,  6,  300, 2, -1),
+        (1,  3,  256, 2,  0),
+        (1,  3,  512, 1, -1),
+        (16, 4, 1080, 2, -1),
+        (1,  2, 1024, 2,  0),
+        (4,  8,  720, 4, -2),
+        (4,  8,  720, 2, -3),
+        (13, 5,   65, 1,  0),
+        (1,  15, 130, 13,-1),
+        (2,  3, 2048, 2, -1),
+    )
+    
+    # Test line buffer for each combination of parameters and test data.
+    for params in param_tuples:
+        ppc, _, img, _, _ = params
+        for in_arrays in generate_test_data_sets_1D_bits(ppc, img):
+            a_1D_bit_line_buffer_test(in_arrays, *params)
+
+def a_1D_bit_line_buffer_test(
+    in_arrays,
+    pixels_per_clock: int,
+    window_width: int,
+    image_size: int,
+    output_stride: int,
+    origin: int
+):
+    """Simulate a line buffer with the given parameters and specified
+    input (list-of-lists, outer list is time and inner list represents
+    array of bits).
+    """
+    window_count, parallelism, valid_count = internal_params_1D(
+        pixels_per_clock, window_width, image_size, output_stride, origin
+    )
+
+    expected = expected_valid_outputs_1D(
+        in_arrays,
+        pixels_per_clock, window_width, image_size, output_stride, origin
+    )
+
+    # Need these two for some reason.
+    c = coreir.Context()
+    scope = Scope()
+
+    LineBufferType = DefineOneBitOneDimensionalLineBuffer(
+        pixels_per_clock, window_widt, image_size, output_stride, origin
+    )
+
+    sim = CoreIRSimulator(LineBufferType, LineBufferType.CLK)
+
+    # List for recording sequence of valid outputs (in the same format
+    # as specified by expected_valid_outputs_1D), and a helper function
+    # that ticks the simulation, appending any output received when
+    # the simulated module asserts valid.
+    actual = []
+    def tick_sim_collect_outputs():
+        sim.evaluate()
+        sim.advance_cycle()
+        if sim.get_value(LineBufferType.valid, scope):
+            actual.append(
+                [
+                    [
+                        bool(sim.get_value(LineBufferType.O[par][pix], scope))
+                        for pix in range(window_width)
+                    ]
+                    for par in range(parallelism)
+                ]
+            )
+
+    for array in in_arrays:
+        sim.set_value(LineBufferType.I, array, scope)
+        tick_sim_collect_outputs()
+
+    for i in range(100000):
+        if len(actual) == valid_count:
+            break
+        tick_sim_collect_outputs()
+    else:
+        assert 0, "Circuit timed out: got only %i/%i outputs." % (
+            len(actual), valid_count
+        )
+    # XXX Should I test for the module still asserting valid
+    # after all expected outputs were received?
+
+    assert outputs_match_1D(actual, expected), "test failed"
+
+def expected_valid_outputs_1D(
+    in_arrays,
+    pixels_per_clock: int,
+    window_width: int,
+    image_size: int,
+    output_stride: int,
+    origin: int
+):
+    """Given 1D line buffer parameters and a list of lists of pixel
+    values representing the stream of input (one entry = one clock
+    cycles' array-of-pixels input), return a list-of-lists-of-lists of
+    values (None for garbage) representing outputs on cycles where the
+    linebuffer asserts valid, in the order:
+        outer dimension :  time
+        middle dimension:  list of windows (parallelism)
+        inner dimension :  pixels within a window
+    """
+    stride = output_stride
+    if len(in_arrays) * pixels_per_clock != image_size:
+        raise Exception(
+            "Expected in_arrays length of %g"
+                 % (image_size/pixels_per_clock)
+            + f" for pixels_per_clock {pixels_per_clock}"
+            + f" and image_size {image_size}."
+        )
+    # index -> pixel
+    pixel_dict = {i:b for i,b in enumerate(chain(*in_arrays))}
+
+    window_count, parallelism, valid_count = internal_params_1D(
+        pixels_per_clock, window_width, image_size, output_stride, origin
+    )
+
+    expected= \
+    [
+        [
+            [
+                pixel_dict.get(window_offset + pixel_offset)
+                for pixel_offset in range(window_width)
+            ]
+            for window_offset # index of left pixel of window.
+            in range(origin + parallelism * stride * time_idx,
+                     origin + parallelism * stride * (1+time_idx),
+                     stride)
+        ]
+        for time_idx in range(valid_count)
+    ]
+    return expected
+
+def internal_params_1D(
+    pixels_per_clock: int,
+    window_width: int,
+    image_size: int,
+    output_stride: int,
+    origin: int
+):
+    """Calculate "internal" parameters of linebuffer based on user parameters.
+
+    This includes the window_count (number of total windows outputted),
+    the parallelism (width of the output bus in number of windows),
+    and the valid_count (number of times valid should be asserted).
+
+    Return as tuple (window_count, parallelism, valid_count).
+    """
+    stride = output_stride
+
+    # Total number of windows outputted.
+    window_count = image_size//stride
+
+    # Number of parallel window outputs.
+    parallelism = pixels_per_clock//stride
+    if parallelism == 0:
+        parallelism = 1
+    else:
+        assert parallelism*stride == pixels_per_clock, \
+            "Expected integer throughput (stride evenly dividing px/clk)."
+
+    # Number of times valid should be asserted.
+    valid_count = window_count//parallelism
+    assert valid_count * parallelism == window_count, \
+        "Expected window count (img/stride) to be divisible by parallelism " \
+        "(px/clk / stride)"
+
+    return window_count, parallelism, valid_count
+
+def outputs_match_1D(actual, expected):
+    """Compare two 3D-arrays (in format as in expected_valid_output) and
+see if they match. The reason we need this function instead of just ==
+is that the module is allowed to output anything when the expected
+value is None (i.e. we expect garbage)."""
+    stderr = lambda *args: print(*args, file=sys.stderr)
+
+    def windows_match(actual, expected):
+        if len(actual) != len(expected):
+            stderr("Window sizes don't match")
+            return False
+        return all(
+            lambda a, e: e == None or a == e,
+            zip(actual, expected)
+        )
+
+    if len(actual) != len(expected):
+        stderr("Different number of valid outputs.")
+        return False
+    else:
+        for (actual_par, expected_par) in zip(actual, expected):
+            if len(actual_par) != len(expected_par):
+                stderr("Different parallelism (i.e. output bus width.)")
+                return False
+            else:
+                return all(windows_match, zip(actual_par, expected_par))
+
+def generate_test_data_sets_1D_bits(
+    pixels_per_clock: int,
+    image_size: int,
+):
+    """Make a 3D-list of test data suitable for testing a 1D bit line
+buffer with the given pixels/clock and image size parameters. Outer
+dim = list of separate test sets, middle dim = input over clock
+cycles, inner dim = array entries.
+    """
+    
+    # Make some random bit generators and some simple predictable generators.
+    def alternating(value=[False]):
+        value[0] = not value[0]
+        return value[0]
+    
+    def third_true(value=-1):
+        value += 1
+        return value == 3
+    
+    def every_fifth_false(value=-1):
+        value += 1
+        return value % 5 != 0
+    
+    generators += [random.Random(seed) for seed in [2001, 1, 6]] # <3
+    return [
+        generate_one_test_data_set_1D(
+            lambda: generator.random() >= 0.5,
+            pixels_per_clock,
+            image_size
+        )
+        for generator in 
+    ]
+
+def generate_one_test_data_set_1D(
+    random_value,
+    pixels_per_clock: int,
+    image_size: int,
+):
+    """Generate a 2D-list of test data suitable for testing a 1D line
+buffer with the given pixels/clock and image size parameters. Populate
+the test data using values from the random_value function passed.
+    """
+    # Make an array of pixels that we will split up.
+    pixels = [random_value() for i in range(image_size)]
+
+    cycle_count = image_size//pixels_per_clock
+    assert cycle_count * pixels_per_clock == image_size, \
+        "Expected pixels/clock to evenly divide pixel count."
+
+    return [
+        pixels[s:s+pixels_per_clock]
+        for s in range(0, image_size, pixels_per_clock)
+    ]
