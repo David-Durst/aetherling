@@ -15,12 +15,37 @@ def DefineOneBitOneDimensionalLineBuffer(pixel_per_clock: int,
     :param output_stride: The distance between origins of consecutive stencils
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
-    :param origin: The index of the first pixel of the first window in the
+    :param origin: The index of the first pixel of the first window relative to
+
      image
     :return:
     """
     class _LB(Circuit):
-        if window % pixel_per_clock != 0:
+        # this is necessary so that get same number of pixels in every
+        # clock, don't have a weird ending with only 1 valid input pixel
+        if image_size % pixel_per_clock != 0:
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_size {} not divisiable by"
+                            "pixel_per_clock {}".format(image_size,
+                                                        pixel_per_clock))
+        # the average number of output windows per clock = px per clock
+        # / stride, this must be integer or reciprocal of one so that
+        # easier to map/ underutil rest of system, otherwise
+        # have a weirdly utilized downstream system that is only
+        # partially used on some clocks
+        if output_stride % pixel_per_clock != 0 and pixel_per_clock % output_stride != 0:
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: output_stride {} not divisiable by"
+                            "pixel_per_clock {} nor vice-verse. One of them must"
+                            "be divisble by the other.".format(output_stride,
+                                                        pixel_per_clock))
+        # stride == downsample amount, this requires a cleanly divisible downsample
+        if image_size % output_stride != 0:
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_size {} not divisiable by"
+                            "output_stride {}".format(image_size,
+                                                        output_stride))
+
 
         name = "OneBitOneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
                "_{}imgSize_{}outputStride_{}origin".format(
