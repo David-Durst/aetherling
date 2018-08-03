@@ -4,35 +4,58 @@ import sys
 import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
+from magma.backend.coreir_ import CoreIRBackend
+from magma import *
 import coreir
 from magma.scope import Scope
+from aetherling.modules.native_linebuffer import DefineOneBitOneDimensionalLineBuffer
+
+def test_basic_native_linebuffer():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('lb1_3_Test', *args)
+
+    lb = OneBitOneDimensionalLineBuffer(cirb, 1, 3, 100, 1, 0, True)
+
+    EndCircuit()
 
 def test_1D_bit_line_buffer():
     """Run tests for the 1D bit line buffer."""
+
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+
     
     # Parameters of test line buffers.
     # pixels/clock window image stride origin
     param_tuples = (
         #ppc win img str org
-        (3,  6,  300, 2, -1),
-        (1,  3,  256, 2,  0),
-        (1,  3,  512, 1, -1),
-        (16, 4, 1080, 2, -1),
-        (1,  2, 1024, 2,  0),
-        (4,  8,  720, 4, -2),
-        (4,  8,  720, 2, -3),
-        (13, 5,   65, 1,  0),
-        (1,  15, 130, 13,-1),
-        (2,  3, 2048, 2, -1),
+        (1, 3, 9, 1, 0),
+        # (3,  6,  300, 2, -1),
+        # (1,  3,  256, 2,  0),
+        # (1,  3,  512, 1, -1),
+        # (16, 4, 1080, 2, -1),
+        # (1,  2, 1024, 2,  0),
+        # (4,  8,  720, 4, -2),
+        # (4,  8,  720, 2, -3),
+        # (13, 5,   65, 1,  0),
+        # (1,  15, 130, 13,-1),
+        # (2,  3, 2048, 2, -1),
     )
     
     # Test line buffer for each combination of parameters and test data.
     for params in param_tuples:
         ppc, _, img, _, _ = params
         for in_arrays in generate_test_data_sets_1D_bits(ppc, img):
-            a_1D_bit_line_buffer_test(in_arrays, *params)
+            a_1D_bit_line_buffer_test(cirb, scope, in_arrays, *params)
 
 def a_1D_bit_line_buffer_test(
+    cirb,
+    scope,
     in_arrays,
     pixels_per_clock: int,
     window_width: int,
@@ -53,15 +76,12 @@ def a_1D_bit_line_buffer_test(
         pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    # Need these two for some reason.
-    c = coreir.Context()
-    scope = Scope()
-
     LineBufferType = DefineOneBitOneDimensionalLineBuffer(
-        pixels_per_clock, window_widt, image_size, output_stride, origin
+        cirb, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    sim = CoreIRSimulator(LineBufferType, LineBufferType.CLK)
+    sim = CoreIRSimulator(LineBufferType, LineBufferType.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     # List for recording sequence of valid outputs (in the same format
     # as specified by expected_valid_outputs_1D), and a helper function
@@ -222,6 +242,7 @@ cycles, inner dim = array entries.
     """
     
     # Make some random bit generators and some simple predictable generators.
+    # Repating patterns first.
     alternating_value = True
     def alternating():
         nonlocal alternating_value
@@ -241,11 +262,13 @@ cycles, inner dim = array entries.
         return value_fifth % 5 != 0
 
     bit_generators = [alternating, third_true, every_fifth_false]
+    
+    # Now add pseudorandom patterns.
     bit_generators += [
         lambda: rng.random() >= 0.5 for rng in
         [random.Random(seed) for seed in [2001, 1, 6]] # <3
     ]
-
+    
     # For each generator create a test set.
     return [
         generate_one_test_data_set_1D(
