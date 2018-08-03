@@ -1,6 +1,8 @@
 from magma import *
+from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
 from mantle.common.sipo import SIPO
+from mantle.common.compare import ULT
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.coreir.type_helpers import Term
@@ -123,9 +125,9 @@ def DefineOneBitOneDimensionalLineBuffer(
                 return (current_shift_register * pixel_per_clock +
                         index_in_shift_register)
             def set_shift_register_location_using_1D_coordinates(location: int) -> int:
-                global current_shift_register, index_in_shift_register
-                current_shift_register = location / pixel_per_clock
-                index_in_shift_register = location % pixel_per_clock
+                nonlocal current_shift_register, index_in_shift_register
+                index_in_shift_register = location // pixel_per_clock
+                current_shift_register = location % pixel_per_clock
             used_coordinates = set()
 
 
@@ -163,18 +165,24 @@ def DefineOneBitOneDimensionalLineBuffer(
             # wire up all non-used coordinates to terms
             for i in range(image_size):
                 if i in used_coordinates:
-                    pass
+                    continue
                 set_shift_register_location_using_1D_coordinates(i)
                 term = Term(cirb, 1)
-                wire(term, shift_register.O[current_shift_register][index_in_shift_register])
+                wire(term.I[0], shift_register.O[current_shift_register][index_in_shift_register])
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
             valid_counter = SizedCounterModM(max(used_coordinates) + 1 - origin, has_ce=True)
 
-            wire(valid_counter.CE &
-                 (valid_counter.O < max(used_coordinates) - origin), cls.CE)
-            wire(valid_counter.valid, cls.valid)
+            valid_counter_max = DefineCoreirConst(len(valid_counter.O),
+                                                  max(used_coordinates) - origin)()
+            counter_condition = ULT(len(valid_counter.O))
+            wire(counter_condition.I0, valid_counter.O)
+            wire(counter_condition.I1, valid_counter_max.out)
+
+            wire(enable(bit(cls.CE) &
+                 (valid_counter.O < valid_counter_max.out)), valid_counter.CE)
+            wire((valid_counter.O == valid_counter_max.out), cls.valid)
 
     return _LB
 

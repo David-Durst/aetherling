@@ -5,9 +5,22 @@ import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
 from magma.backend.coreir_ import CoreIRBackend
+from magma import *
 import coreir
 from magma.scope import Scope
 from aetherling.modules.native_linebuffer import OneBitOneDimensionalLineBuffer
+
+def test_basic_native_linebuffer():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('lb1_3_Test', *args)
+
+    lb = OneBitOneDimensionalLineBuffer(cirb, 1, 3, 100, 1, 0, True)
+
+    EndCircuit()
 
 def test_1D_bit_line_buffer():
     """Run tests for the 1D bit line buffer."""
@@ -238,7 +251,7 @@ cycles, inner dim = array entries.
     def every_fifth_false(value=-1):
         value += 1
         return value % 5 != 0
-    
+    """
     generators += [random.Random(seed) for seed in [2001, 1, 6]] # <3
     return [
         generate_one_test_data_set_1D(
@@ -248,6 +261,7 @@ cycles, inner dim = array entries.
         )
         for generator in 
     ]
+    """
 
 def generate_one_test_data_set_1D(
     random_value,
