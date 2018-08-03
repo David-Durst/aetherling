@@ -45,6 +45,22 @@ def test_multiple_sipo():
     save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json.txt")
 
 
+def test_sipo():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ['I', In(Bit), 'O', Out(Array(4, Bit))] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('sipo_test', *args)
+
+    sipo = SIPO(4, 0, has_ce=True)
+    wire(1, sipo.CE)
+    wire(testcircuit.I, sipo.I)
+    wire(testcircuit.O, sipo.O)
+    EndCircuit()
+
+    save_CoreIR_json(cirb, testcircuit, "sipo.json")
+
 def test_sized_counter_modm():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
@@ -60,13 +76,33 @@ def test_sized_counter_modm():
 
     save_CoreIR_json(cirb, testcircuit, "sized_counter_modm.json")
 
+def test_sipo_and_counter():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ['I', In(Bit), 'O_sipo', Out(Array(4, Bit))] + ['O_counter', Out(Array(2, Bit))] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('sipo_and_counter_test', *args)
+
+    sipo = SIPO(4, 0, has_ce=True)
+    wire(1, sipo.CE)
+    wire(testcircuit.I, sipo.I)
+    wire(testcircuit.O_sipo, sipo.O)
+
+    counter = SizedCounterModM(3, has_ce=True)
+    wire(1, counter.CE)
+    wire(testcircuit.O_counter, counter.O)
+    EndCircuit()
+
+    save_CoreIR_json(cirb, testcircuit, "sipo_and_counter.json")
+
 def test_multiple_sipo_and_counter():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
     args = ['I', In(Bit), 'O_sipo', Out(Array(4, Bit))] + ['O_counter', Out(Array(2, Bit))] + ClockInterface(False, False)
 
-    testcircuit = DefineCircuit('multiple_sip_and_counter_test', *args)
+    testcircuit = DefineCircuit('multiple_sipo_and_counter_test', *args)
 
     map_sipo = MapParallel(cirb, 1, SIPO(4, 0, has_ce=True))
     wire(1, map_sipo.CE[0])
