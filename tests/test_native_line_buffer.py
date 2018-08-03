@@ -5,6 +5,8 @@ import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
 from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRModule
+
 from magma import *
 import coreir
 from magma.scope import Scope
@@ -42,9 +44,14 @@ def test_multiple_sipo():
     wire(testcircuit.O, map_sipo.O[0])
     EndCircuit()
 
-    #save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
-                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    mod = GetCoreIRModule(cirb, testcircuit)
+    c.run_passes(["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst",
+                             "flattentypes", "flatten", "verifyconnectivity-noclkrst", "deletedeadinstances"],
+                 namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    # save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
+    #sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    #                      namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 
 def test_sipo():
