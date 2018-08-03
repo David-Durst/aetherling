@@ -42,7 +42,9 @@ def test_multiple_sipo():
     wire(testcircuit.O, map_sipo.O[0])
     EndCircuit()
 
-    save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json.txt")
+    #save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 
 def test_sipo():
@@ -59,7 +61,9 @@ def test_sipo():
     wire(testcircuit.O, sipo.O)
     EndCircuit()
 
-    save_CoreIR_json(cirb, testcircuit, "sipo.json")
+    #save_CoreIR_json(cirb, testcircuit, "sipo.json")
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 def test_sized_counter_modm():
     c = coreir.Context()
@@ -74,7 +78,9 @@ def test_sized_counter_modm():
     wire(testcircuit.O, counter.O)
     EndCircuit()
 
-    save_CoreIR_json(cirb, testcircuit, "sized_counter_modm.json")
+    #save_CoreIR_json(cirb, testcircuit, "sized_counter_modm.json")
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 def test_sipo_and_counter():
     c = coreir.Context()
@@ -94,7 +100,10 @@ def test_sipo_and_counter():
     wire(testcircuit.O_counter, counter.O)
     EndCircuit()
 
-    save_CoreIR_json(cirb, testcircuit, "sipo_and_counter.json")
+    #save_CoreIR_json(cirb, testcircuit, "sipo_and_counter.json")
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
 
 def test_multiple_sipo_and_counter():
     c = coreir.Context()
@@ -114,7 +123,9 @@ def test_multiple_sipo_and_counter():
     wire(testcircuit.O_counter, counter.O)
     EndCircuit()
 
-    save_CoreIR_json(cirb, testcircuit, "multiple_sipo_and_counter.json")
+    #save_CoreIR_json(cirb, testcircuit, "multiple_sipo_and_counter.json")
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 def test_1D_bit_line_buffer():
     """Run tests for the 1D bit line buffer."""
@@ -174,7 +185,7 @@ def a_1D_bit_line_buffer_test(
         cirb, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    save_CoreIR_json(cirb, LineBufferDef, "native_linebuffer.json")
+    #save_CoreIR_json(cirb, LineBufferDef, "native_linebuffer.json")
 
     sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])

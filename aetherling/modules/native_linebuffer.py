@@ -111,6 +111,8 @@ def DefineOneBitOneDimensionalLineBuffer(
             shift_register = MapParallel(cirb, pixel_per_clock,
                                          SIPO(image_size // pixel_per_clock, 0, has_ce=True))
             wire(cls.I, shift_register.I)
+            for i in range(pixel_per_clock):
+                wire(cls.CE, shift_register.CE[i])
 
             # wire up each window, walking first across parallel inputs (across shift registers)
             # then to next entry of shift registers
