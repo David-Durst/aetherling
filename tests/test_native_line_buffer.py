@@ -10,6 +10,10 @@ import coreir
 from magma.scope import Scope
 from aetherling.modules.native_linebuffer import OneBitOneDimensionalLineBuffer, \
     DefineOneBitOneDimensionalLineBuffer
+from aetherling.modules.map_fully_parallel_sequential import MapParallel
+from mantle.common.sipo import SIPO
+from mantle.common.countermod import SizedCounterModM
+from aetherling.helpers.cli_helper import save_CoreIR_json
 
 def test_basic_native_linebuffer():
     c = coreir.Context()
@@ -17,11 +21,64 @@ def test_basic_native_linebuffer():
     scope = Scope()
     args = ClockInterface(False, False)
 
-    testcircuit = DefineCircuit('lb1_3_Test', *args)
+    testcircuit = DefineCircuit('create_native_lb_test', *args)
 
     lb = OneBitOneDimensionalLineBuffer(cirb, 1, 3, 100, 1, 0, True)
 
     EndCircuit()
+
+
+def test_multiple_sipo():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ['I', In(Bit), 'O', Out(Array(4, Bit))] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('multiple_sipo_test', *args)
+
+    map_sipo = MapParallel(cirb, 1, SIPO(4, 0, has_ce=True))
+    wire(1, map_sipo.CE[0])
+    wire(testcircuit.I, map_sipo.I[0])
+    wire(testcircuit.O, map_sipo.O[0])
+    EndCircuit()
+
+    save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json.txt")
+
+
+def test_sized_counter_modm():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ['O', Out(Array(2, Bit))] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('sized_counter_modm_test', *args)
+
+    counter = SizedCounterModM(3, has_ce=True)
+    wire(1, counter.CE)
+    wire(testcircuit.O, counter.O)
+    EndCircuit()
+
+    save_CoreIR_json(cirb, testcircuit, "sized_counter_modm.json")
+
+def test_multiple_sipo_and_counter():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ['I', In(Bit), 'O_sipo', Out(Array(4, Bit))] + ['O_counter', Out(Array(2, Bit))] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('multiple_sip_and_counter_test', *args)
+
+    map_sipo = MapParallel(cirb, 1, SIPO(4, 0, has_ce=True))
+    wire(1, map_sipo.CE[0])
+    wire(testcircuit.I, map_sipo.I[0])
+    wire(testcircuit.O_sipo, map_sipo.O[0])
+
+    counter = SizedCounterModM(3, has_ce=True)
+    wire(1, counter.CE)
+    wire(testcircuit.O_counter, counter.O)
+    EndCircuit()
+
+    save_CoreIR_json(cirb, testcircuit, "multiple_sipo_and_counter.json")
 
 def test_1D_bit_line_buffer():
     """Run tests for the 1D bit line buffer."""
@@ -77,11 +134,13 @@ def a_1D_bit_line_buffer_test(
         pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    LineBufferType = DefineOneBitOneDimensionalLineBuffer(
+    LineBufferDef = DefineOneBitOneDimensionalLineBuffer(
         cirb, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    sim = CoreIRSimulator(LineBufferType, LineBufferType.CLK, context=cirb.context,
+    save_CoreIR_json(cirb, LineBufferDef, "native_linebuffer.json")
+
+    sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     # List for recording sequence of valid outputs (in the same format
@@ -92,11 +151,11 @@ def a_1D_bit_line_buffer_test(
     def tick_sim_collect_outputs():
         sim.evaluate()
         sim.advance_cycle()
-        if sim.get_value(LineBufferType.valid, scope):
+        if sim.get_value(LineBufferDef.valid, scope):
             actual.append(
                 [
                     [
-                        bool(sim.get_value(LineBufferType.O[par][pix], scope))
+                        bool(sim.get_value(LineBufferDef.O[par][pix], scope))
                         for pix in range(window_width)
                     ]
                     for par in range(parallelism)
@@ -104,7 +163,7 @@ def a_1D_bit_line_buffer_test(
             )
 
     for array in in_arrays:
-        sim.set_value(LineBufferType.I, array, scope)
+        sim.set_value(LineBufferDef.I, array, scope)
         tick_sim_collect_outputs()
 
     for i in range(100000):

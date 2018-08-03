@@ -6,10 +6,10 @@ from mantle import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import GetCoreIRModule
 
-c = coreir.Context()
-cirb = CoreIRBackend(c)
+def make_context_and_backend():
+    c = coreir.Context()
+    return c, CoreIRBackend(c)
 
-def save_CoreIR_json(module, file):
-    nonlocal cirb
+def save_CoreIR_json(cirb, module, file):
     mod = GetCoreIRModule(cirb, module)
     mod.save_to_file(file)
