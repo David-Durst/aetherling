@@ -8,7 +8,8 @@ from magma.backend.coreir_ import CoreIRBackend
 from magma import *
 import coreir
 from magma.scope import Scope
-from aetherling.modules.native_linebuffer import DefineOneBitOneDimensionalLineBuffer
+from aetherling.modules.native_linebuffer import OneBitOneDimensionalLineBuffer, \
+    DefineOneBitOneDimensionalLineBuffer
 
 def test_basic_native_linebuffer():
     c = coreir.Context()
