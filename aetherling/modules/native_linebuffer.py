@@ -211,6 +211,7 @@ def DefineOneDimensionalLineBuffer(
 
 def OneDimensionalLineBuffer(
         cirb: CoreIRBackend,
+        pixel_type: Kind,
         pixel_per_clock: int,
         window_width: int,
         image_size: int,
@@ -219,6 +220,8 @@ def OneDimensionalLineBuffer(
         last_row: bool = True) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
+    :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
+    3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
     linebuffer receives as input each clock.
     :param window_width: The size of the stencils that are emitted
@@ -235,6 +238,7 @@ def OneDimensionalLineBuffer(
     """
     return DefineOneDimensionalLineBuffer(
         cirb,
+        pixel_type,
         pixel_per_clock,
         window_width,
         image_size,
