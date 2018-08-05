@@ -6,6 +6,7 @@ from mantle.common.sipo import SIPO
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.coreir.type_helpers import Term
+from math import ceil
 
 
 def DefineOneDimensionalLineBuffer(
@@ -196,8 +197,10 @@ def DefineOneDimensionalLineBuffer(
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
-            # add 1 to valid as it takes 1 clock for data to get through registers
-            valid_counter = SizedCounterModM(max(used_coordinates) + 2 - origin, has_ce=True)
+            valid_counter = SizedCounterModM(ceil(max(used_coordinates) / pixel_per_clock)
+                                             # add 1 to valid as it takes 1 clock for data
+                                             # to get through registers
+                                             + 1 - origin, has_ce=True)
 
             valid_counter_max = DefineCoreirConst(len(valid_counter.O),
                                                   max(used_coordinates) + 1 - origin)()
