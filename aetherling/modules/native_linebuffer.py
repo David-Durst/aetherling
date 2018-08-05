@@ -137,8 +137,7 @@ def DefineOneBitOneDimensionalLineBuffer(
             # register in the shift register
             for current_window_index in range(cls.window_per_active_clock)[::-1]:
                 set_shift_register_location_using_1D_coordinates(
-                    stride * (cls.window_per_active_clock - current_window_index - 1) +
-                    origin * -1
+                    stride * (cls.window_per_active_clock - current_window_index - 1)
                 )
                 # wire up a window while still entries in it
                 for index_in_window in range(window_width):
