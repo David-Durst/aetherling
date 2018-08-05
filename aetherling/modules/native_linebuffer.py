@@ -178,9 +178,6 @@ def DefineOneBitOneDimensionalLineBuffer(
 
             valid_counter_max = DefineCoreirConst(len(valid_counter.O),
                                                   max(used_coordinates) - origin)()
-            counter_condition = ULT(len(valid_counter.O))
-            wire(counter_condition.I0, valid_counter.O)
-            wire(counter_condition.I1, valid_counter_max.out)
 
             wire(enable(bit(cls.CE) &
                  (valid_counter.O < valid_counter_max.out)), valid_counter.CE)

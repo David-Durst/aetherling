@@ -3,6 +3,7 @@ This file imports the necessary stuff to try out aetherling files
 """
 from magma import *
 from mantle import *
+from coreir.context import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import GetCoreIRModule
 

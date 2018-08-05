@@ -221,7 +221,7 @@ def a_1D_bit_line_buffer_test(
         sim.set_value(LineBufferDef.I, array, scope)
         tick_sim_collect_outputs()
 
-    for i in range(100000):
+    for i in range(1000):
         if len(actual) == valid_count:
             break
         tick_sim_collect_outputs()
