@@ -10,8 +10,8 @@ from magma.frontend.coreir_ import GetCoreIRModule
 from magma import *
 import coreir
 from magma.scope import Scope
-from aetherling.modules.native_linebuffer import OneBitOneDimensionalLineBuffer, \
-    DefineOneBitOneDimensionalLineBuffer
+from aetherling.modules.native_linebuffer import OneDimensionalLineBuffer, \
+    DefineOneDimensionalLineBuffer
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.common.sipo import SIPO
 from mantle.common.countermod import SizedCounterModM
@@ -25,7 +25,7 @@ def test_basic_native_linebuffer():
 
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
-    lb = OneBitOneDimensionalLineBuffer(cirb, 1, 3, 100, 1, 0, True)
+    lb = OneDimensionalLineBuffer(cirb, 1, 3, 100, 1, 0, True)
 
     EndCircuit()
 
@@ -42,6 +42,31 @@ def test_multiple_sipo():
     wire(1, map_sipo.CE[0])
     wire(testcircuit.I, map_sipo.I[0])
     wire(testcircuit.O, map_sipo.O[0])
+    EndCircuit()
+
+
+    mod = GetCoreIRModule(cirb, testcircuit)
+    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst",
+                             "flattentypes", "flatten", "verifyconnectivity-noclkrst", "deletedeadinstances"]:
+        print("Running pass {}".format(p))
+        c.run_passes([p], namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    # save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
+    #sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    #                      namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+
+def test_double_nested_sipo():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ['I', In(Bit), 'O', Out(Array(1,Array(1, Array(4, Bit))))] + ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('multiple_sipo_test', *args)
+
+    map_sipo = MapParallel(cirb, 1, MapParallel(cirb, 1, SIPO(4, 0, has_ce=True)))
+    wire(1, map_sipo.CE[0][0])
+    wire(testcircuit.I, map_sipo.I[0][0])
+    wire(testcircuit.O, map_sipo.O)
     EndCircuit()
 
 
@@ -220,8 +245,8 @@ def a_1D_bit_line_buffer_test(
         pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
-    LineBufferDef = DefineOneBitOneDimensionalLineBuffer(
-        cirb, pixels_per_clock, window_width, image_size, output_stride, origin
+    LineBufferDef = DefineOneDimensionalLineBuffer(
+        cirb, Bit, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
     #save_CoreIR_json(cirb, LineBufferDef, "native_linebuffer.json")

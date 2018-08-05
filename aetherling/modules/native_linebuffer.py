@@ -1,15 +1,16 @@
+from aetherling.modules.hydrate import Dehydrate, Hydrate
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
 from mantle.common.sipo import SIPO
-from mantle.common.compare import ULT
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.coreir.type_helpers import Term
 
 
-def DefineOneBitOneDimensionalLineBuffer(
+def DefineOneDimensionalLineBuffer(
         cirb: CoreIRBackend,
+        pixel_type: Kind,
         pixel_per_clock: int,
         window_width: int,
         image_size: int,
@@ -18,6 +19,8 @@ def DefineOneBitOneDimensionalLineBuffer(
         last_row: bool = True) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
+    :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
+    3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
     linebuffer receives as input each clock.
     :param window_width: The size of the stencils that are emitted
@@ -99,8 +102,8 @@ def DefineOneBitOneDimensionalLineBuffer(
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
         window_per_active_clock = max(pixel_per_clock // stride, 1)
-        IO = ['I', In(Array(pixel_per_clock, Bit)),
-              'O', Out(Array(window_per_active_clock, Array(window_width, Bit))),
+        IO = ['I', In(Array(pixel_per_clock, In(pixel_type))),
+              'O', Out(Array(window_per_active_clock, Array(window_width, Out(pixel_type)))),
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
             IO += ['next_row', Out(Array(pixel_per_clock, Bit))]
@@ -108,11 +111,24 @@ def DefineOneBitOneDimensionalLineBuffer(
         @classmethod
         def definition(cls):
 
-            shift_register = MapParallel(cirb, pixel_per_clock,
-                                         SIPO(image_size // pixel_per_clock, 0, has_ce=True))
-            wire(cls.I, shift_register.I)
+
+            # make a separate set of sipos for each bit
+            type_size_in_bits = cirb.get_type(pixel_type, True).size
+            shift_register = MapParallel(cirb, pixel_per_clock, MapParallel(cirb, type_size_in_bits,
+                                         SIPO(image_size // pixel_per_clock, 0, has_ce=True)))
+            # convert the types to and from bits
+            # make a dehydrate for each pixel coming in each clock
+            type_to_bits = MapParallel(cirb, pixel_per_clock, Dehydrate(cirb, pixel_type))
+            # make a hydrate for each pixel coming out each clock, for each pixel in window
+            bits_to_type = MapParallel(cirb, cls.window_per_active_clock,
+                                       MapParallel(cirb, window_width, Hydrate(cirb, pixel_type)))
+
+            wire(cls.I, type_to_bits.I)
+            wire(type_to_bits.out, shift_register.I)
+            wire(bits_to_type.out, cls.O)
             for i in range(pixel_per_clock):
-                wire(cls.CE, shift_register.CE[i])
+                for j in range(type_size_in_bits):
+                    wire(cls.CE, shift_register.CE[i][j])
 
             # wire up each window, walking first across parallel inputs (across shift registers)
             # then to next entry of shift registers
@@ -145,8 +161,13 @@ def DefineOneBitOneDimensionalLineBuffer(
                     # as lowest index outputs of shift_register are farthest to right
                     # in input image. window_width - index_in_window - 1 does reversing for
                     # the output
-                    wire(cls.O[current_window_index][window_width - index_in_window - 1],
-                         shift_register.O[current_shift_register][index_in_shift_register])
+                    # can't wire up directly as have dimension for bits per type in between dimensions
+                    # for px ber clock and number of entries in SIPO, so need to iterate here
+                    for bit_index in range(type_size_in_bits):
+                        wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
+                             bits_to_type.I[current_window_index][window_width - index_in_window - 1][bit_index])
+                    #wire(bits_to_type.out[current_window_index][window_width - index_in_window - 1],
+                    #     cls.O[current_window_index][window_width - index_in_window - 1])
                     used_coordinates.add(get_shift_register_location_in_1D_coordinates())
 
                     set_shift_register_location_using_1D_coordinates(
@@ -164,12 +185,14 @@ def DefineOneBitOneDimensionalLineBuffer(
                     used_coordinates.add(current_location)
 
             # wire up all non-used coordinates to terms
-            for i in range(image_size):
-                if i in used_coordinates:
+            for pixel_index in range(image_size):
+                if pixel_index in used_coordinates:
                     continue
-                set_shift_register_location_using_1D_coordinates(i)
-                term = Term(cirb, 1)
-                wire(term.I[0], shift_register.O[current_shift_register][index_in_shift_register])
+                set_shift_register_location_using_1D_coordinates(pixel_index)
+                term = Term(cirb, type_size_in_bits)
+                for bit_index in range(type_size_in_bits):
+                    wire(term.I[bit_index],
+                         shift_register.O[current_shift_register][bit_index][index_in_shift_register])
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
@@ -186,7 +209,7 @@ def DefineOneBitOneDimensionalLineBuffer(
     return _LB
 
 
-def OneBitOneDimensionalLineBuffer(
+def OneDimensionalLineBuffer(
         cirb: CoreIRBackend,
         pixel_per_clock: int,
         window_width: int,
@@ -210,7 +233,7 @@ def OneBitOneDimensionalLineBuffer(
 
     :return:
     """
-    return DefineOneBitOneDimensionalLineBuffer(
+    return DefineOneDimensionalLineBuffer(
         cirb,
         pixel_per_clock,
         window_width,
