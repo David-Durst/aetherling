@@ -135,36 +135,67 @@ def test_multiple_sipo_and_counter():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-def test_1D_bit_line_buffer():
-    """Run tests for the 1D bit line buffer."""
+def impl_test_1D_bit_line_buffer(
+    pixels_per_clock: int,
+    window_width: int,
+    image_size: int,
+    output_stride: int,
+    origin: int
+):
+    """Run tests for the 1D bit line buffer with given parameters."""
 
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-
-    
-    # Parameters of test line buffers.
-    # pixels/clock window image stride origin
-    param_tuples = (
-        #ppc win img str org
-        (1, 3, 9, 1, 0),
-        # (3,  6,  300, 2, -1),
-        # (1,  3,  256, 2,  0),
-        # (1,  3,  512, 1, -1),
-        # (16, 4, 1080, 2, -1),
-        # (1,  2, 1024, 2,  0),
-        # (4,  8,  720, 4, -2),
-        # (4,  8,  720, 2, -3),
-        # (13, 5,   65, 1,  0),
-        # (1,  15, 130, 13,-1),
-        # (2,  3, 2048, 2, -1),
-    )
     
     # Test line buffer for each combination of parameters and test data.
-    for params in param_tuples:
-        ppc, _, img, _, _ = params
-        for in_arrays in generate_test_data_sets_1D_bits(ppc, img):
-            a_1D_bit_line_buffer_test(cirb, scope, in_arrays, *params)
+    for in_arrays in generate_test_data_sets_1D_bits(pixels_per_clock, image_size):
+        a_1D_bit_line_buffer_test(cirb, scope, in_arrays, pixels_per_clock, window_width, image_size, output_stride, origin)
+
+def test_1D_bit_line_buffer_1_3_9_1_0():
+    impl_test_1D_bit_line_buffer(1, 3, 9, 1, 0)
+
+def test_1D_bit_line_buffer_2_3_10_1_1():
+    impl_test_1D_bit_line_buffer(2, 3, 10, 1, -1)
+
+def test_1D_bit_line_buffer_1_3_36_1_1():
+    impl_test_1D_bit_line_buffer(1, 3, 36, 1, 0)
+
+def test_1D_bit_line_buffer_3_3_36_1_1():
+    impl_test_1D_bit_line_buffer(3, 3, 36, 1, -1)
+
+def test_1D_bit_line_buffer_1_4_32_2_1():
+    impl_test_1D_bit_line_buffer(1, 4, 32, 2, -1)
+
+def test_1D_bit_line_buffer_4_6_32_2_1():
+    impl_test_1D_bit_line_buffer(4, 6, 32, 2, -1)
+
+def test_1D_bit_line_buffer_1_3_64_2_0():
+    impl_test_1D_bit_line_buffer(1, 3, 64, 2, 0)
+
+def test_1D_bit_line_buffer_1_3_80_1_1():
+    impl_test_1D_bit_line_buffer(1, 3, 80, 1, -1)
+
+def test_1D_bit_line_buffer_16_4_128_2_1():
+    impl_test_1D_bit_line_buffer(16, 4, 128, 2, -1)
+
+def test_1D_bit_line_buffer_1_2_42_2_0():
+    impl_test_1D_bit_line_buffer(1, 2, 42, 2, 0)
+
+def test_1D_bit_line_buffer_4_8_72_4_2():
+    impl_test_1D_bit_line_buffer(4, 8, 72, 4, -2)
+
+def test_1D_bit_line_buffer_4_8_26_2_3():
+    impl_test_1D_bit_line_buffer(4, 8, 26, 2, -3)
+
+def test_1D_bit_line_buffer_13_5_65_1_0():
+    impl_test_1D_bit_line_buffer(13, 5, 65, 1, 0)
+
+def test_1D_bit_line_buffer_1_15_130_13_1():
+    impl_test_1D_bit_line_buffer(1, 15, 130, 13, -1)
+
+def test_1D_bit_line_buffer_2_3_128_2_1():
+    impl_test_1D_bit_line_buffer(2, 3, 128, 2, -1)
 
 def a_1D_bit_line_buffer_test(
     cirb,
@@ -223,7 +254,7 @@ def a_1D_bit_line_buffer_test(
         sim.set_value(LineBufferDef.I, array, scope)
         tick_sim_collect_outputs()
 
-    for i in range(1000):
+    for i in range(300):
         if len(actual) == valid_count:
             break
         tick_sim_collect_outputs()
