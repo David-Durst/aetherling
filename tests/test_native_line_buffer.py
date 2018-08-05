@@ -198,6 +198,8 @@ def a_1D_bit_line_buffer_test(
     sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
+    sim.set_value(LineBufferDef.CE, 1, scope)
+
     # List for recording sequence of valid outputs (in the same format
     # as specified by expected_valid_outputs_1D), and a helper function
     # that ticks the simulation, appending any output received when
