@@ -174,10 +174,11 @@ def DefineOneBitOneDimensionalLineBuffer(
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
-            valid_counter = SizedCounterModM(max(used_coordinates) + 1 - origin, has_ce=True)
+            # add 1 to valid as it takes 1 clock for data to get through registers
+            valid_counter = SizedCounterModM(max(used_coordinates) + 2 - origin, has_ce=True)
 
             valid_counter_max = DefineCoreirConst(len(valid_counter.O),
-                                                  max(used_coordinates) - origin)()
+                                                  max(used_coordinates) + 1 - origin)()
 
             wire(enable(bit(cls.CE) &
                  (valid_counter.O < valid_counter_max.out)), valid_counter.CE)
