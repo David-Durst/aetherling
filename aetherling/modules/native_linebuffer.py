@@ -137,12 +137,12 @@ def DefineOneDimensionalLineBuffer(
             index_in_shift_register = 0
 
             # since current_shift_register and index_in_shift_register form a
-            # 2D shape where I'm walking across shift_registers first and then in
-            # across the shift_register's indexes, these functions make the
+            # 2D shape where current_shift_registers is inner dimension and
+            # index_in_shift_register is outer, these functions make the
             # 2D coordinates into 1D coordinates that match the 1D image
             def get_shift_register_location_in_1D_coordinates() -> int:
-                return (current_shift_register * pixel_per_clock +
-                        index_in_shift_register)
+                return (index_in_shift_register * pixel_per_clock +
+                        current_shift_register)
             def set_shift_register_location_using_1D_coordinates(location: int) -> int:
                 nonlocal current_shift_register, index_in_shift_register
                 index_in_shift_register = location // pixel_per_clock
