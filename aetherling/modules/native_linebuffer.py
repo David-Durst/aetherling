@@ -200,10 +200,10 @@ def DefineOneDimensionalLineBuffer(
             valid_counter = SizedCounterModM(ceil(max(used_coordinates) / pixel_per_clock)
                                              # add 1 to valid as it takes 1 clock for data
                                              # to get through registers
-                                             + 1 - origin, has_ce=True)
+                                             + 1 + origin, has_ce=True)
 
             valid_counter_max = DefineCoreirConst(len(valid_counter.O),
-                                                  max(used_coordinates) + 1 - origin)()
+                                                  max(used_coordinates) + 1 + origin)()
 
             wire(enable(bit(cls.CE) &
                  (valid_counter.O < valid_counter_max.out)), valid_counter.CE)
