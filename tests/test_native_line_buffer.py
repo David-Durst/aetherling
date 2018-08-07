@@ -1,6 +1,7 @@
 """My (Akeley's) attempt at writing a test for a 1D bit line buffer."""
 
 import sys
+import os
 import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
@@ -288,18 +289,23 @@ def a_1D_bit_line_buffer_test(
         sim.set_value(LineBufferDef.I, array, scope)
         tick_sim_collect_outputs()
 
-    for i in range(300):
-        if len(actual) == valid_count:
-            break
+    # Wait for a little extra after the last input because the line buffer
+    # may need a bit of extra time to emit the last windows (also, it gives
+    # us a chance to check for excessive valid outputs).
+    extra_cycles = 16 + window_width
+    for i in range(extra_cycles):
         tick_sim_collect_outputs()
-    else:
-        assert 0, "Circuit timed out: got only %i/%i outputs." % (
-            len(actual), valid_count
-        )
-    # XXX Should I test for the module still asserting valid
-    # after all expected outputs were received?
 
-    assert outputs_match_1D(actual, expected), "test failed"
+    len_actual, len_expected = len(actual), len(expected)
+    if akeley_pid_hack:
+        print (f"\x1b[34m\x1b[1m{len_actual} {len_expected}\x1b[0m",
+            file=real_stderr)
+    assert len_actual == len_expected, \
+        f"Got {len_actual} outputs (counts of valid asserts); expected " \
+        f"{len_expected} outputs.\n" \
+        f"Waited {extra_cycles} cycles after last input."
+    
+    assert outputs_match_1D(actual, expected), "Outputs don't match."
 
 def expected_valid_outputs_1D(
     in_arrays,
@@ -482,3 +488,10 @@ the test data using values from the random_value function passed.
         pixels[s:s+pixels_per_clock]
         for s in range(0, image_size, pixels_per_clock)
     ]
+
+# Pytest does major narsty stuff to stderr even with capturing disabled
+# so I need another way to do printf debugging. akeley_pid_hack is the
+# pid of my terminal as a string.
+akeley_pid_hack = os.environ.get("AKELEY_HACK")
+if akeley_pid_hack:
+    real_stderr = open(f"/proc/{akeley_pid_hack}/fd/2", "w")
