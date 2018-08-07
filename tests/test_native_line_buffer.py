@@ -25,7 +25,7 @@ def test_basic_native_linebuffer():
 
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
-    lb = OneDimensionalLineBuffer(cirb, 1, 3, 100, 1, 0, True)
+    lb = OneDimensionalLineBuffer(cirb, Array(3, Bit), 1, 3, 100, 1, 0)
 
     EndCircuit()
 
@@ -204,8 +204,8 @@ def test_1D_bit_line_buffer_3_3_36_1_1():
 def test_1D_bit_line_buffer_1_4_32_2_1():
     impl_test_1D_bit_line_buffer(1, 4, 32, 2, -1)
 
-def test_1D_bit_line_buffer_4_6_32_2_1():
-    impl_test_1D_bit_line_buffer(4, 6, 32, 2, -1)
+def test_1D_bit_line_buffer_4_8_32_2_1():
+    impl_test_1D_bit_line_buffer(4, 8, 32, 2, -1)
 
 def test_1D_bit_line_buffer_1_3_64_2_0():
     impl_test_1D_bit_line_buffer(1, 3, 64, 2, 0)
