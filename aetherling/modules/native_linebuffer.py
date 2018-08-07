@@ -202,7 +202,7 @@ def DefineOneDimensionalLineBuffer(
                                                              pixel_per_clock
 
             # adjust by 1 for 0 indexing
-                oldest_needed_pixel_forward_1D_coordinates -= 1
+            oldest_needed_pixel_forward_1D_coordinates -= 1
 
             def get_shift_register_location_in_1D_coordinates() -> int:
                 return oldest_needed_pixel_forward_1D_coordinates - \
