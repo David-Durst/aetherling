@@ -432,6 +432,7 @@ cycles, inner dim = array entries.
         return value_third == 3
 
     value_fifth = -1
+    # note: false comes first
     def every_fifth_false():
         nonlocal value_fifth
         value_fifth += 1

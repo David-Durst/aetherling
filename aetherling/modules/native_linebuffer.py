@@ -43,7 +43,7 @@ def DefineOneDimensionalLineBuffer(
     5. origin <= 0
     6. window_width < image_size
 
-    :return: A 1D, 1 Bit Linebuffer
+    :return: A 1D Linebuffer
     """
 
     class _LB(Circuit):
@@ -81,7 +81,7 @@ def DefineOneDimensionalLineBuffer(
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: |origin| {} greater than or equal to"
                             "window width {}".format(abs(origin),
-                                                      window_width))
+                                                     window_width))
         if origin > 0:
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: origin {} greater than"
@@ -96,7 +96,7 @@ def DefineOneDimensionalLineBuffer(
                             "window width {}".format(origin,
                                                      window_width))
 
-        name = "OneBitOneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
+        name = "OneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
                "_{}imgSize_{}outputStride_{}origin".format(
             pixel_per_clock, window_width, image_size, stride, origin
         )
@@ -112,11 +112,11 @@ def DefineOneDimensionalLineBuffer(
         @classmethod
         def definition(cls):
 
-
             # make a separate set of sipos for each bit
             type_size_in_bits = cirb.get_type(pixel_type, True).size
             shift_register = MapParallel(cirb, pixel_per_clock, MapParallel(cirb, type_size_in_bits,
-                                         SIPO(image_size // pixel_per_clock, 0, has_ce=True)))
+                                                                            SIPO(image_size // pixel_per_clock, 0,
+                                                                                 has_ce=True)))
             # convert the types to and from bits
             # make a dehydrate for each pixel coming in each clock
             type_to_bits = MapParallel(cirb, pixel_per_clock, Dehydrate(cirb, pixel_type))
@@ -124,7 +124,11 @@ def DefineOneDimensionalLineBuffer(
             bits_to_type = MapParallel(cirb, cls.window_per_active_clock,
                                        MapParallel(cirb, window_width, Hydrate(cirb, pixel_type)))
 
-            wire(cls.I, type_to_bits.I)
+            # reverse the pixels per clock. Since greater index_in_shift_register
+            # mean earlier inputted pixels, also want greater current_shift_register
+            # to mean earlier inputted pixels. This accomplishes that by making
+            # pixels earlier each clock go to higher number shift register
+            wire(cls.I[::-1], type_to_bits.I)
             wire(type_to_bits.out, shift_register.I)
             wire(bits_to_type.out, cls.O)
             for i in range(pixel_per_clock):
@@ -143,12 +147,13 @@ def DefineOneDimensionalLineBuffer(
             def get_shift_register_location_in_1D_coordinates() -> int:
                 return (index_in_shift_register * pixel_per_clock +
                         current_shift_register)
+
             def set_shift_register_location_using_1D_coordinates(location: int) -> int:
                 nonlocal current_shift_register, index_in_shift_register
                 index_in_shift_register = location // pixel_per_clock
                 current_shift_register = location % pixel_per_clock
-            used_coordinates = set()
 
+            used_coordinates = set()
 
             # do the windows in reverse, as the last pixel accepted will be in the first
             # register in the shift register
@@ -157,17 +162,22 @@ def DefineOneDimensionalLineBuffer(
                     stride * (cls.window_per_active_clock - current_window_index - 1)
                 )
                 # wire up a window while still entries in it
-                for index_in_window in range(window_width):
-                    # weird window index as shift_register outputs are reverse of image order
-                    # as lowest index outputs of shift_register are farthest to right
-                    # in input image. window_width - index_in_window - 1 does reversing for
-                    # the output
+                # inverse index in a window as shift_register outputs are reverse of image order
+                # as lowest index outputs of shift_register are farthest to right
+                # in input image. window_width - index_in_window - 1 does reversing for
+                # the output
+                for index_in_window in range(window_width)[::-1]:
                     # can't wire up directly as have dimension for bits per type in between dimensions
                     # for px ber clock and number of entries in SIPO, so need to iterate here
                     for bit_index in range(type_size_in_bits):
                         wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
-                             bits_to_type.I[current_window_index][window_width - index_in_window - 1][bit_index])
-                    #wire(bits_to_type.out[current_window_index][window_width - index_in_window - 1],
+                             bits_to_type.I[current_window_index][index_in_window][bit_index])
+                    print("Wiring sr location {} to window {} with index {}".format(
+                        get_shift_register_location_in_1D_coordinates(),
+                        current_window_index,
+                        window_width - index_in_window - 1
+                    ))
+                    # wire(bits_to_type.out[current_window_index][window_width - index_in_window - 1],
                     #     cls.O[current_window_index][window_width - index_in_window - 1])
                     used_coordinates.add(get_shift_register_location_in_1D_coordinates())
 
@@ -197,17 +207,23 @@ def DefineOneDimensionalLineBuffer(
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
-            valid_counter = SizedCounterModM(ceil(max(used_coordinates) / pixel_per_clock)
-                                             # add 1 to valid as it takes 1 clock for data
-                                             # to get through registers
-                                             + 1 + origin, has_ce=True)
+            # add 1 here as coordinates are 0 indexed, and the denominator of this
+            # fraction is the last register accessed
+            valid_counter_max_value = (ceil((max(used_coordinates) + 1) / pixel_per_clock) +
+                                       # would add 1 to valid as it takes 1 clock for data
+                                       # to get through registers
+                                       # but not actually adding 1 as 0 indexed
+                                       + origin)
 
-            valid_counter_max = DefineCoreirConst(len(valid_counter.O),
-                                                  max(used_coordinates) + 1 + origin)()
+            # add 1 as sizedcounter counts to 1 less than the provided max
+            valid_counter = SizedCounterModM(valid_counter_max_value + 1, has_ce=True)
+
+            valid_counter_max_instance = DefineCoreirConst(len(valid_counter.O),
+                                                           valid_counter_max_value)()
 
             wire(enable(bit(cls.CE) &
-                 (valid_counter.O < valid_counter_max.out)), valid_counter.CE)
-            wire((valid_counter.O == valid_counter_max.out), cls.valid)
+                        (valid_counter.O < valid_counter_max_instance.out)), valid_counter.CE)
+            wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
 
     return _LB
 
@@ -237,7 +253,16 @@ def OneDimensionalLineBuffer(
     Users should probably leave this to true. Its used for adding extra ports when putting these in
     larger matrices.
 
-    :return:
+
+    Restrictions:
+    1. image_size % pixel_per_clock == 0
+    2. image_size % stride == 0
+    3. stride % pixel_per_clock == 0 OR pixel_per_clock % stride == 0
+    4. window_width > |origin|
+    5. origin <= 0
+    6. window_width < image_size
+
+    :return: A 1D Linebuffer
     """
     return DefineOneDimensionalLineBuffer(
         cirb,
