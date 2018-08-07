@@ -161,7 +161,7 @@ def test_multiple_sipo_and_counter():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-def impl_test_1D_bit_line_buffer(
+def impl_test_1D_line_buffer(
     magma_type,
     pixels_per_clock: int,
     window_width: int,
@@ -337,7 +337,7 @@ def a_1D_line_buffer_test(
     # functions. tick_sim_collect_outputs ticks the simulation,
     # appending any output received when the simulated module asserts
     # valid. set_value feeds a new array input to the
-    # simulator. XXX There's one version for bit and one for int (annoying
+    # simulator. There's one version for bit and one for int (annoying
     # leaky abstraction).
     actual = []
     if magma_type == Bit:
@@ -354,12 +354,14 @@ def a_1D_line_buffer_test(
                         for par in range(parallelism)
                     ]
                 )
+        def set_value(bit_array):
+            sim.set_value(LineBufferDef.I, bit_array, scope)
     else:
         try:
             bit_width = magma_type.N
             if magma_type.T != Bit:
                 raise TypeError("Array not made of Bits.")
-        except Exception as e
+        except Exception as e:
             raise TypeError("magma_type appears not to be Bit "
                 "or Array of Bit.") from e
         
@@ -376,10 +378,12 @@ def a_1D_line_buffer_test(
                         for par in range(parallelism)
                     ]
                 )
+        def set_value(int_array):
+            sim.set_value(LineBufferDef.I, map(int2seq, int_array), scope)
 
 
     for array in in_arrays:
-        sim.set_value(LineBufferDef.I, array, scope)
+        set_value(array)
         tick_sim_collect_outputs()
 
     # Wait for a little extra after the last input because the line buffer
