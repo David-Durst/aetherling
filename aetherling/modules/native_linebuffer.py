@@ -155,10 +155,10 @@ def DefineOneDimensionalLineBuffer(
 
             used_coordinates = set()
 
-            # do the windows in reverse, as the last pixel accepted will be in the first
-            # register in the shift register
-            for current_window_index in range(cls.window_per_active_clock)[::-1]:
+            for current_window_index in range(cls.window_per_active_clock):
                 set_shift_register_location_using_1D_coordinates(
+                    # the first window has the highest location as the oldest inputted pixel
+                    # accepted will be in the highest index register in the shift register
                     stride * (cls.window_per_active_clock - current_window_index - 1) +
                     # handle origin across multiple clocks by changing valid, but within a single clock
                     # need to adjust where the windows start
@@ -216,6 +216,10 @@ def DefineOneDimensionalLineBuffer(
             valid_counter_max_instance = DefineCoreirConst(len(valid_counter.O),
                                                            valid_counter_max_value)()
 
+
+            #stride_counter = SizedCounterModM(stride, has_ce=True)
+
+            # if stride is less than
             wire(enable(bit(cls.CE) &
                         (valid_counter.O < valid_counter_max_instance.out)), valid_counter.CE)
             wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
