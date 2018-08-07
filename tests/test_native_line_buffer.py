@@ -180,8 +180,14 @@ def impl_test_1D_bit_line_buffer(
 def test_1D_bit_line_buffer_1_3_9_1_0():
     impl_test_1D_bit_line_buffer(1, 3, 9, 1, 0)
 
+def test_1D_bit_line_buffer_1_3_9_1_1():
+    impl_test_1D_bit_line_buffer(1, 3, 9, 1, -1)
+
 def test_1D_bit_line_buffer_2_3_10_1_0():
     impl_test_1D_bit_line_buffer(2, 3, 10, 1, 0)
+
+def test_1D_bit_line_buffer_1_3_9_2_0():
+    impl_test_1D_bit_line_buffer(1, 3, 10, 2, 0)
 
 def test_1D_bit_line_buffer_2_3_10_1_1():
     impl_test_1D_bit_line_buffer(2, 3, 10, 1, -1)
