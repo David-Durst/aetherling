@@ -164,24 +164,16 @@ def DefineOneDimensionalLineBuffer(
                     # need to adjust where the windows start
                     ((origin * -1) % pixel_per_clock)
                 )
-                # wire up a window while still entries in it
-                # inverse index in a window as shift_register outputs are reverse of image order
-                # as lowest index outputs of shift_register are farthest to right
-                # in input image. window_width - index_in_window - 1 does reversing for
-                # the output
+                # inverse index in a window as shift_register outputs are reverse of image order.
+                # The lowest index outputs of shift_register are farthest to right
+                # in input image.
                 for index_in_window in range(window_width)[::-1]:
                     # can't wire up directly as have dimension for bits per type in between dimensions
                     # for px ber clock and number of entries in SIPO, so need to iterate here
                     for bit_index in range(type_size_in_bits):
                         wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
                              bits_to_type.I[current_window_index][index_in_window][bit_index])
-                    print("Wiring sr location {} to window {} with index {}".format(
-                        get_shift_register_location_in_1D_coordinates(),
-                        current_window_index,
-                        window_width - index_in_window - 1
-                    ))
-                    # wire(bits_to_type.out[current_window_index][window_width - index_in_window - 1],
-                    #     cls.O[current_window_index][window_width - index_in_window - 1])
+
                     used_coordinates.add(get_shift_register_location_in_1D_coordinates())
 
                     set_shift_register_location_using_1D_coordinates(
