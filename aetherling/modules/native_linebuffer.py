@@ -181,11 +181,6 @@ def DefineOneDimensionalLineBuffer(
             # The swizzled pixel's large 1D location ensures it isn't wired directly
             # to an output
 
-            # GARBAGE COMMENTS BELOW
-            # assuming the data were in normal order (reverse of what is current done here)
-            # then I subtract the requested index from that max value to go into reverse
-            # coordinates
-
             # get needed pixels (ignoring origin as that can be garbage)
             # to determine number of clock cycles needed to satisfy input
             if cls.window_per_active_clock == 1:
@@ -236,15 +231,6 @@ def DefineOneDimensionalLineBuffer(
                     for bit_index in range(type_size_in_bits):
                         wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
                              bits_to_type.I[current_window_index][index_in_window][bit_index])
-
-                    print("Wiring sr location {} (aka current_sr {} and index_in_sr {})"
-                          " to window {} with index {}".format(
-                        get_shift_register_location_in_1D_coordinates(),
-                        current_shift_register,
-                        index_in_shift_register,
-                        current_window_index,
-                        index_in_window
-                    ))
 
                     used_coordinates.add((index_in_shift_register, current_shift_register))
 
