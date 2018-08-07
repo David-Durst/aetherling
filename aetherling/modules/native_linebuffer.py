@@ -227,7 +227,8 @@ def DefineOneDimensionalLineBuffer(
                     strideMultiplier * current_window_index +
                     # handle origin across multiple clocks by changing valid, but within a single clock
                     # need to adjust where the windows start
-                    ((origin * -1) % pixel_per_clock)
+                    # need neg conversion twice due to issues taking mod of negative number
+                    ((origin * -1) % pixel_per_clock * -1)
                 )
                 for index_in_window in range(window_width):
                     # can't wire up directly as have dimension for bits per type in between dimensions
