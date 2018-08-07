@@ -156,10 +156,15 @@ def DefineOneDimensionalLineBuffer(
             used_coordinates = set()
 
             for current_window_index in range(cls.window_per_active_clock):
+                # stride is handled by wiring if there are multiple windows emitted per clock,
+                # aka if stride is less than number of pixels per clock.
+                # In this case, multiple windows are emitted but they must be overlapped
+                # less than normal
+                strideMultiplier = stride if stride < pixel_per_clock else 1
                 set_shift_register_location_using_1D_coordinates(
                     # the first window has the highest location as the oldest inputted pixel
                     # accepted will be in the highest index register in the shift register
-                    stride * (cls.window_per_active_clock - current_window_index - 1) +
+                    strideMultiplier * (cls.window_per_active_clock - current_window_index - 1) +
                     # handle origin across multiple clocks by changing valid, but within a single clock
                     # need to adjust where the windows start
                     ((origin * -1) % pixel_per_clock)
@@ -216,13 +221,27 @@ def DefineOneDimensionalLineBuffer(
             valid_counter_max_instance = DefineCoreirConst(len(valid_counter.O),
                                                            valid_counter_max_value)()
 
-
-            #stride_counter = SizedCounterModM(stride, has_ce=True)
-
-            # if stride is less than
             wire(enable(bit(cls.CE) &
                         (valid_counter.O < valid_counter_max_instance.out)), valid_counter.CE)
-            wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
+
+            # if stride is greater than pixels_per_clock, then need a stride counter as
+            # not active every clock. Invalid clocks create striding in this case
+            if stride > pixel_per_clock:
+
+                stride_counter = SizedCounterModM(stride // pixel_per_clock, has_ce=True)
+                stride_counter_0 = DefineCoreirConst(len(stride_counter.O),0)()
+
+                wire(enable((stride_counter.O == stride_counter_0.out) &
+                            (valid_counter.O == valid_counter_max_instance.out)),
+                     cls.valid)
+
+                # only increment stride if trying to emit data this clock cycle
+                wire(valid_counter.O == valid_counter_max_instance.out, stride_counter.CE)
+
+            else:
+                wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
+
+
 
     return _LB
 
