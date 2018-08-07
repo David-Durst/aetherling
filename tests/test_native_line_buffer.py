@@ -1,7 +1,6 @@
 """My (Akeley's) attempt at writing a test for a 1D bit line buffer."""
 
 import sys
-import os
 import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
@@ -173,7 +172,7 @@ def impl_test_1D_bit_line_buffer(
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    
+
     # Test line buffer for each combination of parameters and test data.
     for in_arrays in generate_test_data_sets_1D_bits(pixels_per_clock, image_size):
         a_1D_bit_line_buffer_test(cirb, scope, in_arrays, pixels_per_clock, window_width, image_size, output_stride, origin)
@@ -294,18 +293,18 @@ def a_1D_bit_line_buffer_test(
     # us a chance to check for excessive valid outputs).
     extra_cycles = 16 + window_width
     for i in range(extra_cycles):
+        if len(actual) >= len(expected): break
         tick_sim_collect_outputs()
 
     len_actual, len_expected = len(actual), len(expected)
-    if akeley_pid_hack:
-        print (f"\x1b[34m\x1b[1m{len_actual} {len_expected}\x1b[0m",
-            file=real_stderr)
-    assert len_actual == len_expected, \
+
+    assert len_actual >= len_expected, \
         f"Got {len_actual} outputs (counts of valid asserts); expected " \
         f"{len_expected} outputs.\n" \
         f"Waited {extra_cycles} cycles after last input."
-    
-    assert outputs_match_1D(actual, expected), "Outputs don't match."
+
+    assert outputs_match_1D(actual[0:len_expected], expected), \
+        "Outputs don't match."
 
 def expected_valid_outputs_1D(
     in_arrays,
@@ -428,7 +427,7 @@ buffer with the given pixels/clock and image size parameters. Outer
 dim = list of separate test sets, middle dim = input over clock
 cycles, inner dim = array entries.
     """
-    
+
     # Make some random bit generators and some simple predictable generators.
     # Repating patterns first.
     alternating_value = True
@@ -451,13 +450,13 @@ cycles, inner dim = array entries.
         return value_fifth % 5 != 0
 
     bit_generators = [alternating, third_true, every_fifth_false]
-    
+
     # Now add pseudorandom patterns.
     bit_generators += [
         lambda: rng.random() >= 0.5 for rng in
         [random.Random(seed) for seed in [2001, 1, 6]] # <3
     ]
-    
+
     # For each generator create a test set.
     return [
         generate_one_test_data_set_1D(
@@ -466,6 +465,52 @@ cycles, inner dim = array entries.
             image_size
         )
         for generator in bit_generators
+    ]
+
+def generate_test_data_sets_1D_ints(
+    pixels_per_clock: int,
+    image_size: int,
+    bit_width: int,
+):
+    """Make a 3D-list of test data suitable for testing a 1D int line
+buffer with the given pixels/clock, image size, and integer bit-width
+parameters. Outer dim = list of separate test sets, middle dim = input
+over clock cycles, inner dim = array entries.
+    """
+    # Mask to ensure generated int fits in within our specified bit width.
+    mask = (1 << bit_width) - 1
+
+    # First, two predictable generators.
+    sawtooth_value = -1
+    def sawtooth():
+        nonlocal sawtooth_value
+        sawtooth_value += 1
+        return sawtooth_value & mask
+
+    sawtooth19_value = -19
+    def sawtooth19():
+        nonlocal sawtooth19_value
+        sawtooth19_value += 19
+        return sawtooth19_value & mask
+
+    int_generators = [sawtooth, sawtooth19]
+
+    # Now add pseudorandom patterns.
+    # Note: I don't think randrange is guaranteed to give the same
+    # result across versions so I'm manually mapping float->int.
+    int_generators += [
+        lambda: int(rng.random() * 0x80000000) & mask for rng in
+        [random.Random(seed) for seed in [1998, 7, 24]]
+    ]
+
+    # For each generator create a test set.
+    return [
+        generate_one_test_data_set_1D(
+            generator,
+            pixels_per_clock,
+            image_size
+        )
+        for generator in int_generators
     ]
 
 def generate_one_test_data_set_1D(
@@ -488,10 +533,3 @@ the test data using values from the random_value function passed.
         pixels[s:s+pixels_per_clock]
         for s in range(0, image_size, pixels_per_clock)
     ]
-
-# Pytest does major narsty stuff to stderr even with capturing disabled
-# so I need another way to do printf debugging. akeley_pid_hack is the
-# pid of my terminal as a string.
-akeley_pid_hack = os.environ.get("AKELEY_HACK")
-if akeley_pid_hack:
-    real_stderr = open(f"/proc/{akeley_pid_hack}/fd/2", "w")
