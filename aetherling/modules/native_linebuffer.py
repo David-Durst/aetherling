@@ -159,7 +159,10 @@ def DefineOneDimensionalLineBuffer(
             # register in the shift register
             for current_window_index in range(cls.window_per_active_clock)[::-1]:
                 set_shift_register_location_using_1D_coordinates(
-                    stride * (cls.window_per_active_clock - current_window_index - 1)
+                    stride * (cls.window_per_active_clock - current_window_index - 1) +
+                    # handle origin across multiple clocks by changing valid, but within a single clock
+                    # need to adjust where the windows start
+                    ((origin * -1) % pixel_per_clock)
                 )
                 # wire up a window while still entries in it
                 # inverse index in a window as shift_register outputs are reverse of image order
@@ -209,11 +212,11 @@ def DefineOneDimensionalLineBuffer(
             # invalid space when emitting) gets data
             # add 1 here as coordinates are 0 indexed, and the denominator of this
             # fraction is the last register accessed
-            valid_counter_max_value = (ceil((max(used_coordinates) + 1) / pixel_per_clock) +
-                                       # would add 1 to valid as it takes 1 clock for data
-                                       # to get through registers
-                                       # but not actually adding 1 as 0 indexed
-                                       + origin)
+            # would add 1 outside fraction as it takes 1 clock for data
+            # to get through registers but won't as 0 indexed
+            valid_counter_max_value = ceil((max(used_coordinates) + 1 + origin) /
+                                            pixel_per_clock)
+
 
             # add 1 as sizedcounter counts to 1 less than the provided max
             valid_counter = SizedCounterModM(valid_counter_max_value + 1, has_ce=True)
