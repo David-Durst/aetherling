@@ -195,6 +195,9 @@ def test_1D_bit_line_buffer_2_3_10_1_1():
 def test_1D_bit_line_buffer_1_3_36_1_0():
     impl_test_1D_bit_line_buffer(1, 3, 36, 1, 0)
 
+def test_1D_bit_line_buffer_3_3_36_1_0():
+    impl_test_1D_bit_line_buffer(3, 3, 36, 1, 0)
+
 def test_1D_bit_line_buffer_3_3_36_1_1():
     impl_test_1D_bit_line_buffer(3, 3, 36, 1, -1)
 

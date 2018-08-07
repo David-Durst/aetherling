@@ -17,6 +17,7 @@ def DefineOneDimensionalLineBuffer(
         image_size: int,
         stride: int,
         origin: int,
+        first_row: bool = True,
         last_row: bool = True) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
@@ -31,6 +32,9 @@ def DefineOneDimensionalLineBuffer(
     to each other.
     :param origin: The index of the first pixel of the first window relative to
     the top left corner of the image
+    :param first_row: True if this is the first 1D row in a 2D matrix or the only one in a 2D matrix.
+    Users should not set this unless they understand the internals of the LineBuffer.
+    Its used for determining when to reverse inputs to convert image coordinate to internal coordinates.
     :param last_row: True if this is the last 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should probably leave this to true. Its used for adding extra ports when putting these in
     larger matrices.
@@ -41,7 +45,7 @@ def DefineOneDimensionalLineBuffer(
     3. stride % pixel_per_clock == 0 OR pixel_per_clock % stride == 0
     4. window_width > |origin|
     5. origin <= 0
-    6. window_width < image_size
+    6. window_width - origin < image_size
 
     :return: A 1D Linebuffer
     """
@@ -87,14 +91,15 @@ def DefineOneDimensionalLineBuffer(
                             "parameters: origin {} greater than"
                             "0".format(origin))
 
-        # need window width outputs, if smaller than image, this is a weird
-        # edge case that I don't want to deal with and the user shouldn't be
-        # using a linebuffer for, because only 1 window output per image
-        if window_width > image_size:
+        # need window width plus origin outputs, if smaller than image,
+        # this is a weird edge case that I don't want to deal with and
+        # the user shouldn't be using a linebuffer for, because only 1
+        # window output per image
+        if window_width - origin >= image_size:
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: origin {} greater than"
-                            "window width {}".format(origin,
-                                                     window_width))
+                            "parameters: window width {} - origin {} "
+                            "greater than or equal to image size {}"
+                            .format(window_width, origin, image_size))
 
         name = "OneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
                "_{}imgSize_{}outputStride_{}origin".format(
@@ -107,7 +112,7 @@ def DefineOneDimensionalLineBuffer(
               'O', Out(Array(window_per_active_clock, Array(window_width, Out(pixel_type)))),
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
-            IO += ['next_row', Out(Array(pixel_per_clock, Bit))]
+            IO += ['next_row', Out(Array(pixel_per_clock, Out(pixel_type)))]
 
         @classmethod
         def definition(cls):
@@ -128,30 +133,87 @@ def DefineOneDimensionalLineBuffer(
             # mean earlier inputted pixels, also want greater current_shift_register
             # to mean earlier inputted pixels. This accomplishes that by making
             # pixels earlier each clock go to higher number shift register
-            wire(cls.I[::-1], type_to_bits.I)
+            if first_row:
+                wire(cls.I[::-1], type_to_bits.I)
+            else:
+                # don't need to reverse if not first row as prior rows have already done reversing
+                wire(cls.I, type_to_bits.I)
             wire(type_to_bits.out, shift_register.I)
             wire(bits_to_type.out, cls.O)
             for i in range(pixel_per_clock):
                 for j in range(type_size_in_bits):
                     wire(cls.CE, shift_register.CE[i][j])
 
-            # wire up each window, walking first across parallel inputs (across shift registers)
-            # then to next entry of shift registers
+            # these two variables provide a 2D coordinate system for the SIPOs.
+            # the inner dimension is current_shift_register
+            # the outer dimension is index_in_shift_register
+            # greater values in current_shift_register are inputs from older clocks
+            # greater values in index_in_shift_register are inputs from lower index
+            # values in the inputs in a single clock (due to above cls.I, type_to_bits reversing)
+            # the index_in_shift_register is reversed so that bigger number always
+            # means lower indexed value in the input image. For example, if asking
+            # for location 0 with a 2 px per clock, 3 window width, then the
+            # 2D location is index_in_shift_register = 1, current_shift_register = 1
+            # and walking back in 2D space as increasing 1D location.
             current_shift_register = 0
             index_in_shift_register = 0
 
             # since current_shift_register and index_in_shift_register form a
             # 2D shape where current_shift_registers is inner dimension and
-            # index_in_shift_register is outer, these functions make the
-            # 2D coordinates into 1D coordinates that match the 1D image
+            # index_in_shift_register is outer, get_shift_register_location_in_1D_coordinates
+            # and set_shift_register_location_using_1D_coordinates  convert between
+            # 2D coordinates in the SIPOs and 1D coordinates in the 1D image
+
+            # To do the reversing of 1D coordinates, need to find the oldest pixel that should be output,
+            # ignoring origin as origin doesn't impact this computation.
+            # This is done by finding the number of relevant pixels for outputting and adjusting it
+            # so that it aligns with the number of pixels per clock cycle.
+            # That coordinates position is treated as a 0 in the reverse coordinates
+            # and requested coordinates (going in the opposite direction) are reversed
+            # and adjusted to fit the new coordinate system by subtracting their values
+            # from the 0's value in the original, forward coordinate system.
+
+            # need to be able to handle situations with swizzling. Swizzling is
+            # where a pixel inputted this clock is not used until next clock.
+            # This is handled by wiring up in reverse order. If a pixel is inputted
+            # in a clock but not used, it will have a high 1D location as it will be
+            # one of the first registers in the first index_in_shift_register.
+            # The swizzled pixel's large 1D location ensures it isn't wired directly
+            # to an output
+
+            # GARBAGE COMMENTS BELOW
+            # assuming the data were in normal order (reverse of what is current done here)
+            # then I subtract the requested index from that max value to go into reverse
+            # coordinates
+
+            # get needed pixels (ignoring origin as that can be garbage)
+            # to determine number of clock cycles needed to satisfy input
+            if cls.window_per_active_clock == 1:
+                needed_pixels = window_width
+            else:
+                needed_pixels = window_width + stride * (cls.window_per_active_clock - 1)
+
+            # get the maximum 1D coordinate when aligning needed pixels to the number
+            # of pixels per clock
+            if needed_pixels % pixel_per_clock == 0:
+                oldest_needed_pixel_forward_1D_coordinates = needed_pixels
+            else:
+                oldest_needed_pixel_forward_1D_coordinates = ceil(needed_pixels / pixel_per_clock) * \
+                                                             pixel_per_clock
+
+            # adjust by 1 for 0 indexing
+                oldest_needed_pixel_forward_1D_coordinates -= 1
+
             def get_shift_register_location_in_1D_coordinates() -> int:
-                return (index_in_shift_register * pixel_per_clock +
+                return oldest_needed_pixel_forward_1D_coordinates - \
+                       (index_in_shift_register * pixel_per_clock +
                         current_shift_register)
 
             def set_shift_register_location_using_1D_coordinates(location: int) -> int:
                 nonlocal current_shift_register, index_in_shift_register
-                index_in_shift_register = location // pixel_per_clock
-                current_shift_register = location % pixel_per_clock
+                location_reversed_indexing = oldest_needed_pixel_forward_1D_coordinates - location
+                index_in_shift_register = location_reversed_indexing // pixel_per_clock
+                current_shift_register = location_reversed_indexing % pixel_per_clock
 
             used_coordinates = set()
 
@@ -162,24 +224,28 @@ def DefineOneDimensionalLineBuffer(
                 # less than normal
                 strideMultiplier = stride if stride < pixel_per_clock else 1
                 set_shift_register_location_using_1D_coordinates(
-                    # the first window has the highest location as the oldest inputted pixel
-                    # accepted will be in the highest index register in the shift register
-                    strideMultiplier * (cls.window_per_active_clock - current_window_index - 1) +
+                    strideMultiplier * current_window_index +
                     # handle origin across multiple clocks by changing valid, but within a single clock
                     # need to adjust where the windows start
                     ((origin * -1) % pixel_per_clock)
                 )
-                # inverse index in a window as shift_register outputs are reverse of image order.
-                # The lowest index outputs of shift_register are farthest to right
-                # in input image.
-                for index_in_window in range(window_width)[::-1]:
+                for index_in_window in range(window_width):
                     # can't wire up directly as have dimension for bits per type in between dimensions
                     # for px ber clock and number of entries in SIPO, so need to iterate here
                     for bit_index in range(type_size_in_bits):
                         wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
                              bits_to_type.I[current_window_index][index_in_window][bit_index])
 
-                    used_coordinates.add(get_shift_register_location_in_1D_coordinates())
+                    print("Wiring sr location {} (aka current_sr {} and index_in_sr {})"
+                          " to window {} with index {}".format(
+                        get_shift_register_location_in_1D_coordinates(),
+                        current_shift_register,
+                        index_in_shift_register,
+                        current_window_index,
+                        index_in_window
+                    ))
+
+                    used_coordinates.add((index_in_shift_register, current_shift_register))
 
                     set_shift_register_location_using_1D_coordinates(
                         get_shift_register_location_in_1D_coordinates() + 1
@@ -188,22 +254,26 @@ def DefineOneDimensionalLineBuffer(
             # if not last row, have output ports for ends of all shift_registers so next
             # 1D can accept them
             if not last_row:
+                index_in_shift_register = image_size // pixel_per_clock - 1
+                hydrate_interrow_pixels = MapParallel(cirb, pixel_per_clock,
+                                                    Hydrate(cirb, pixel_type))
+                wire(hydrate_interrow_pixels.out, cls.next_row)
                 for i in range(pixel_per_clock):
-                    current_location = (len(shift_register.O) - 1) * pixel_per_clock + i
-                    set_shift_register_location_using_1D_coordinates(current_location)
-                    wire(cls.next_row,
-                         shift_register.O[current_shift_register][index_in_shift_register])
-                    used_coordinates.add(current_location)
+                    current_shift_register = i
+                    for bit_index in range(type_size_in_bits):
+                        wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
+                             hydrate_interrow_pixels[current_shift_register][bit_index])
+                    used_coordinates.add((index_in_shift_register, current_shift_register))
 
             # wire up all non-used coordinates to terms
-            for pixel_index in range(image_size):
-                if pixel_index in used_coordinates:
-                    continue
-                set_shift_register_location_using_1D_coordinates(pixel_index)
-                term = Term(cirb, type_size_in_bits)
-                for bit_index in range(type_size_in_bits):
-                    wire(term.I[bit_index],
-                         shift_register.O[current_shift_register][bit_index][index_in_shift_register])
+            for sr in range(pixel_per_clock):
+                for sr_index in range(image_size // pixel_per_clock - 1):
+                    if (sr_index, sr) in used_coordinates:
+                        continue
+                    term = Term(cirb, type_size_in_bits)
+                    for bit_index in range(type_size_in_bits):
+                        wire(term.I[bit_index],
+                             shift_register.O[sr][bit_index][sr_index])
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
@@ -211,7 +281,7 @@ def DefineOneDimensionalLineBuffer(
             # fraction is the last register accessed
             # would add 1 outside fraction as it takes 1 clock for data
             # to get through registers but won't as 0 indexed
-            valid_counter_max_value = ceil((max(used_coordinates) + 1 + origin) /
+            valid_counter_max_value = ceil((oldest_needed_pixel_forward_1D_coordinates + 1 + origin) /
                                             pixel_per_clock)
 
 
@@ -254,6 +324,7 @@ def OneDimensionalLineBuffer(
         image_size: int,
         output_stride: int,
         origin: int,
+        first_row: bool = True,
         last_row: bool = True) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
@@ -267,6 +338,9 @@ def OneDimensionalLineBuffer(
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
     :param origin: The index of the currently provided pixel
+    :param first_row: True if this is the first 1D row in a 2D matrix or the only one in a 2D matrix.
+    Users should not set this unless they understand the internals of the LineBuffer.
+    Its used for determining when to reverse inputs to convert image coordinate to internal coordinates.
     :param last_row: True if this is the last 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should probably leave this to true. Its used for adding extra ports when putting these in
     larger matrices.
