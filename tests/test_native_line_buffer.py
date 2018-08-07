@@ -174,7 +174,7 @@ def impl_test_1D_bit_line_buffer(
     scope = Scope()
 
     # Test line buffer for each combination of parameters and test data.
-    for in_arrays in generate_test_data_sets_1D_bits(pixels_per_clock, image_size):
+    for in_arrays in generate_test_data_sets_1D(Bit, pixels_per_clock, image_size):
         a_1D_bit_line_buffer_test(cirb, scope, in_arrays, pixels_per_clock, window_width, image_size, output_stride, origin)
 
 def test_1D_bit_line_buffer_1_3_9_1_0():
@@ -420,6 +420,31 @@ value is None (i.e. we expect garbage)."""
                 return False
             else:
                 return all(map(windows_match, zip(actual_par, expected_par)))
+
+def generate_test_data_sets_1D(
+    magma_type,
+    pixels_per_clock: int,
+    image_size: int
+):
+    """Make a 3D-list of test data suitable for testing a 1D line buffer
+with the given pixels/clock, image size parameters, and the given
+token type (as magma Bit or Array of Bit), Outer dim = list of
+separate test sets, middle dim = input over clock cycles, inner dim =
+array entries.
+    """
+    if magma_type == Bit:
+        return generate_test_data_sets_1D_bits(pixels_per_clock, image_size)
+    else:
+        try:
+            n = magma_type.N
+            t = magma_type.T
+            if t != Bit: raise TypeError("Not a bit.")
+            return generate_test_data_sets_1D_ints(
+                pixels_per_clock, image_size, n
+            )
+        except Exception as e:
+            raise TypeError("magma_type was not Bit and failed at "
+                "interpreting as array of bits") from e
 
 def generate_test_data_sets_1D_bits(
     pixels_per_clock: int,
