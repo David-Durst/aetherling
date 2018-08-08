@@ -1,4 +1,4 @@
-"""Tests for the Aetherling Line Buffer."""
+"""Tests for the Aetherling 1D Line Buffer."""
 
 import sys
 import random
