@@ -51,55 +51,74 @@ def DefineOneDimensionalLineBuffer(
     """
 
     class _LB(Circuit):
-        # this is necessary so that get same number of pixels in every
-        # clock, don't have a weird ending with only 1 valid input pixel
         if image_size % pixel_per_clock != 0:
+            reason = """
+            this is necessary so that output a complete image at the end with
+            the same number of pixels in every clock ns don't have a weird ending
+            with only 1 valid input pixel
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: image_size {} not divisiable by"
-                            "pixel_per_clock {}".format(image_size,
-                                                        pixel_per_clock))
-        # the average number of output windows per clock = px per clock
-        # / stride, this must be integer or reciprocal of one so that
-        # easier to map/ underutil rest of system, otherwise
-        # have a weirdly utilized downstream system that is only
-        # partially used on some clocks
-        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: output_stride {} not divisiable by"
-                            "pixel_per_clock {} nor vice-verse. One of them must"
-                            "be divisble by the other.".format(stride,
-                                                               pixel_per_clock))
-        # stride == downsample amount, this requires a cleanly divisible downsample
-        if image_size % stride != 0:
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: image_size {} not divisiable by"
-                            "output_stride {}".format(image_size,
-                                                      stride))
+                            "pixel_per_clock {}. \n Reason: {}".format(image_size,
+                                                                       pixel_per_clock,
+                                                                       reason))
 
-        # origin must be less than window, and can only be in one direction
-        # if greater than window, then entire first window would be garbage,
-        # which is meaningless
-        # origin can't go into image as that is just crop, unsupported
-        # functionality
+        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
+            reason = """
+            the average number of output windows per clock = px per clock
+            / stride, this must be integer or reciprocal of one so that
+            easier to map/ underutil rest of system, otherwise
+            have a weirdly utilized downstream system that is only
+            partially used on some clocks
+            """
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: output_stride {} not divisible by"
+                            "pixel_per_clock {} nor vice-verse. One of them must"
+                            "be divisible by the other. \n Reason: {}".format(stride,
+                                                                              pixel_per_clock,
+                                                                              reason))
+
+        if image_size % stride != 0:
+            reason = "stride == downsample amount, so this ensures a downsample amount" \
+                     "that cleanly divides the image size"
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_size {} not divisible by"
+                            "stride {}. \n Reason: {}".format(image_size,
+                                                              stride,
+                                                              reason))
+
         if abs(origin) >= window_width:
+            reason = """
+            origin must be less than window.  If abs(origin) was greater
+            than window, then entire first window would be garbage
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: |origin| {} greater than or equal to"
-                            "window width {}".format(abs(origin),
-                                                     window_width))
+                            "window width {} \n Reason: {}".format(abs(origin),
+                                                                   window_width,
+                                                                   reason))
         if origin > 0:
+            reason = """
+            origin can't go into image. That would be cropping the first row of the image
+            and linebuffer doesn't do cropping.
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: origin {} greater than"
-                            "0".format(origin))
+                            "parameters: origin {} greater than 0. Reason: {}".format(origin, reason))
 
-        # need window width plus origin outputs, if smaller than image,
-        # this is a weird edge case that I don't want to deal with and
-        # the user shouldn't be using a linebuffer for, because only 1
-        # window output per image
         if window_width - origin >= image_size:
+            reason = """
+            need window width plus abs(origin) outputs to do wiring.
+            If the image is smaller than this, will have issues with
+            internal wiring. Additionally, the linebuffer isn't
+            used for images that are small enough to be processed
+            in one or a few clock cycles. This is a weird edge 
+            case that I don't want to deal with and shouldn't occur
+            in the real world.
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: window width {} - origin {} "
-                            "greater than or equal to image size {}"
-                            .format(window_width, origin, image_size))
+                            "greater than or equal to image size {}. Reason: {}"
+                            .format(window_width, origin, image_size, reason))
 
         name = "OneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
                "_{}imgSize_{}outputStride_{}origin".format(
