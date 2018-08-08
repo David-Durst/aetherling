@@ -385,7 +385,7 @@ def a_1D_line_buffer_test(
                 )
         def set_value(int_array):
             sim.set_value(LineBufferDef.I,
-                list(map(padded_int2seq, int_array)), scope)
+                list(map(int2seq, int_array)), scope)
 
     for array in in_arrays:
         set_value(array)
