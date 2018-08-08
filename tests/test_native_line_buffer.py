@@ -364,7 +364,15 @@ def a_1D_line_buffer_test(
         except Exception as e:
             raise TypeError("magma_type appears not to be Bit "
                 "or Array of Bit.") from e
-        
+
+        # So, we need to pad the sequence of bits with zero because if
+        # it doesn't match the expected bit width exactly, we will seg
+        # fault because the people who [reason redacted]. I should
+        # write a bug report about this eventually.
+        def padded_int2seq(n):
+            bits = int2seq(n)
+            return bits + [0] * (bit_width-len(bits))
+
         def tick_sim_collect_outputs():
             sim.evaluate()
             sim.advance_cycle()
@@ -372,15 +380,15 @@ def a_1D_line_buffer_test(
                 actual.append(
                     [
                         [
-                            int2seq(sim.get_value(LineBufferDef.O[par][pix], scope))
+                            seq2int(sim.get_value(LineBufferDef.O[par][pix], scope))
                             for pix in range(window_width)
                         ]
                         for par in range(parallelism)
                     ]
                 )
         def set_value(int_array):
-            sim.set_value(LineBufferDef.I, map(int2seq, int_array), scope)
-
+            sim.set_value(LineBufferDef.I,
+                list(map(padded_int2seq, int_array)), scope)
 
     for array in in_arrays:
         set_value(array)
