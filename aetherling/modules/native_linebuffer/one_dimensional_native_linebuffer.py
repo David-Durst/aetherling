@@ -47,7 +47,7 @@ def DefineOneDimensionalLineBuffer(
     5. origin <= 0
     6. window_width - origin < image_size
 
-    :return: A 1D Linebuffer
+    :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
 
     class _LB(Circuit):
@@ -341,7 +341,7 @@ def OneDimensionalLineBuffer(
     5. origin <= 0
     6. window_width < image_size
 
-    :return: A 1D Linebuffer
+    :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
     return DefineOneDimensionalLineBuffer(
         cirb,
@@ -351,5 +351,6 @@ def OneDimensionalLineBuffer(
         image_size,
         output_stride,
         origin,
+        first_row,
         last_row
     )()
