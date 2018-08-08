@@ -642,22 +642,20 @@ over clock cycles, inner dim = array entries.
     ]
 
 def generate_one_test_data_set_1D(
-    random_value,
+    random_generator,
     pixels_per_clock: int,
     image_size: int,
 ):
     """Generate a 2D-list of test data suitable for testing a 1D line
 buffer with the given pixels/clock and image size parameters. Populate
-the test data using values from the random_value function passed.
+the test data using values from the random_generator function passed.
     """
-    # Make an array of pixels that we will split up.
-    pixels = [random_value() for i in range(image_size)]
 
     cycle_count = image_size//pixels_per_clock
     assert cycle_count * pixels_per_clock == image_size, \
         "Expected pixels/clock to evenly divide pixel count."
 
     return [
-        pixels[s:s+pixels_per_clock]
-        for s in range(0, image_size, pixels_per_clock)
+        [random_generator() for i in range(pixels_per_clock)]
+        for s in range(cycle_count)
     ]
