@@ -367,9 +367,8 @@ def a_1D_line_buffer_test(
 
         # So, we need to pad the sequence of bits with zero because if it
         # doesn't match the expected bit width exactly, we will segfault.
-        def padded_int2seq(n):
-            bits = int2seq(n)
-            return bits + [0] * (bit_width-len(bits))
+        def padded_int2seq(x):
+            return int2seq(x, n=bit_width)
 
         def tick_sim_collect_outputs():
             sim.evaluate()
