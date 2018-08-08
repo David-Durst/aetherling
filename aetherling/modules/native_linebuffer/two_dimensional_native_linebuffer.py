@@ -1,3 +1,4 @@
+from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.hydrate import Dehydrate, Hydrate
 from magma import *
 from mantle import DefineCoreirConst
@@ -198,7 +199,7 @@ def DefineTwoDimensionalLineBuffer(
 
         name = "OneDimensionalLineBuffer_{}type_{}x{}pxPerClock_{}x{}window" \
                "_{}x{}img_{}x{}stride_{}x{}origin".format(
-            pixel_type,
+            cleanName(str(pixel_type)),
             pixels_per_row_per_clock,
             rows_of_pixels_per_clock,
             window_cols,

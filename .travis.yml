@@ -20,4 +20,4 @@ install:
     - pip install -e .
 
 script:
-    - pytest -s tests
+    - pytest -n 2 -s tests

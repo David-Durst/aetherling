@@ -1,3 +1,4 @@
+from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.hydrate import Dehydrate, Hydrate
 from magma import *
 from mantle import DefineCoreirConst
@@ -126,8 +127,8 @@ def DefineOneDimensionalLineBuffer(
 
         name = "OneDimensionalLineBuffer_{}type_{}pxPerClock_{}window" \
                "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(
-            pixel_type, pixel_per_clock, window_width, image_size, stride, abs(origin),
-            first_row, last_row
+            cleanName(str(pixel_type)), pixel_per_clock, window_width, image_size,
+            stride, abs(origin), first_row, last_row
         )
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
