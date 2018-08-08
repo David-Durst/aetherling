@@ -31,7 +31,7 @@ def DefineOneDimensionalLineBuffer(
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
     :param origin: The index of the first pixel of the first window relative to
-    the top left corner of the image
+    the first pixel of the image
     :param first_row: True if this is the first 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should not set this unless they understand the internals of the LineBuffer.
     Its used for determining when to reverse inputs to convert image coordinate to internal coordinates.
@@ -93,7 +93,7 @@ def DefineOneDimensionalLineBuffer(
 
         if abs(origin) >= window_width:
             reason = """
-            origin must be less than window.  If abs(origin) was greater
+            origin must be less than window. If abs(origin) was greater
             than window, then entire first window would be garbage
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
@@ -103,11 +103,11 @@ def DefineOneDimensionalLineBuffer(
                                                                    reason))
         if origin > 0:
             reason = """
-            origin can't go into image. That would be cropping the first row of the image
+            origin can't go into image. That would be cropping the first pixels of the image
             and linebuffer doesn't do cropping.
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: origin {} greater than 0. Reason: {}".format(origin, reason))
+                            "parameters: origin {} greater than 0. \n Reason: {}".format(origin, reason))
 
         if window_width - origin >= image_size:
             reason = """
@@ -120,19 +120,20 @@ def DefineOneDimensionalLineBuffer(
             in the real world.
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: window width {} - origin {} "
-                            "greater than or equal to image size {}. Reason: {}"
+                            "parameters: window_width {} - origin {} "
+                            "greater than or equal to image_size {}. \n Reason: {}"
                             .format(window_width, origin, image_size, reason))
 
-        name = "OneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
-               "_{}imgSize_{}outputStride_{}origin".format(
-            pixel_per_clock, window_width, image_size, stride, abs(origin)
+        name = "OneDimensionalLineBuffer_{}type_{}pxPerClock_{}window" \
+               "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(
+            pixel_type, pixel_per_clock, window_width, image_size, stride, abs(origin),
+            first_row, last_row
         )
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
-        window_per_active_clock = max(pixel_per_clock // stride, 1)
+        windows_per_active_clock = max(pixel_per_clock // stride, 1)
         IO = ['I', In(Array(pixel_per_clock, In(pixel_type))),
-              'O', Out(Array(window_per_active_clock, Array(window_width, Out(pixel_type)))),
+              'O', Out(Array(windows_per_active_clock, Array(window_width, Out(pixel_type)))),
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
             IO += ['next_row', Out(Array(pixel_per_clock, Out(pixel_type)))]
@@ -149,7 +150,7 @@ def DefineOneDimensionalLineBuffer(
             # make a dehydrate for each pixel coming in each clock
             type_to_bits = MapParallel(cirb, pixel_per_clock, Dehydrate(cirb, pixel_type))
             # make a hydrate for each pixel coming out each clock, for each pixel in window
-            bits_to_type = MapParallel(cirb, cls.window_per_active_clock,
+            bits_to_type = MapParallel(cirb, cls.windows_per_active_clock,
                                        MapParallel(cirb, window_width, Hydrate(cirb, pixel_type)))
 
             # reverse the pixels per clock. Since greater index_in_shift_register
@@ -206,10 +207,10 @@ def DefineOneDimensionalLineBuffer(
 
             # get needed pixels (ignoring origin as that can be garbage)
             # to determine number of clock cycles needed to satisfy input
-            if cls.window_per_active_clock == 1:
+            if cls.windows_per_active_clock == 1:
                 needed_pixels = window_width
             else:
-                needed_pixels = window_width + stride * (cls.window_per_active_clock - 1)
+                needed_pixels = window_width + stride * (cls.windows_per_active_clock - 1)
 
             # get the maximum 1D coordinate when aligning needed pixels to the number
             # of pixels per clock
@@ -235,7 +236,7 @@ def DefineOneDimensionalLineBuffer(
 
             used_coordinates = set()
 
-            for current_window_index in range(cls.window_per_active_clock):
+            for current_window_index in range(cls.windows_per_active_clock):
                 # stride is handled by wiring if there are multiple windows emitted per clock,
                 # aka if stride is less than number of pixels per clock.
                 # In this case, multiple windows are emitted but they must be overlapped
@@ -344,10 +345,11 @@ def OneDimensionalLineBuffer(
     linebuffer receives as input each clock.
     :param window_width: The size of the stencils that are emitted
     :param image_size: The size of the complete, 1D image
-    :param output_stride: The distance between origins of consecutive stencils
+    :param stride: The distance between origins of consecutive stencils
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
-    :param origin: The index of the currently provided pixel
+    :param origin: The index of the first pixel of the first window relative to
+    the first pixel of the image
     :param first_row: True if this is the first 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should not set this unless they understand the internals of the LineBuffer.
     Its used for determining when to reverse inputs to convert image coordinate to internal coordinates.
@@ -355,14 +357,13 @@ def OneDimensionalLineBuffer(
     Users should probably leave this to true. Its used for adding extra ports when putting these in
     larger matrices.
 
-
     Restrictions:
     1. image_size % pixel_per_clock == 0
     2. image_size % stride == 0
     3. stride % pixel_per_clock == 0 OR pixel_per_clock % stride == 0
     4. window_width > |origin|
     5. origin <= 0
-    6. window_width < image_size
+    6. window_width - origin < image_size
 
     :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
