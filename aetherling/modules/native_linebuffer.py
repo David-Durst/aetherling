@@ -103,7 +103,7 @@ def DefineOneDimensionalLineBuffer(
 
         name = "OneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
                "_{}imgSize_{}outputStride_{}origin".format(
-            pixel_per_clock, window_width, image_size, stride, origin
+            pixel_per_clock, window_width, image_size, stride, abs(origin)
         )
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
@@ -254,7 +254,7 @@ def DefineOneDimensionalLineBuffer(
 
             # wire up all non-used coordinates to terms
             for sr in range(pixel_per_clock):
-                for sr_index in range(image_size // pixel_per_clock - 1):
+                for sr_index in range(image_size // pixel_per_clock):
                     if (sr_index, sr) in used_coordinates:
                         continue
                     term = Term(cirb, type_size_in_bits)
