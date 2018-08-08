@@ -53,9 +53,8 @@ def DefineOneDimensionalLineBuffer(
     class _LB(Circuit):
         if image_size % pixel_per_clock != 0:
             reason = """
-            this is necessary so that output a complete image at the end with
-            the same number of pixels in every clock ns don't have a weird ending
-            with only 1 valid input pixel
+            this is necessary so that input a complete image with the same number of input
+            pixels in every clock and don't have a weird ending with only 1 valid input pixel
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: image_size {} not divisiable by"
@@ -63,29 +62,34 @@ def DefineOneDimensionalLineBuffer(
                                                                        pixel_per_clock,
                                                                        reason))
 
-        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
-            reason = """
-            the average number of output windows per clock = px per clock
-            / stride, this must be integer or reciprocal of one so that
-            easier to map/ underutil rest of system, otherwise
-            have a weirdly utilized downstream system that is only
-            partially used on some clocks
-            """
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: output_stride {} not divisible by"
-                            "pixel_per_clock {} nor vice-verse. One of them must"
-                            "be divisible by the other. \n Reason: {}".format(stride,
-                                                                              pixel_per_clock,
-                                                                              reason))
-
         if image_size % stride != 0:
-            reason = "stride == downsample amount, so this ensures a downsample amount" \
+            reason = "stride is downsample factor, so this ensures a downsample factor" \
                      "that cleanly divides the image size"
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: image_size {} not divisible by"
                             "stride {}. \n Reason: {}".format(image_size,
                                                               stride,
                                                               reason))
+
+        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
+            reason = """
+            average number of output windows per clock = px per clock
+            / stride. Number of output windows per clock must be integer or 
+            reciprocal of one so that throughput is an easier factor to manipulate 
+            with map/underutil.
+            
+            Otherwise throughput is a weird fraction and the downstream system is
+            either only partially used on some clocks or the sequence length
+            is multiplied by a weird factor that makes the rational number
+            throughput become an integer.            
+            """
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: stride {} not divisible by"
+                            "pixel_per_clock {} nor vice-verse. One of them must"
+                            "be divisible by the other. \n Reason: {}".format(stride,
+                                                                              pixel_per_clock,
+                                                                              reason))
+
 
         if abs(origin) >= window_width:
             reason = """

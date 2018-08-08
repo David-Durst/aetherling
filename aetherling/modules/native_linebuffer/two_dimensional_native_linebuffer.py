@@ -61,49 +61,117 @@ def DefineTwoDimensionalLineBuffer(
     3. if rows_of_pixels_per_clock > 1, then image_cols == pixels_per_row_per_clock
     4. image_cols % stride_cols == 0
     5. image_rows % stride_rows == 0
-    6. stride_cols % pixels_per_row_per_clock == 0 OR pixels_per_row_per_clock % stride_cols == 0
-    7. stride_rows % rows_of_pixels_per_clock == 0 OR rows_of_pixels_per_clock % stride_rows == 0
-    8. window_cols > |origin_cols|
-    9. window_rows > |origin_rows|
-    10. origin_cols <= 0
-    11. origin_rows <= 0
-    12. window_cols - origin_cols < image_cols
-    13. window_rows - origin_rows < image_rows
+    6. (stride_cols * stride_rows) %
+         (pixels_per_row_per_clock * rows_of_pixels_per_clock) == 0 OR
+       (pixels_per_row_per_clock * rows_of_pixels_per_clock) %
+         (stride_cols * stride_rows) == 0
+    7. window_cols > |origin_cols|
+    8. window_rows > |origin_rows|
+    9. origin_cols <= 0
+    10. origin_rows <= 0
+    11. window_cols - origin_cols < image_cols
+    12. window_rows - origin_rows < image_rows
 
     :return: A 2D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
     class _LB(Circuit):
-        # this is necessary so that get same number of pixels in every
-        # clock, don't have a weird ending with only 1 valid input pixel
-        if image_size % pixel_per_clock != 0:
+        if image_cols % pixels_per_row_per_clock != 0:
+            reason = """
+            this is necessary so that input a complete row before getting 
+            the input for the next row. This means don't have a clock cycle
+            where input pixels are from two different rows in the input image.
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: image_size {} not divisiable by"
-                            "pixel_per_clock {}".format(image_size,
-                                                        pixel_per_clock))
-        # the average number of output windows per clock = px per clock
-        # / stride, this must be integer or reciprocal of one so that
-        # easier to map/ underutil rest of system, otherwise
-        # have a weirdly utilized downstream system that is only
-        # partially used on some clocks
-        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: output_stride {} not divisiable by"
-                            "pixel_per_clock {} nor vice-verse. One of them must"
-                            "be divisble by the other.".format(stride,
-                                                               pixel_per_clock))
-        # stride == downsample amount, this requires a cleanly divisible downsample
-        if image_size % stride != 0:
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: image_size {} not divisiable by"
-                            "output_stride {}".format(image_size,
-                                                      stride))
+                            "parameters: image_cols {} not divisiable by"
+                            "pixels_per_row_per_clock {}. \n Reason {}"
+                            .format(image_cols, pixels_per_row_per_clock, reason))
 
-        # origin must be less than window, and can only be in one direction
-        # if greater than window, then entire first window would be garbage,
-        # which is meaningless
-        # origin can't go into image as that is just crop, unsupported
-        # functionality
-        if abs(origin) >= window_width:
+        if image_cols % rows_of_pixels_per_clock != 0:
+            reason = """
+            this is necessary so that input a complete image with the same number 
+            of input pixels every clock, don't have a weird ending
+            with only 1 pixel from the image left to input
+            """
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_cols {} not divisiable by"
+                            "pixels_per_row_per_clock {}"
+                            .format(image_cols, rows_of_pixels_per_clock, reason))
+
+        if image_cols % stride_cols != 0:
+            reason = "stride_cols is downsample factor for number of columns." \
+                     "This requirement ensures that the column downsample factor" \
+                     "cleanly divides the image's number of columns"
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_cols {} not divisible by"
+                            "stride_cols {}. \n Reason: {}"
+                            .format(image_cols, stride_cols, reason))
+
+        if image_rows % stride_rows != 0:
+            reason = "stride_rows is downsample factor for number of rows." \
+                     "This requirement ensures that the row downsample factor" \
+                     "cleanly divides the image's number of rows"
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_rows {} not divisible by"
+                            "stride_rows {}. \n Reason: {}"
+                            .format(image_rows, stride_rows, reason))
+
+        if ((stride_cols * stride_rows) %
+            (pixels_per_row_per_clock * rows_of_pixels_per_clock) == 0) and \
+                ((pixels_per_row_per_clock * rows_of_pixels_per_clock) %
+                 (stride_cols * stride_rows) == 0):
+            reason = """
+            the average number of output windows per clock =
+                (pixels per row per clock * rows of pixels per clock) /
+                (stride cols per clock * stride rows per clock)
+            Number of output windows per clock must be integer or 
+            reciprocal of one so that throughput is an easier factor to manipulate 
+            with map/underutil.
+            
+            Otherwise throughput is a weird fraction and the downstream system is
+            either only partially used on some clocks or the sequence length
+            is multiplied by a weird factor that makes the rational number
+            throughput become an integer.
+            """
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: stride_cols {} not divisible by"
+                            "pixels_per_row_per_clock {} nor vice-verse. One of them must"
+                            "be divisible by the other. \n Reason: {}"
+                            .format(stride_cols, pixels_per_row_per_clock, reason))
+
+        if stride_rows % rows_of_pixels_per_clock != 0 and \
+                rows_of_pixels_per_clock % stride_rows != 0:
+            reason = """
+            the average number of output windows per clock =
+                (pixels per row per clock * rows of pixels per clock) /
+                (stride cols per clock * stride rows per clock)
+            Number of output windows per clock must be integer or 
+            reciprocal of one so that throughput is an easier factor to manipulate 
+            with map/underutil.
+
+            Otherwise throughput is a weird fraction and the downstream system is
+            either only partially used on some clocks or the sequence length
+            is multiplied by a weird factor that makes the rational number
+            throughput become an integer.
+
+            Note: this assertion and its cols partner actually tests a slightly stronger bound
+            by verifying the rows and columns divisibility independently, but that
+            tighter bound is also necessary for some implementation reasons.
+            """
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: stride_rows {} not divisible by"
+                            "rows_of_pixels_per_clock {} nor vice-verse. One of them must"
+                            "be divisible by the other. \n Reason: {}"
+                            .format(stride_rows, rows_of_pixels_per_clock, reason))
+
+
+        if abs(origin_cols) >= window_cols:
+            reason = """
+            origin must be less than window, and can only be in one direction
+            if greater than window, then entire first window would be garbage,
+            which is meaningless
+            origin can't go into image as that is just crop, unsupported
+            functionality            
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: |origin| {} greater than or equal to"
                             "window width {}".format(abs(origin),
@@ -142,7 +210,7 @@ def DefineTwoDimensionalLineBuffer(
 
     return _LB
 
-def OneDimensionalLineBuffer(
+def TwoDimensionalLineBuffer(
         cirb: CoreIRBackend,
         pixel_type: Kind,
         pixels_per_row_per_clock: int,
