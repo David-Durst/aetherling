@@ -1,4 +1,4 @@
-"""My (Akeley's) attempt at writing a test for a 1D bit line buffer."""
+"""Tests for the Aetherling 1D Line Buffer."""
 
 import sys
 import random
@@ -8,6 +8,7 @@ from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import GetCoreIRModule
 
 from magma import *
+from magma.bitutils import int2seq, seq2int
 import coreir
 from magma.scope import Scope
 from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer import \
@@ -160,93 +161,156 @@ def test_multiple_sipo_and_counter():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-def impl_test_1D_bit_line_buffer(
+def impl_test_1D_line_buffer(
+    magma_type,
     pixels_per_clock: int,
     window_width: int,
     image_size: int,
     output_stride: int,
     origin: int
 ):
-    """Run tests for the 1D bit line buffer with given parameters."""
+    """Run tests for the 1D line buffer with given token type (magma_type)
+and parameters."""
 
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
 
     # Test line buffer for each combination of parameters and test data.
-    for in_arrays in generate_test_data_sets_1D_bits(pixels_per_clock, image_size):
-        a_1D_bit_line_buffer_test(cirb, scope, in_arrays, pixels_per_clock, window_width, image_size, output_stride, origin)
+    for in_arrays in generate_test_data_sets_1D(magma_type, pixels_per_clock, image_size):
+        a_1D_line_buffer_test(cirb, scope, in_arrays, magma_type, pixels_per_clock, window_width, image_size, output_stride, origin)
 
 def test_1D_bit_line_buffer_1_3_9_1_0():
-    impl_test_1D_bit_line_buffer(1, 3, 9, 1, 0)
+    impl_test_1D_line_buffer(Bit, 1, 3, 9, 1, 0)
 
 def test_1D_bit_line_buffer_1_3_9_1_1():
-    impl_test_1D_bit_line_buffer(1, 3, 9, 1, -1)
+    impl_test_1D_line_buffer(Bit, 1, 3, 9, 1, -1)
 
 def test_1D_bit_line_buffer_2_3_10_1_0():
-    impl_test_1D_bit_line_buffer(2, 3, 10, 1, 0)
+    impl_test_1D_line_buffer(Bit, 2, 3, 10, 1, 0)
 
 def test_1D_bit_line_buffer_1_3_9_2_0():
-    impl_test_1D_bit_line_buffer(1, 3, 10, 2, 0)
+    impl_test_1D_line_buffer(Bit, 1, 3, 10, 2, 0)
 
 def test_1D_bit_line_buffer_2_3_10_1_1():
-    impl_test_1D_bit_line_buffer(2, 3, 10, 1, -1)
+    impl_test_1D_line_buffer(Bit, 2, 3, 10, 1, -1)
 
 def test_1D_bit_line_buffer_1_3_36_1_0():
-    impl_test_1D_bit_line_buffer(1, 3, 36, 1, 0)
+    impl_test_1D_line_buffer(Bit, 1, 3, 36, 1, 0)
 
 def test_1D_bit_line_buffer_3_3_36_1_0():
-    impl_test_1D_bit_line_buffer(3, 3, 36, 1, 0)
+    impl_test_1D_line_buffer(Bit, 3, 3, 36, 1, 0)
 
 def test_1D_bit_line_buffer_3_3_36_1_1():
-    impl_test_1D_bit_line_buffer(3, 3, 36, 1, -1)
+    impl_test_1D_line_buffer(Bit, 3, 3, 36, 1, -1)
 
 def test_1D_bit_line_buffer_1_4_32_2_1():
-    impl_test_1D_bit_line_buffer(1, 4, 32, 2, -1)
+    impl_test_1D_line_buffer(Bit, 1, 4, 32, 2, -1)
 
 def test_1D_bit_line_buffer_4_8_32_2_1():
-    impl_test_1D_bit_line_buffer(4, 8, 32, 2, -1)
+    impl_test_1D_line_buffer(Bit, 4, 8, 32, 2, -1)
 
-def test_1D_bit_line_buffer_1_3_64_2_0():
-    impl_test_1D_bit_line_buffer(1, 3, 64, 2, 0)
+def test_1D_bit_line_buffer_1_3_26_2_0():
+    impl_test_1D_line_buffer(Bit, 1, 3, 26, 2, 0)
 
-def test_1D_bit_line_buffer_1_3_80_1_1():
-    impl_test_1D_bit_line_buffer(1, 3, 80, 1, -1)
+def test_1D_bit_line_buffer_1_3_30_1_1():
+    impl_test_1D_line_buffer(Bit, 1, 3, 30, 1, -1)
 
-def test_1D_bit_line_buffer_16_4_128_2_1():
-    impl_test_1D_bit_line_buffer(16, 4, 128, 2, -1)
+def test_1D_bit_line_buffer_16_4_64_2_1():
+    impl_test_1D_line_buffer(Bit, 16, 4, 64, 2, -1)
 
-def test_1D_bit_line_buffer_1_2_42_2_0():
-    impl_test_1D_bit_line_buffer(1, 2, 42, 2, 0)
+def test_1D_bit_line_buffer_1_2_18_2_0():
+    impl_test_1D_line_buffer(Bit, 1, 2, 18, 2, 0)
 
-def test_1D_bit_line_buffer_4_8_72_4_2():
-    impl_test_1D_bit_line_buffer(4, 8, 72, 4, -2)
+def test_1D_bit_line_buffer_4_8_24_4_2():
+    impl_test_1D_line_buffer(Bit, 4, 8, 24, 4, -2)
 
-def test_1D_bit_line_buffer_4_8_26_2_3():
-    impl_test_1D_bit_line_buffer(4, 8, 26, 2, -3)
+def test_1D_bit_line_buffer_4_8_20_2_3():
+    impl_test_1D_line_buffer(Bit, 4, 8, 20, 2, -3)
 
-def test_1D_bit_line_buffer_13_5_65_1_0():
-    impl_test_1D_bit_line_buffer(13, 5, 65, 1, 0)
+def test_1D_bit_line_buffer_13_5_39_1_0():
+    impl_test_1D_line_buffer(Bit, 13, 5, 39, 1, 0)
 
-def test_1D_bit_line_buffer_1_15_130_13_1():
-    impl_test_1D_bit_line_buffer(1, 15, 130, 13, -1)
+def test_1D_bit_line_buffer_1_15_39_13_1():
+    impl_test_1D_line_buffer(Bit, 1, 15, 39, 13, -1)
 
-def test_1D_bit_line_buffer_2_3_128_2_1():
-    impl_test_1D_bit_line_buffer(2, 3, 128, 2, -1)
+def test_1D_bit_line_buffer_2_3_14_2_1():
+    impl_test_1D_line_buffer(Bit, 2, 3, 14, 2, -1)
 
-def a_1D_bit_line_buffer_test(
+
+def test_1D_int4_line_buffer_1_3_9_1_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 9, 1, 0)
+
+def test_1D_int4_line_buffer_1_3_9_1_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 9, 1, -1)
+
+def test_1D_int4_line_buffer_2_3_10_1_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 2, 3, 10, 1, 0)
+
+def test_1D_int4_line_buffer_1_3_9_2_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 10, 2, 0)
+
+def test_1D_int4_line_buffer_2_3_10_1_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 2, 3, 10, 1, -1)
+
+def test_1D_int4_line_buffer_1_3_36_1_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 36, 1, 0)
+
+def test_1D_int4_line_buffer_3_3_36_1_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 3, 3, 36, 1, 0)
+
+def test_1D_int4_line_buffer_3_3_36_1_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 3, 3, 36, 1, -1)
+
+def test_1D_int4_line_buffer_1_4_32_2_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 4, 32, 2, -1)
+
+def test_1D_int4_line_buffer_4_8_32_2_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 4, 8, 32, 2, -1)
+
+def test_1D_int4_line_buffer_1_3_26_2_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 26, 2, 0)
+
+def test_1D_int4_line_buffer_1_3_30_1_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 30, 1, -1)
+
+def test_1D_int4_line_buffer_16_4_64_2_1():
+    impl_test_1D_line_buffer(Array(4, Bit), 16, 4, 64, 2, -1)
+
+def test_1D_int4_line_buffer_1_2_18_2_0():
+    impl_test_1D_line_buffer(Array(4, Bit), 1, 2, 18, 2, 0)
+
+def test_1D_int4_line_buffer_4_8_24_4_2():
+    impl_test_1D_line_buffer(Array(4, Bit), 4, 8, 24, 4, -2)
+
+def test_1D_int4_line_buffer_4_8_20_2_3():
+    impl_test_1D_line_buffer(Array(4, Bit), 4, 8, 20, 2, -3)
+
+def test_1D_int8_line_buffer_13_5_39_1_0():
+    impl_test_1D_line_buffer(Array(8, Bit), 13, 5, 39, 1, 0)
+
+def test_1D_int8_line_buffer_1_15_39_13_1():
+    impl_test_1D_line_buffer(Array(8, Bit), 1, 15, 39, 13, -1)
+
+def test_1D_int8_line_buffer_2_3_14_2_1():
+    impl_test_1D_line_buffer(Array(8, Bit), 2, 3, 14, 2, -1)
+
+
+def a_1D_line_buffer_test(
     cirb,
     scope,
     in_arrays,
+    magma_type,
     pixels_per_clock: int,
     window_width: int,
     image_size: int,
     output_stride: int,
     origin: int
 ):
-    """Simulate a line buffer with the given parameters and specified
-    input (list-of-lists, outer list is time and inner list represents
-    array of bits).
+    """Simulate a line buffer with the given parameters, token type, and
+    specified input (list-of-lists, outer list is time and inner list
+    represents array of values). Use python int type to represent int;
+    we translate to array of bits at the last second.
     """
     window_count, parallelism, valid_count = internal_params_1D(
         pixels_per_clock, window_width, image_size, output_stride, origin
@@ -258,7 +322,7 @@ def a_1D_bit_line_buffer_test(
     )
 
     LineBufferDef = DefineOneDimensionalLineBuffer(
-        cirb, Bit, pixels_per_clock, window_width, image_size, output_stride, origin
+        cirb, magma_type, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
     #save_CoreIR_json(cirb, LineBufferDef, "native_linebuffer.json")
@@ -269,26 +333,62 @@ def a_1D_bit_line_buffer_test(
     sim.set_value(LineBufferDef.CE, 1, scope)
 
     # List for recording sequence of valid outputs (in the same format
-    # as specified by expected_valid_outputs_1D), and a helper function
-    # that ticks the simulation, appending any output received when
-    # the simulated module asserts valid.
+    # as specified by expected_valid_outputs_1D), and a two helper
+    # functions. tick_sim_collect_outputs ticks the simulation,
+    # appending any output received when the simulated module asserts
+    # valid. set_value feeds a new array input to the
+    # simulator. There's one version for bit and one for int (annoying
+    # leaky abstraction).
     actual = []
-    def tick_sim_collect_outputs():
-        sim.evaluate()
-        sim.advance_cycle()
-        if sim.get_value(LineBufferDef.valid, scope):
-            actual.append(
-                [
+    if magma_type == Bit:
+        def tick_sim_collect_outputs():
+            sim.evaluate()
+            sim.advance_cycle()
+            if sim.get_value(LineBufferDef.valid, scope):
+                actual.append(
                     [
-                        bool(sim.get_value(LineBufferDef.O[par][pix], scope))
-                        for pix in range(window_width)
+                        [
+                            bool(sim.get_value(LineBufferDef.O[par][pix], scope))
+                            for pix in range(window_width)
+                        ]
+                        for par in range(parallelism)
                     ]
-                    for par in range(parallelism)
-                ]
-            )
+                )
+        def set_value(bit_array):
+            sim.set_value(LineBufferDef.I, bit_array, scope)
+    else:
+        try:
+            bit_width = magma_type.N
+            if magma_type.T != Bit:
+                raise TypeError("Array not made of Bits.")
+        except Exception as e:
+            raise TypeError("magma_type appears not to be Bit "
+                "or Array of Bit.") from e
+
+        # So, we need to pad the sequence of bits with zero because if it
+        # doesn't match the expected bit width exactly, we will segfault.
+        def padded_int2seq(x):
+            return int2seq(x, n=bit_width)
+
+        def tick_sim_collect_outputs():
+            sim.evaluate()
+            sim.advance_cycle()
+            if sim.get_value(LineBufferDef.valid, scope):
+                actual.append(
+                    [
+                        [
+                            seq2int(sim.get_value(LineBufferDef.O[par][pix], scope))
+                            for pix in range(window_width)
+                        ]
+                        for par in range(parallelism)
+                    ]
+                )
+        def set_value(int_array):
+            sim.set_value(LineBufferDef.I,
+                list(map(padded_int2seq, int_array)), scope)
 
     for array in in_arrays:
-        sim.set_value(LineBufferDef.I, array, scope)
+        set_value(array)
         tick_sim_collect_outputs()
 
     # Wait for a little extra after the last input because the line buffer
@@ -420,6 +520,31 @@ value is None (i.e. we expect garbage)."""
                 return False
             else:
                 return all(map(windows_match, zip(actual_par, expected_par)))
+
+def generate_test_data_sets_1D(
+    magma_type,
+    pixels_per_clock: int,
+    image_size: int
+):
+    """Make a 3D-list of test data suitable for testing a 1D line buffer
+with the given pixels/clock, image size parameters, and the given
+token type (as magma Bit or Array of Bit), Outer dim = list of
+separate test sets, middle dim = input over clock cycles, inner dim =
+array entries.
+    """
+    if magma_type == Bit:
+        return generate_test_data_sets_1D_bits(pixels_per_clock, image_size)
+    else:
+        try:
+            n = magma_type.N
+            t = magma_type.T
+            if t != Bit: raise TypeError("Not a bit.")
+            return generate_test_data_sets_1D_ints(
+                pixels_per_clock, image_size, n
+            )
+        except Exception as e:
+            raise TypeError("magma_type was not Bit and failed at "
+                "interpreting as array of bits") from e
 
 def generate_test_data_sets_1D_bits(
     pixels_per_clock: int,
