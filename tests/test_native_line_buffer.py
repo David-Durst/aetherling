@@ -628,7 +628,7 @@ over clock cycles, inner dim = array entries.
     # result across versions so I'm manually mapping float->int.
     int_generators += [
         lambda: int(rng.random() * 0x80000000) & mask for rng in
-        [random.Random(seed) for seed in [1998, 7, 24]]
+        [random.Random(seed) for seed in [1998-7-24]]
     ]
 
     # For each generator create a test set.
