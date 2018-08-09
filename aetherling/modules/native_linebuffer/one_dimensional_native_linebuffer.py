@@ -1,12 +1,11 @@
 from aetherling.helpers.nameCleanup import cleanName
-from aetherling.modules.hydrate import Dehydrate, Hydrate
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
-from mantle.common.sipo import SIPO
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from mantle.coreir.type_helpers import Term
+from aetherling.modules.sipo_any_type import SIPOAnyType
+from aetherling.modules.term_any_type import TermAnyType
 from math import ceil
 
 
@@ -142,32 +141,22 @@ def DefineOneDimensionalLineBuffer(
         @classmethod
         def definition(cls):
 
-            # make a separate set of sipos for each bit
-            type_size_in_bits = cirb.get_type(pixel_type, True).size
-            shift_register = MapParallel(cirb, pixel_per_clock, MapParallel(cirb, type_size_in_bits,
-                                                                            SIPO(image_size // pixel_per_clock, 0,
-                                                                                 has_ce=True)))
-            # convert the types to and from bits
-            # make a dehydrate for each pixel coming in each clock
-            type_to_bits = MapParallel(cirb, pixel_per_clock, Dehydrate(cirb, pixel_type))
-            # make a hydrate for each pixel coming out each clock, for each pixel in window
-            bits_to_type = MapParallel(cirb, cls.windows_per_active_clock,
-                                       MapParallel(cirb, window_width, Hydrate(cirb, pixel_type)))
+            shift_register = MapParallel(cirb, pixel_per_clock,
+                                         SIPOAnyType(cirb, image_size // pixel_per_clock,
+                                                     pixel_type, 0, has_ce=True))
 
             # reverse the pixels per clock. Since greater index_in_shift_register
             # mean earlier inputted pixels, also want greater current_shift_register
             # to mean earlier inputted pixels. This accomplishes that by making
             # pixels earlier each clock go to higher number shift register
             if first_row:
-                wire(cls.I[::-1], type_to_bits.I)
+                wire(cls.I[::-1], shift_register.I)
             else:
                 # don't need to reverse if not first row as prior rows have already done reversing
-                wire(cls.I, type_to_bits.I)
-            wire(type_to_bits.out, shift_register.I)
-            wire(bits_to_type.out, cls.O)
+                wire(cls.I, shift_register.I)
+
             for i in range(pixel_per_clock):
-                for j in range(type_size_in_bits):
-                    wire(cls.CE, shift_register.CE[i][j])
+                wire(cls.CE, shift_register.CE[i])
 
             # these two variables provide a 2D coordinate system for the SIPOs.
             # the inner dimension is current_shift_register
@@ -251,11 +240,8 @@ def DefineOneDimensionalLineBuffer(
                     ((origin * -1) % pixel_per_clock * -1)
                 )
                 for index_in_window in range(window_width):
-                    # can't wire up directly as have dimension for bits per type in between dimensions
-                    # for px ber clock and number of entries in SIPO, so need to iterate here
-                    for bit_index in range(type_size_in_bits):
-                        wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
-                             bits_to_type.I[current_window_index][index_in_window][bit_index])
+                    wire(shift_register.O[current_shift_register][index_in_shift_register],
+                         cls.O[current_window_index][index_in_window])
 
                     used_coordinates.add((index_in_shift_register, current_shift_register))
 
@@ -267,14 +253,9 @@ def DefineOneDimensionalLineBuffer(
             # 1D can accept them
             if not last_row:
                 index_in_shift_register = image_size // pixel_per_clock - 1
-                hydrate_interrow_pixels = MapParallel(cirb, pixel_per_clock,
-                                                    Hydrate(cirb, pixel_type))
-                wire(hydrate_interrow_pixels.out, cls.next_row)
-                for i in range(pixel_per_clock):
-                    current_shift_register = i
-                    for bit_index in range(type_size_in_bits):
-                        wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
-                             hydrate_interrow_pixels[current_shift_register][bit_index])
+                for current_shift_register in range(pixel_per_clock):
+                    wire(shift_register.O[current_shift_register][index_in_shift_register],
+                         cls.next_row[current_shift_register])
                     used_coordinates.add((index_in_shift_register, current_shift_register))
 
             # wire up all non-used coordinates to terms
@@ -282,10 +263,8 @@ def DefineOneDimensionalLineBuffer(
                 for sr_index in range(image_size // pixel_per_clock):
                     if (sr_index, sr) in used_coordinates:
                         continue
-                    term = Term(cirb, type_size_in_bits)
-                    for bit_index in range(type_size_in_bits):
-                        wire(term.I[bit_index],
-                             shift_register.O[sr][bit_index][sr_index])
+                    term = TermAnyType(cirb, pixel_type)
+                    wire(shift_register.O[sr][sr_index], term.I)
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
