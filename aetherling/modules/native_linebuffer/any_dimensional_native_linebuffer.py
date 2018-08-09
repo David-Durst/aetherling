@@ -12,43 +12,50 @@ from functools import reduce
 def DefineAnyDimensionalLineBuffer(
         cirb: CoreIRBackend,
         pixel_type: Kind,
-        pixel_per_clock: list,
-        window_width: list,
-        image_size: list,
-        stride: list,
-        origin: list,
+        pixels_per_clock: list,
+        window_widths: list,
+        image_sizes: list,
+        strides: list,
+        origins: list,
         first_row: bool = True,
         last_row: bool = True,
         top_layer: bool = True) -> Circuit:
 
     class _LB(Circuit):
-        if len(pixel_per_clock) != len(window_width) and \
-            len(window_width) != len(image_size) and \
-            len(image_size) != len(stride) and \
-            len(stride) != len(origin):
+        if len(pixels_per_clock) != len(window_widths) and \
+            len(window_widths) != len(image_sizes) and \
+            len(image_sizes) != len(strides) and \
+            len(strides) != len(origins):
             raise Exception("not all inputs same dimensionality for any dimension linebuffer")
 
-        if len(image_size) == 0:
+        if len(image_sizes) == 0:
             raise Exception("any dimensional linebuffer must have at least 1D inputs, parameters are empty lists")
 
-        name_args = [cleanName(str(s)) for s in [pixel_type, pixel_per_clock, window_width, image_size,
-            stride, abs(origin), first_row, last_row]]
+        name_args = [cleanName(str(s)) for s in [pixel_type, pixels_per_clock, window_widths, image_sizes,
+            strides, [abs(i) for i in origins], first_row, last_row]]
         name = "AnyDimensionalLineBuffer_{}type_{}pxPerClock_{}window" \
-               "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(**name_args)
+               "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(*name_args)
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
-        windows_per_active_clock = max(pixel_per_clock // stride, 1)
+        windows_per_active_clock = max(pixels_per_clock[0] // strides[0], 1)
 
 
         top_layer_valid = ['valid', Out(Bit)] if top_layer else []
-        IO = ['I', In(get_type_recursive(pixel_per_clock)),
-              'O', Out(Array(windows_per_active_clock, get_type_recursive(window_width)))] + \
+        IO = ['I', In(get_type_recursive(pixels_per_clock)),
+              'O', Out(Array(windows_per_active_clock, get_type_recursive(window_widths)))] + \
               top_layer_valid + ClockInterface(has_ce=True)
         if not last_row:
-            IO += ['next_row', Out(Array(pixel_per_clock, Out(pixel_type)))]
+            IO += ['next_row', Out(Array(pixels_per_clock, Out(pixel_type)))]
 
         @classmethod
         def definition(cls):
+
+            pixel_per_clock = pixels_per_clock[0]
+            window_width = window_widths[0]
+            image_size = image_sizes[0]
+            stride = strides[0]
+            origin = origins[0]
+
 
             # these two variables provide a 2D coordinate system for the SIPOs.
             # the inner dimension is current_shift_register
@@ -321,13 +328,39 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
     # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
     # linebuffers. just valid when earlier linebuffers are ready.
     all_valids = [lb_sequence[0].valid for lb_sequence in lower_dimensional_linebuffers]
-    used_valids = all_valids[:head_origin]
-    ignored_valids = all_valids[head_origin:]
-    lower_dimensional_linebuffers.valid = reduce(lambda valid0, valid1: valid0 & valid1, used_valids)
+    early_origin_clocks = head_origin // head_pixel_per_clock
+    used_valids = all_valids[:early_origin_clocks]
+    ignored_valids = all_valids[early_origin_clocks:]
+
     # wire up all non-used valids to terms
     for v in ignored_valids:
         term = TermAnyType(cirb, Bit)
         wire(v, term.I)
+
+    lower_dimensional_linebuffers_valid = reduce(lambda valid0, valid1: valid0 & valid1, used_valids)
+
+    # if stride is greater than pixel per clock in this dimension, then need a counter to not be valid
+    if head_stride > head_pixel_per_clock:
+        # how many times is the lower dimension valid before this dimension increments by 1
+        number_of_lower_dimension_valids_per_increment = lower_dimensional_linebuffers[0][0].windows_per_active_clock
+
+        # this slows the main stride counter to only increment once per number_of_lower_dimension_valids_per_increment
+        stride_per_lower_dimension_counter = SizedCounterModM(number_of_lower_dimension_valids_per_increment, has_ce=True)
+        stride_per_lower_dimension_max = DefineCoreirConst(len(stride_per_lower_dimension_counter.O),
+                                                           number_of_lower_dimension_valids_per_increment - 1)()
+        stride_counter = SizedCounterModM(head_stride // head_pixel_per_clock, has_ce=True)
+        stride_counter_0 = DefineCoreirConst(len(stride_counter.O), 0)()
+
+        wire(lower_dimensional_linebuffers_valid, stride_per_lower_dimension_counter.CE)
+
+        wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
+             stride_counter.CE)
+
+        wire(lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O),
+            lower_dimensional_linebuffers.valid)
+    else:
+        lower_dimensional_linebuffers.valid = lower_dimensional_linebuffers_valid
+
 
     return lower_dimensional_linebuffers
 
