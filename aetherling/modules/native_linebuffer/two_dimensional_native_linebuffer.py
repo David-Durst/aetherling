@@ -1,5 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.hydrate import Dehydrate, Hydrate
+from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer import OneDimensionalLineBuffer
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
@@ -209,7 +210,7 @@ def DefineTwoDimensionalLineBuffer(
             stride_cols,
             stride_rows,
             origin_cols,
-            origin_rows,
+            origin_rows
         )
 
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
@@ -222,7 +223,32 @@ def DefineTwoDimensionalLineBuffer(
 
         @classmethod
         def definition(cls):
-            pass
+            # for each row per clock, create image_rows // rows_of_pixels_per_clock - 1 1D linebuffers
+            # with Last_Row true,
+            # do this with scan(ffs, scanargs={"I":"O"})
+            # each 1D linebuffer should handle 1 row
+            number_of_1D_linebuffers_in_sequence = image_rows // rows_of_pixels_per_clock
+            one_dimensional_linebuffers = [
+                [
+                    OneDimensionalLineBuffer(cirb,
+                                             pixel_type,
+                                             pixels_per_row_per_clock,
+                                             window_cols,
+                                             image_cols,
+                                             stride_cols,
+                                             origin_cols,
+                                             i == 0,
+                                             i == number_of_1D_linebuffers_in_sequence - 1)
+                    for i in range(number_of_1D_linebuffers_in_sequence)
+                ]
+                for _ in range(rows_of_pixels_per_clock)
+            ]
+
+            early_clocks_due_to_origin = origin_rows // rows_of_pixels_per_clock
+            
+
+            # for stride, in the output wiring,
+
 
     return _LB
 
