@@ -20,7 +20,7 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
 
     class _SIPO(Circuit):
         name = _RegisterName('SIPO_{}_'.format(cleanName(str(t))), n, init, has_ce, has_reset)
-        IO = ['I', In(t), 'O', Out(t)] + \
+        IO = ['I', In(t), 'O', Out(Array(n, t))] + \
                 ClockInterface(has_ce,has_reset)
         @classmethod
         def definition(cls):
@@ -39,11 +39,12 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
 
             for bit_in_type in range(type_size_in_bits):
                 if has_ce:
-                    wire(cls.CE, sipos.CE[type_size_in_bits])
+                    wire(cls.CE, sipos.CE[bit_in_type])
                 if has_reset:
-                    wire(cls.RESET, sipos.RESET[type_size_in_bits])
+                    wire(cls.RESET, sipos.RESET[bit_in_type])
 
     return _SIPO
 
-def SIPOAnyType(n, init=0, has_ce=False, has_reset=False, **kwargs):
-    return DefineSIPOAnyType(n, init, has_ce, has_reset)(**kwargs)
+def SIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
+                      has_ce: bool = False, has_reset: bool = False, **kwargs):
+    return DefineSIPOAnyType(cirb, n, t, init, has_ce, has_reset)(**kwargs)
