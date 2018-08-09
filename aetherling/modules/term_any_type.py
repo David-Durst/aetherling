@@ -29,4 +29,4 @@ def DefineTermAnyType(cirb: CoreIRBackend, t: Kind):
     return _SIPO
 
 def TermAnyType(cirb: CoreIRBackend, t: Kind):
-    return DefineTermAnyType(cirb, t)
+    return DefineTermAnyType(cirb, t)()

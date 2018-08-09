@@ -19,7 +19,8 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
     """
 
     class _SIPO(Circuit):
-        name = _RegisterName('SIPO_{}_'.format(cleanName(str(t))), n, init, has_ce, has_reset)
+        name = 'SIPO_{}t_{}n_{}init_{}CE_RESET'.format(
+            cleanName(str(t)), str(n), str(init), str(has_ce), str(has_reset))
         IO = ['I', In(t), 'O', Out(Array(n, t))] + \
                 ClockInterface(has_ce,has_reset)
         @classmethod
@@ -46,5 +47,5 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
     return _SIPO
 
 def SIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
-                      has_ce: bool = False, has_reset: bool = False, **kwargs):
-    return DefineSIPOAnyType(cirb, n, t, init, has_ce, has_reset)(**kwargs)
+                      has_ce: bool = False, has_reset: bool = False):
+    return DefineSIPOAnyType(cirb, n, t, init, has_ce, has_reset)()
