@@ -300,7 +300,7 @@ and run it on test data sets."""
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    LineBufferDef = DefineTwoDimensionalLineBuffer(**parameters.as_kwargs())
+    LineBufferDef = DefineTwoDimensionalLineBuffer(cirb, **parameters.as_kwargs())
     window_count, parallelism, valid_count = parameters.internal_parameters()
     window_x = parameters.window_x
     window_y = parameters.window_y
@@ -352,7 +352,7 @@ and run it on test data sets."""
         # tick_sim_collect_outputs ticks the simulation, appending any
         # output received when the simulated module asserts valid.
         actual = []
-        expected = expected_valid_outputs_2D(test_set)
+        expected = expected_valid_outputs_2D(test_set, parameters)
         def tick_sim_collect_outputs():
             sim.evaluate()
             sim.advance_cycle()
