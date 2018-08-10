@@ -225,7 +225,7 @@ random_generators (rng should be callable with no args).
                 ]
                 for y in range(parameters.image_y)
             ]
-            for cycle in cycle_count
+            for cycle in range(cycle_count)
         ]
         for rng in random_generators
     ]
@@ -249,7 +249,7 @@ def make_bit_generators():
 
     stdlib_rng = random.Random(20010106)
     def rng():
-        return stdlib_rng() >= 0.5
+        return stdlib_rng.random() >= 0.5
 
     return [third_true, every_fifth_false, rng]
 
@@ -269,7 +269,7 @@ lists of bits."""
     # result across versions so I'm manually mapping float->int.
     stdlib_rng = random.Random(20150821)
     def rng():
-        return int(stdlib_rng() * 0x80000000) & mask
+        return int(stdlib_rng.random() * 0x80000000) & mask
 
     return [ascending, rng]
 
