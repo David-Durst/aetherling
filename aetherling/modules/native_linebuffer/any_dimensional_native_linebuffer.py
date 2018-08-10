@@ -159,6 +159,7 @@ def DefineAnyDimensionalLineBuffer(
             # now that know how many registers to use, actually make them and then wire them up
             shift_register = make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
                 cirb,
+                cls.name,
                 pixel_type,
                 pixels_per_clock,
                 window_widths,
@@ -167,7 +168,7 @@ def DefineAnyDimensionalLineBuffer(
                 origins
                 #registers_to_window_outputs # use this once I have a rowbuffer and
                                              # worth it to separate registers and SRAMS
-            )
+            )()
 
             for mapping in registers_to_window_outputs:
                 wire(shift_register.O[mapping.current_shift_register][mapping.index_in_shift_register],
@@ -178,14 +179,13 @@ def DefineAnyDimensionalLineBuffer(
             # to mean earlier inputted pixels. This accomplishes that by making
             # pixels earlier each clock go to higher number shift register
             if first_row:
-                for i in range(len(shift_register.I)):
-                    wire(cls.I[len(shift_register.I) - i - 1], shift_register.I[i])
+                wire(cls.I[::-1], shift_register.I)
             else:
                 # don't need to reverse if not first row as prior rows have already done reversing
                 wire(cls.I, shift_register.I)
 
             for i in range(pixel_per_clock):
-                wire(cls.CE, shift_register.CE[i])
+                wire(cls.CE, shift_register.CE)
 
             # if not last row, have output ports for ends of all shift_registers so next
             # 1D can accept them
@@ -211,10 +211,9 @@ def DefineAnyDimensionalLineBuffer(
                 for sr_index in range(image_size // pixel_per_clock):
                     if (sr_index, sr) in used_coordinates:
                         continue
-                    if hasattr(shift_register.O[sr][sr_index], "T"):
-                        term = TermAnyType(cirb, shift_register.O[sr][sr_index].T)
-                    else:
-                        term = TermAnyType(cirb, pixel_type)
+                    # .T.T gets the element type of the nested level .O[sr][sr_index]
+                    # (i.e. if its Array(4, Array(3, Array(2, Bit))) port, .T.T gets Array(2, Bit)
+                    term = TermAnyType(cirb, shift_register.O.T.T)
                     wire(shift_register.O[sr][sr_index], term.I)
 
             # make a counter for valid only if this is 1D, otherwise let lower dimensions handle valid
@@ -254,7 +253,6 @@ def DefineAnyDimensionalLineBuffer(
                 else:
                     wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
             else:
-                print(pixels_per_clock)
                 wire(shift_register.valid, cls.valid)
 
     return _LB
@@ -301,10 +299,11 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
 
         name = "shift_registers_for_" + parent_name
 
+        valid_port = [] if len(pixels_per_clock) == 1 else ['valid', Out(Bit)]
         IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
               'O', Out(Array(pixels_per_clock[0], Array(image_sizes[0] // pixels_per_clock[0],
-                                                        get_type_recursive(pixel_type, pixels_per_clock[1:])))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True)
+                                                        get_type_recursive(pixel_type, pixels_per_clock[1:]))))] + \
+            valid_port + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             head_pixel_per_clock, *tail_pixel_per_clock = pixels_per_clock
@@ -316,9 +315,14 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
 
             # don't make linebuffer, just return SIPO if 1D case
             if len(image_sizes) == 1:
-                return MapParallel(cirb, head_pixel_per_clock,
-                                   SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
-                                               pixel_type, 0, has_ce=True))
+                sipos = MapParallel(cirb, head_pixel_per_clock,
+                                    SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
+                                                pixel_type, 0, has_ce=True))
+                wire(cls.I, sipos.I)
+                for i in range(len(sipos.CE)):
+                    wire(cls.CE, sipos.CE[i])
+                wire(sipos.O, cls.O)
+                return sipos
 
 
             lower_dimensional_linebuffers = [
@@ -343,15 +347,11 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
                     wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
                     wire(sequence_of_linebuffers[i].next_row_valid, sequence_of_linebuffers[i+1].CE)
 
-            # this is a proxy for an instance that has all the lower dimensional linebuffers
-            # it just has the ports necessary to wire up the parent module to the child
-            # ones
-            lower_dimensional_linebuffers_proxy = namedtuple('lower_dimensional_linebuffers_proxy',
-                                                             ["I", "O", "CE", "valid"])
-            # making a fake .I and .O ports that collects the first .I ports and all the .O ports of the linebuffers
-            lower_dimensional_linebuffers_proxy.I = [lb_sequence[0].I for lb_sequence in lower_dimensional_linebuffers]
-            lower_dimensional_linebuffers_proxy.O = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
-            lower_dimensional_linebuffers_proxy.CE = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
+            for lb_sequence in lower_dimensional_linebuffers:
+                wire(cls.I, lb_sequence[0].I)
+                wire(cls.CE, lb_sequence[0].CE)
+                for lb in lb_sequence:
+                    wire(lb.O, cls.O)
 
             # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
             # linebuffers. just valid when earlier linebuffers are ready.
@@ -384,10 +384,10 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
                 wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
                      stride_counter.CE)
 
-                lower_dimensional_linebuffers_proxy.valid = \
-                    lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O)
+                wire(lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O),
+                     cls.valid)
             else:
-                lower_dimensional_linebuffers_proxy.valid = lower_dimensional_linebuffers_valid
+                wire(lower_dimensional_linebuffers_valid, cls.valid)
 
 
     return _SR
