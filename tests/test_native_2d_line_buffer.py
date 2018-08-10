@@ -20,7 +20,7 @@ from magma import *
 from magma.bitutils import int2seq, seq2int
 import coreir
 from magma.scope import Scope
-from aetherling.modules.native_linebuffer import TwoDimensionalLineBuffer, \
+from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer import TwoDimensionalLineBuffer, \
     DefineTwoDimensionalLineBuffer
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.common.sipo import SIPO
@@ -393,22 +393,22 @@ and run it on test data sets."""
 
 # Test stub functions that call the actual implementation function
 # with specified parameters.
-def test_2D_bit_line_buffer_1_1_3_3_5_5_1_1_2_2():
+def test_2D_bit_line_buffer_1_1_3_3_5_5_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
         magma_type=Bit,
         y_per_clk=1, x_per_clk=1,
         window_y=3, window_x=3,
         image_y=5, image_x=5,
         stride_y=1, stride_x=1,
-        origin_y=-2, origin_x=-2
+        origin_y=0, origin_x=0
     ))
 
-def test_2D_int4_line_buffer_1_1_3_3_5_5_1_1_2_2():
+def test_2D_int4_line_buffer_1_1_3_3_5_5_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
         magma_type=Array(4, Bit),
         y_per_clk=1, x_per_clk=1,
         window_y=3, window_x=3,
         image_y=5, image_x=5,
         stride_y=1, stride_x=1,
-        origin_y=-2, origin_x=-2
+        origin_y=0, origin_x=0
     ))
