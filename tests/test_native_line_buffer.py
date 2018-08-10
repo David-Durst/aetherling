@@ -11,8 +11,8 @@ from magma import *
 from magma.bitutils import int2seq, seq2int
 import coreir
 from magma.scope import Scope
-from aetherling.modules.native_linebuffer import OneDimensionalLineBuffer, \
-    DefineOneDimensionalLineBuffer
+from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer import \
+    OneDimensionalLineBuffer, DefineOneDimensionalLineBuffer
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.common.sipo import SIPO
 from mantle.common.countermod import SizedCounterModM

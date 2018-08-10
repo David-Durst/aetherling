@@ -1,11 +1,11 @@
-from aetherling.modules.hydrate import Dehydrate, Hydrate
+from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
-from mantle.common.sipo import SIPO
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from mantle.coreir.type_helpers import Term
+from aetherling.modules.sipo_any_type import SIPOAnyType
+from aetherling.modules.term_any_type import TermAnyType
 from math import ceil
 
 
@@ -31,7 +31,7 @@ def DefineOneDimensionalLineBuffer(
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
     :param origin: The index of the first pixel of the first window relative to
-    the top left corner of the image
+    the first pixel of the image
     :param first_row: True if this is the first 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should not set this unless they understand the internals of the LineBuffer.
     Its used for determining when to reverse inputs to convert image coordinate to internal coordinates.
@@ -47,69 +47,93 @@ def DefineOneDimensionalLineBuffer(
     5. origin <= 0
     6. window_width - origin < image_size
 
-    :return: A 1D Linebuffer
+    :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
 
     class _LB(Circuit):
-        # this is necessary so that get same number of pixels in every
-        # clock, don't have a weird ending with only 1 valid input pixel
         if image_size % pixel_per_clock != 0:
+            reason = """
+            this is necessary so that input a complete image with the same number of input
+            pixels in every clock and don't have a weird ending with only 1 valid input pixel
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: image_size {} not divisiable by"
-                            "pixel_per_clock {}".format(image_size,
-                                                        pixel_per_clock))
-        # the average number of output windows per clock = px per clock
-        # / stride, this must be integer or reciprocal of one so that
-        # easier to map/ underutil rest of system, otherwise
-        # have a weirdly utilized downstream system that is only
-        # partially used on some clocks
-        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: output_stride {} not divisiable by"
-                            "pixel_per_clock {} nor vice-verse. One of them must"
-                            "be divisble by the other.".format(stride,
-                                                               pixel_per_clock))
-        # stride == downsample amount, this requires a cleanly divisible downsample
-        if image_size % stride != 0:
-            raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: image_size {} not divisiable by"
-                            "output_stride {}".format(image_size,
-                                                      stride))
+                            "pixel_per_clock {}. \n Reason: {}".format(image_size,
+                                                                       pixel_per_clock,
+                                                                       reason))
 
-        # origin must be less than window, and can only be in one direction
-        # if greater than window, then entire first window would be garbage,
-        # which is meaningless
-        # origin can't go into image as that is just crop, unsupported
-        # functionality
+        if image_size % stride != 0:
+            reason = "stride is downsample factor, so this ensures a downsample factor" \
+                     "that cleanly divides the image size"
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: image_size {} not divisible by"
+                            "stride {}. \n Reason: {}".format(image_size,
+                                                              stride,
+                                                              reason))
+
+        if stride % pixel_per_clock != 0 and pixel_per_clock % stride != 0:
+            reason = """
+            average number of output windows per clock = px per clock
+            / stride. Number of output windows per clock must be integer or 
+            reciprocal of one so that throughput is an easier factor to manipulate 
+            with map/underutil.
+            
+            Otherwise throughput is a weird fraction and the downstream system is
+            either only partially used on some clocks or the sequence length
+            is multiplied by a weird factor that makes the rational number
+            throughput become an integer.            
+            """
+            raise Exception("Aetherling's Native LineBuffer has invalid "
+                            "parameters: stride {} not divisible by"
+                            "pixel_per_clock {} nor vice-verse. One of them must"
+                            "be divisible by the other. \n Reason: {}".format(stride,
+                                                                              pixel_per_clock,
+                                                                              reason))
+
+
         if abs(origin) >= window_width:
+            reason = """
+            origin must be less than window. If abs(origin) was greater
+            than window, then entire first window would be garbage
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
                             "parameters: |origin| {} greater than or equal to"
-                            "window width {}".format(abs(origin),
-                                                     window_width))
+                            "window width {} \n Reason: {}".format(abs(origin),
+                                                                   window_width,
+                                                                   reason))
         if origin > 0:
+            reason = """
+            origin can't go into image. That would be cropping the first pixels of the image
+            and linebuffer doesn't do cropping.
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: origin {} greater than"
-                            "0".format(origin))
+                            "parameters: origin {} greater than 0. \n Reason: {}".format(origin, reason))
 
-        # need window width plus origin outputs, if smaller than image,
-        # this is a weird edge case that I don't want to deal with and
-        # the user shouldn't be using a linebuffer for, because only 1
-        # window output per image
         if window_width - origin >= image_size:
+            reason = """
+            need window width plus abs(origin) outputs to do wiring.
+            If the image is smaller than this, will have issues with
+            internal wiring. Additionally, the linebuffer isn't
+            used for images that are small enough to be processed
+            in one or a few clock cycles. This is a weird edge 
+            case that I don't want to deal with and shouldn't occur
+            in the real world.
+            """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: window width {} - origin {} "
-                            "greater than or equal to image size {}"
-                            .format(window_width, origin, image_size))
+                            "parameters: window_width {} - origin {} "
+                            "greater than or equal to image_size {}. \n Reason: {}"
+                            .format(window_width, origin, image_size, reason))
 
-        name = "OneDimensionalLineBuffer_{}pxPerClock_{}windowWidth" \
-               "_{}imgSize_{}outputStride_{}origin".format(
-            pixel_per_clock, window_width, image_size, stride, abs(origin)
+        name = "OneDimensionalLineBuffer_{}type_{}pxPerClock_{}window" \
+               "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(
+            cleanName(str(pixel_type)), pixel_per_clock, window_width, image_size,
+            stride, abs(origin), first_row, last_row
         )
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
-        window_per_active_clock = max(pixel_per_clock // stride, 1)
+        windows_per_active_clock = max(pixel_per_clock // stride, 1)
         IO = ['I', In(Array(pixel_per_clock, In(pixel_type))),
-              'O', Out(Array(window_per_active_clock, Array(window_width, Out(pixel_type)))),
+              'O', Out(Array(windows_per_active_clock, Array(window_width, Out(pixel_type)))),
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
             IO += ['next_row', Out(Array(pixel_per_clock, Out(pixel_type)))]
@@ -117,32 +141,22 @@ def DefineOneDimensionalLineBuffer(
         @classmethod
         def definition(cls):
 
-            # make a separate set of sipos for each bit
-            type_size_in_bits = cirb.get_type(pixel_type, True).size
-            shift_register = MapParallel(cirb, pixel_per_clock, MapParallel(cirb, type_size_in_bits,
-                                                                            SIPO(image_size // pixel_per_clock, 0,
-                                                                                 has_ce=True)))
-            # convert the types to and from bits
-            # make a dehydrate for each pixel coming in each clock
-            type_to_bits = MapParallel(cirb, pixel_per_clock, Dehydrate(cirb, pixel_type))
-            # make a hydrate for each pixel coming out each clock, for each pixel in window
-            bits_to_type = MapParallel(cirb, cls.window_per_active_clock,
-                                       MapParallel(cirb, window_width, Hydrate(cirb, pixel_type)))
+            shift_register = MapParallel(cirb, pixel_per_clock,
+                                         SIPOAnyType(cirb, image_size // pixel_per_clock,
+                                                     pixel_type, 0, has_ce=True))
 
             # reverse the pixels per clock. Since greater index_in_shift_register
             # mean earlier inputted pixels, also want greater current_shift_register
             # to mean earlier inputted pixels. This accomplishes that by making
             # pixels earlier each clock go to higher number shift register
             if first_row:
-                wire(cls.I[::-1], type_to_bits.I)
+                wire(cls.I[::-1], shift_register.I)
             else:
                 # don't need to reverse if not first row as prior rows have already done reversing
-                wire(cls.I, type_to_bits.I)
-            wire(type_to_bits.out, shift_register.I)
-            wire(bits_to_type.out, cls.O)
+                wire(cls.I, shift_register.I)
+
             for i in range(pixel_per_clock):
-                for j in range(type_size_in_bits):
-                    wire(cls.CE, shift_register.CE[i][j])
+                wire(cls.CE, shift_register.CE[i])
 
             # these two variables provide a 2D coordinate system for the SIPOs.
             # the inner dimension is current_shift_register
@@ -183,10 +197,10 @@ def DefineOneDimensionalLineBuffer(
 
             # get needed pixels (ignoring origin as that can be garbage)
             # to determine number of clock cycles needed to satisfy input
-            if cls.window_per_active_clock == 1:
+            if cls.windows_per_active_clock == 1:
                 needed_pixels = window_width
             else:
-                needed_pixels = window_width + stride * (cls.window_per_active_clock - 1)
+                needed_pixels = window_width + stride * (cls.windows_per_active_clock - 1)
 
             # get the maximum 1D coordinate when aligning needed pixels to the number
             # of pixels per clock
@@ -212,7 +226,7 @@ def DefineOneDimensionalLineBuffer(
 
             used_coordinates = set()
 
-            for current_window_index in range(cls.window_per_active_clock):
+            for current_window_index in range(cls.windows_per_active_clock):
                 # stride is handled by wiring if there are multiple windows emitted per clock,
                 # aka if stride is less than number of pixels per clock.
                 # In this case, multiple windows are emitted but they must be overlapped
@@ -226,11 +240,8 @@ def DefineOneDimensionalLineBuffer(
                     ((origin * -1) % pixel_per_clock * -1)
                 )
                 for index_in_window in range(window_width):
-                    # can't wire up directly as have dimension for bits per type in between dimensions
-                    # for px ber clock and number of entries in SIPO, so need to iterate here
-                    for bit_index in range(type_size_in_bits):
-                        wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
-                             bits_to_type.I[current_window_index][index_in_window][bit_index])
+                    wire(shift_register.O[current_shift_register][index_in_shift_register],
+                         cls.O[current_window_index][index_in_window])
 
                     used_coordinates.add((index_in_shift_register, current_shift_register))
 
@@ -242,14 +253,9 @@ def DefineOneDimensionalLineBuffer(
             # 1D can accept them
             if not last_row:
                 index_in_shift_register = image_size // pixel_per_clock - 1
-                hydrate_interrow_pixels = MapParallel(cirb, pixel_per_clock,
-                                                    Hydrate(cirb, pixel_type))
-                wire(hydrate_interrow_pixels.out, cls.next_row)
-                for i in range(pixel_per_clock):
-                    current_shift_register = i
-                    for bit_index in range(type_size_in_bits):
-                        wire(shift_register.O[current_shift_register][bit_index][index_in_shift_register],
-                             hydrate_interrow_pixels[current_shift_register][bit_index])
+                for current_shift_register in range(pixel_per_clock):
+                    wire(shift_register.O[current_shift_register][index_in_shift_register],
+                         cls.next_row[current_shift_register])
                     used_coordinates.add((index_in_shift_register, current_shift_register))
 
             # wire up all non-used coordinates to terms
@@ -257,10 +263,8 @@ def DefineOneDimensionalLineBuffer(
                 for sr_index in range(image_size // pixel_per_clock):
                     if (sr_index, sr) in used_coordinates:
                         continue
-                    term = Term(cirb, type_size_in_bits)
-                    for bit_index in range(type_size_in_bits):
-                        wire(term.I[bit_index],
-                             shift_register.O[sr][bit_index][sr_index])
+                    term = TermAnyType(cirb, pixel_type)
+                    wire(shift_register.O[sr][sr_index], term.I)
 
             # valid when the maximum coordinate used (minus origin, as origin can in
             # invalid space when emitting) gets data
@@ -321,10 +325,11 @@ def OneDimensionalLineBuffer(
     linebuffer receives as input each clock.
     :param window_width: The size of the stencils that are emitted
     :param image_size: The size of the complete, 1D image
-    :param output_stride: The distance between origins of consecutive stencils
+    :param stride: The distance between origins of consecutive stencils
     in terms of numbers of pixels. A stride of 1 means that they are next
     to each other.
-    :param origin: The index of the currently provided pixel
+    :param origin: The index of the first pixel of the first window relative to
+    the first pixel of the image
     :param first_row: True if this is the first 1D row in a 2D matrix or the only one in a 2D matrix.
     Users should not set this unless they understand the internals of the LineBuffer.
     Its used for determining when to reverse inputs to convert image coordinate to internal coordinates.
@@ -332,16 +337,15 @@ def OneDimensionalLineBuffer(
     Users should probably leave this to true. Its used for adding extra ports when putting these in
     larger matrices.
 
-
     Restrictions:
     1. image_size % pixel_per_clock == 0
     2. image_size % stride == 0
     3. stride % pixel_per_clock == 0 OR pixel_per_clock % stride == 0
     4. window_width > |origin|
     5. origin <= 0
-    6. window_width < image_size
+    6. window_width - origin < image_size
 
-    :return: A 1D Linebuffer
+    :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
     return DefineOneDimensionalLineBuffer(
         cirb,
@@ -351,5 +355,6 @@ def OneDimensionalLineBuffer(
         image_size,
         output_stride,
         origin,
+        first_row,
         last_row
     )()
