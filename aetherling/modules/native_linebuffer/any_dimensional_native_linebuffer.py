@@ -8,6 +8,7 @@ from aetherling.modules.sipo_any_type import SIPOAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from math import ceil
 from functools import reduce
+from collections import namedtuple
 
 def DefineAnyDimensionalLineBuffer(
         cirb: CoreIRBackend,
@@ -177,7 +178,8 @@ def DefineAnyDimensionalLineBuffer(
             # to mean earlier inputted pixels. This accomplishes that by making
             # pixels earlier each clock go to higher number shift register
             if first_row:
-                wire(cls.I[::-1], shift_register.I)
+                for i in range(len(shift_register.I)):
+                    wire(cls.I[len(shift_register.I) - i - 1], shift_register.I[i])
             else:
                 # don't need to reverse if not first row as prior rows have already done reversing
                 wire(cls.I, shift_register.I)
@@ -330,10 +332,12 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
     # this is a proxy for an instance that has all the lower dimensional linebuffers
     # it just has the ports necessary to wire up the parent module to the child
     # ones
-    lower_dimensional_linebuffers_proxy = {}
-    # making a fake .O port that collects the .O ports of all linebuffers
-    lower_dimensional_linebuffers_proxy["O"] = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
-    lower_dimensional_linebuffers_proxy["CE"] = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
+    lower_dimensional_linebuffers_proxy = namedtuple('lower_dimensional_linebuffers_proxy',
+                                                     ["I", "O", "CE", "valid"])
+    # making a fake .I and .O ports that collects the first .I ports and all the .O ports of the linebuffers
+    lower_dimensional_linebuffers_proxy.I = [lb_sequence[0].I for lb_sequence in lower_dimensional_linebuffers]
+    lower_dimensional_linebuffers_proxy.O = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
+    lower_dimensional_linebuffers_proxy.CE = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
 
     # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
     # linebuffers. just valid when earlier linebuffers are ready.
@@ -366,10 +370,10 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
         wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
              stride_counter.CE)
 
-        lower_dimensional_linebuffers_proxy["valid"] = \
+        lower_dimensional_linebuffers_proxy.valid = \
             lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O)
     else:
-        lower_dimensional_linebuffers_proxy["valid"] = lower_dimensional_linebuffers_valid
+        lower_dimensional_linebuffers_proxy.valid = lower_dimensional_linebuffers_valid
 
 
     return lower_dimensional_linebuffers_proxy
