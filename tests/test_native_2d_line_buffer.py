@@ -340,7 +340,7 @@ and run it on test data sets."""
                 sim.get_value(LineBufferDef.O[window_index][y][x], scope)
             )
 
-    for test_sets in generate_test_sets_2D(generators, parameters):
+    for test_set in generate_test_sets_2D(generators, parameters):
         sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK,
             context=cirb.context,
             namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
@@ -352,6 +352,7 @@ and run it on test data sets."""
         # tick_sim_collect_outputs ticks the simulation, appending any
         # output received when the simulated module asserts valid.
         actual = []
+        expected = expected_valid_outputs_2D(test_set)
         def tick_sim_collect_outputs():
             sim.evaluate()
             sim.advance_cycle()
@@ -368,7 +369,7 @@ and run it on test data sets."""
                     ]
                 )
 
-        for input_window in test_sets:
+        for input_window in test_set:
             set_value(input_window)
             tick_sim_collect_outputs()
 
