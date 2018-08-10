@@ -211,7 +211,10 @@ def DefineAnyDimensionalLineBuffer(
                 for sr_index in range(image_size // pixel_per_clock):
                     if (sr_index, sr) in used_coordinates:
                         continue
-                    term = TermAnyType(cirb, pixel_type)
+                    if hasattr(shift_register.O[sr][sr_index], "T"):
+                        term = TermAnyType(cirb, shift_register.O[sr][sr_index].T)
+                    else:
+                        term = TermAnyType(cirb, pixel_type)
                     wire(shift_register.O[sr][sr_index], term.I)
 
             # make a counter for valid only if this is 1D, otherwise let lower dimensions handle valid
@@ -283,6 +286,7 @@ def AnyDimensionalLineBuffer(
 
 def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
         cirb: CoreIRBackend,
+        parent_name: str,
         pixel_type: Kind,
         pixels_per_clock: list,
         window_widths: list,
@@ -293,90 +297,100 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
     make a series of linebuffers that are all one dimenision lower than the one trying to create
     the first and last linebuffers don't expose the internal next_row port
     """
-    head_pixel_per_clock, *tail_pixel_per_clock = pixels_per_clock
-    head_window_width, *tail_window_width = window_widths
-    head_image_size, *tail_image_size = image_sizes
-    head_stride, *tail_stride = strides
-    head_origin, *tail_origin = origins
-    number_of_linebuffers_in_sequence = head_image_size // head_pixel_per_clock
+    class _SR(Circuit):
 
-    # don't make linebuffer, just return SIPO if 1D case
-    if len(image_sizes) == 1:
-        return MapParallel(cirb, head_pixel_per_clock,
-                           SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
-                                       pixel_type, 0, has_ce=True))
+        name = "shift_registers_for_" + parent_name
 
+        IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
+              'O', Out(Array(pixels_per_clock[0], Array(image_sizes[0] // pixels_per_clock[0],
+                                                        get_type_recursive(pixel_type, pixels_per_clock[1:])))),
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)
+        @classmethod
+        def definition(cls):
+            head_pixel_per_clock, *tail_pixel_per_clock = pixels_per_clock
+            head_window_width, *tail_window_width = window_widths
+            head_image_size, *tail_image_size = image_sizes
+            head_stride, *tail_stride = strides
+            head_origin, *tail_origin = origins
+            number_of_linebuffers_in_sequence = head_image_size // head_pixel_per_clock
 
-    lower_dimensional_linebuffers = [
-        [
-            AnyDimensionalLineBuffer(cirb,
-                                     pixel_type,
-                                     tail_pixel_per_clock,
-                                     tail_window_width,
-                                     tail_image_size,
-                                     tail_stride,
-                                     tail_origin,
-                                     i == 0,
-                                     i == number_of_linebuffers_in_sequence - 1)
-            for i in range(number_of_linebuffers_in_sequence)
-        ]
-        for _ in range(head_pixel_per_clock)
-    ]
-
-    # wire up the next_rows
-    for sequence_of_linebuffers in lower_dimensional_linebuffers:
-        for i in range(len(sequence_of_linebuffers) - 1):
-            wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
-            wire(sequence_of_linebuffers[i].next_row_valid, sequence_of_linebuffers[i+1].CE)
-
-    # this is a proxy for an instance that has all the lower dimensional linebuffers
-    # it just has the ports necessary to wire up the parent module to the child
-    # ones
-    lower_dimensional_linebuffers_proxy = namedtuple('lower_dimensional_linebuffers_proxy',
-                                                     ["I", "O", "CE", "valid"])
-    # making a fake .I and .O ports that collects the first .I ports and all the .O ports of the linebuffers
-    lower_dimensional_linebuffers_proxy.I = [lb_sequence[0].I for lb_sequence in lower_dimensional_linebuffers]
-    lower_dimensional_linebuffers_proxy.O = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
-    lower_dimensional_linebuffers_proxy.CE = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
-
-    # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
-    # linebuffers. just valid when earlier linebuffers are ready.
-    all_valids = [lb.valid for lb in lower_dimensional_linebuffers[0]]
-    early_origin_clocks = head_origin // head_pixel_per_clock
-    used_valids = all_valids[:len(all_valids) + early_origin_clocks]
-    ignored_valids = all_valids[len(all_valids) + early_origin_clocks:]
-
-    # wire up all non-used valids to terms
-    for v in ignored_valids:
-        term = TermAnyType(cirb, Bit)
-        wire(v, term.I)
-
-    lower_dimensional_linebuffers_valid = reduce(lambda valid0, valid1: valid0 & valid1, used_valids)
-
-    # if stride is greater than pixel per clock in this dimension, then need a counter to not be valid
-    if head_stride > head_pixel_per_clock:
-        # how many times is the lower dimension valid before this dimension increments by 1
-        number_of_lower_dimension_valids_per_increment = lower_dimensional_linebuffers[0][0].windows_per_active_clock
-
-        # this slows the main stride counter to only increment once per number_of_lower_dimension_valids_per_increment
-        stride_per_lower_dimension_counter = SizedCounterModM(number_of_lower_dimension_valids_per_increment, has_ce=True)
-        stride_per_lower_dimension_max = DefineCoreirConst(len(stride_per_lower_dimension_counter.O),
-                                                           number_of_lower_dimension_valids_per_increment - 1)()
-        stride_counter = SizedCounterModM(head_stride // head_pixel_per_clock, has_ce=True)
-        stride_counter_0 = DefineCoreirConst(len(stride_counter.O), 0)()
-
-        wire(lower_dimensional_linebuffers_valid, stride_per_lower_dimension_counter.CE)
-
-        wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
-             stride_counter.CE)
-
-        lower_dimensional_linebuffers_proxy.valid = \
-            lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O)
-    else:
-        lower_dimensional_linebuffers_proxy.valid = lower_dimensional_linebuffers_valid
+            # don't make linebuffer, just return SIPO if 1D case
+            if len(image_sizes) == 1:
+                return MapParallel(cirb, head_pixel_per_clock,
+                                   SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
+                                               pixel_type, 0, has_ce=True))
 
 
-    return lower_dimensional_linebuffers_proxy
+            lower_dimensional_linebuffers = [
+                [
+                    AnyDimensionalLineBuffer(cirb,
+                                             pixel_type,
+                                             tail_pixel_per_clock,
+                                             tail_window_width,
+                                             tail_image_size,
+                                             tail_stride,
+                                             tail_origin,
+                                             i == 0,
+                                             i == number_of_linebuffers_in_sequence - 1)
+                    for i in range(number_of_linebuffers_in_sequence)
+                ]
+                for _ in range(head_pixel_per_clock)
+            ]
+
+            # wire up the next_rows
+            for sequence_of_linebuffers in lower_dimensional_linebuffers:
+                for i in range(len(sequence_of_linebuffers) - 1):
+                    wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
+                    wire(sequence_of_linebuffers[i].next_row_valid, sequence_of_linebuffers[i+1].CE)
+
+            # this is a proxy for an instance that has all the lower dimensional linebuffers
+            # it just has the ports necessary to wire up the parent module to the child
+            # ones
+            lower_dimensional_linebuffers_proxy = namedtuple('lower_dimensional_linebuffers_proxy',
+                                                             ["I", "O", "CE", "valid"])
+            # making a fake .I and .O ports that collects the first .I ports and all the .O ports of the linebuffers
+            lower_dimensional_linebuffers_proxy.I = [lb_sequence[0].I for lb_sequence in lower_dimensional_linebuffers]
+            lower_dimensional_linebuffers_proxy.O = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
+            lower_dimensional_linebuffers_proxy.CE = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
+
+            # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
+            # linebuffers. just valid when earlier linebuffers are ready.
+            all_valids = [lb.valid for lb in lower_dimensional_linebuffers[0]]
+            early_origin_clocks = head_origin // head_pixel_per_clock
+            used_valids = all_valids[:len(all_valids) + early_origin_clocks]
+            ignored_valids = all_valids[len(all_valids) + early_origin_clocks:]
+
+            # wire up all non-used valids to terms
+            for v in ignored_valids:
+                term = TermAnyType(cirb, Bit)
+                wire(v, term.I)
+
+            lower_dimensional_linebuffers_valid = reduce(lambda valid0, valid1: valid0 & valid1, used_valids)
+
+            # if stride is greater than pixel per clock in this dimension, then need a counter to not be valid
+            if head_stride > head_pixel_per_clock:
+                # how many times is the lower dimension valid before this dimension increments by 1
+                number_of_lower_dimension_valids_per_increment = lower_dimensional_linebuffers[0][0].windows_per_active_clock
+
+                # this slows the main stride counter to only increment once per number_of_lower_dimension_valids_per_increment
+                stride_per_lower_dimension_counter = SizedCounterModM(number_of_lower_dimension_valids_per_increment, has_ce=True)
+                stride_per_lower_dimension_max = DefineCoreirConst(len(stride_per_lower_dimension_counter.O),
+                                                                   number_of_lower_dimension_valids_per_increment - 1)()
+                stride_counter = SizedCounterModM(head_stride // head_pixel_per_clock, has_ce=True)
+                stride_counter_0 = DefineCoreirConst(len(stride_counter.O), 0)()
+
+                wire(lower_dimensional_linebuffers_valid, stride_per_lower_dimension_counter.CE)
+
+                wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
+                     stride_counter.CE)
+
+                lower_dimensional_linebuffers_proxy.valid = \
+                    lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O)
+            else:
+                lower_dimensional_linebuffers_proxy.valid = lower_dimensional_linebuffers_valid
+
+
+    return _SR
 
 
 def get_type_recursive(pixel_type: Kind, dimensions: list):
