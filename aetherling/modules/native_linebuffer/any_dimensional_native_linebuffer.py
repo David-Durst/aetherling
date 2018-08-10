@@ -18,8 +18,7 @@ def DefineAnyDimensionalLineBuffer(
         strides: list,
         origins: list,
         first_row: bool = True,
-        last_row: bool = True,
-        top_layer: bool = True) -> Circuit:
+        last_row: bool = True) -> Circuit:
 
     class _LB(Circuit):
         if len(pixels_per_clock) != len(window_widths) and \
@@ -39,13 +38,12 @@ def DefineAnyDimensionalLineBuffer(
         # else just emit one per clock when have enough pixels to do so
         windows_per_active_clock = max(pixels_per_clock[0] // strides[0], 1)
 
-
-        top_layer_valid = ['valid', Out(Bit)] if top_layer else []
         IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
               'O', Out(Array(windows_per_active_clock, get_type_recursive(pixel_type, window_widths)))] + \
-              top_layer_valid + ClockInterface(has_ce=True)
+              ['valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
-            IO += ['next_row', Out(get_type_recursive(pixel_type, pixels_per_clock))]
+            IO += ['next_row', Out(get_type_recursive(pixel_type, pixels_per_clock)),
+                   'next_row_valid', Out(Bit)]
 
         @classmethod
         def definition(cls):
@@ -189,12 +187,22 @@ def DefineAnyDimensionalLineBuffer(
 
             # if not last row, have output ports for ends of all shift_registers so next
             # 1D can accept them
+            # and a valid signal for when that port is ready
             if not last_row:
                 index_in_shift_register = image_size // pixel_per_clock - 1
                 for current_shift_register in range(pixel_per_clock):
                     wire(shift_register.O[current_shift_register][index_in_shift_register],
                          cls.next_row[current_shift_register])
                     used_coordinates.add((index_in_shift_register, current_shift_register))
+
+                valid_next_counter = SizedCounterModM(image_size // pixel_per_clock, has_ce=True)
+                valid_next_counter_max_instance = DefineCoreirConst(len(valid_next_counter.O),
+                                                                    image_size // pixel_per_clock - 1)()
+                wire(valid_next_counter.O == valid_next_counter_max_instance.out,
+                     cls.next_row_valid)
+                wire(enable((valid_next_counter.O < valid_next_counter_max_instance.out) &
+                     bit(cls.CE)), valid_next_counter.CE)
+
 
             # wire up all non-used coordinates to terms
             for sr in range(pixel_per_clock):
@@ -256,8 +264,7 @@ def AnyDimensionalLineBuffer(
         stride: list,
         origin: list,
         first_row: bool = True,
-        last_row: bool = True,
-        top_layer: bool = True) -> Circuit:
+        last_row: bool = True) -> Circuit:
 
     return DefineAnyDimensionalLineBuffer(
         cirb,
@@ -268,8 +275,7 @@ def AnyDimensionalLineBuffer(
         stride,
         origin,
         first_row,
-        last_row,
-        top_layer
+        last_row
     )()
 
 
@@ -309,8 +315,7 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
                                      tail_stride,
                                      tail_origin,
                                      i == 0,
-                                     i == number_of_linebuffers_in_sequence - 1,
-                                     False)
+                                     i == number_of_linebuffers_in_sequence - 1)
             for i in range(number_of_linebuffers_in_sequence)
         ]
         for _ in range(head_pixel_per_clock)
@@ -320,18 +325,22 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
     for sequence_of_linebuffers in lower_dimensional_linebuffers:
         for i in range(len(sequence_of_linebuffers) - 1):
             wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
-            wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
+            wire(sequence_of_linebuffers[i].next_row_valid, sequence_of_linebuffers[i+1].CE)
 
+    # this is a proxy for an instance that has all the lower dimensional linebuffers
+    # it just has the ports necessary to wire up the parent module to the child
+    # ones
+    lower_dimensional_linebuffers_proxy = {}
     # making a fake .O port that collects the .O ports of all linebuffers
-    lower_dimensional_linebuffers.O = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
-    lower_dimensional_linebuffers.CE = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
+    lower_dimensional_linebuffers_proxy["O"] = [[lb.O for lb in lb_sequence] for lb_sequence in lower_dimensional_linebuffers]
+    lower_dimensional_linebuffers_proxy["CE"] = [lb_sequence[0].CE for lb_sequence in lower_dimensional_linebuffers]
 
     # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
     # linebuffers. just valid when earlier linebuffers are ready.
-    all_valids = [lb_sequence[0].valid for lb_sequence in lower_dimensional_linebuffers]
+    all_valids = [lb.valid for lb in lower_dimensional_linebuffers[0]]
     early_origin_clocks = head_origin // head_pixel_per_clock
-    used_valids = all_valids[:early_origin_clocks]
-    ignored_valids = all_valids[early_origin_clocks:]
+    used_valids = all_valids[:len(all_valids) + early_origin_clocks]
+    ignored_valids = all_valids[len(all_valids) + early_origin_clocks:]
 
     # wire up all non-used valids to terms
     for v in ignored_valids:
@@ -357,13 +366,13 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
         wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
              stride_counter.CE)
 
-        wire(lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O),
-            lower_dimensional_linebuffers.valid)
+        lower_dimensional_linebuffers_proxy["valid"] = \
+            lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O)
     else:
-        lower_dimensional_linebuffers.valid = lower_dimensional_linebuffers_valid
+        lower_dimensional_linebuffers_proxy["valid"] = lower_dimensional_linebuffers_valid
 
 
-    return lower_dimensional_linebuffers
+    return lower_dimensional_linebuffers_proxy
 
 
 def get_type_recursive(pixel_type: Kind, dimensions: list):
