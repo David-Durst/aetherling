@@ -37,10 +37,10 @@ def DefineAnyDimensionalLineBuffer(
                "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(*name_args)
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
-        windows_per_active_clock = max(pixels_per_clock[0] // strides[0], 1)
+        windows_per_active_clock = [max(p // s, 1) for (p, s) in zip(pixels_per_clock, strides)]
 
         IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
-              'O', Out(Array(windows_per_active_clock, get_type_recursive(pixel_type, window_widths)))] + \
+              'O', Out(get_type_recursive(pixel_type, windows_per_active_clock + window_widths))] + \
               ['valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
             IO += ['next_row', Out(get_type_recursive(pixel_type, pixels_per_clock)),
@@ -95,10 +95,10 @@ def DefineAnyDimensionalLineBuffer(
 
             # get needed pixels (ignoring origin as that can be garbage)
             # to determine number of clock cycles needed to satisfy input
-            if cls.windows_per_active_clock == 1:
+            if cls.windows_per_active_clock[0] == 1:
                 needed_pixels = window_width
             else:
-                needed_pixels = window_width + stride * (cls.windows_per_active_clock - 1)
+                needed_pixels = window_width + stride * (cls.windows_per_active_clock[0] - 1)
 
             # get the maximum 1D coordinate when aligning needed pixels to the number
             # of pixels per clock
@@ -131,7 +131,7 @@ def DefineAnyDimensionalLineBuffer(
             # and outputs on the ends
             registers_to_window_outputs = []
 
-            for current_window_index in range(cls.windows_per_active_clock):
+            for current_window_index in range(cls.windows_per_active_clock[0]):
                 # stride is handled by wiring if there are multiple windows emitted per clock,
                 # aka if stride is less than number of pixels per clock.
                 # In this case, multiple windows are emitted but they must be overlapped
@@ -347,11 +347,12 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
                     wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
                     wire(sequence_of_linebuffers[i].next_row_valid, sequence_of_linebuffers[i+1].CE)
 
-            for lb_sequence in lower_dimensional_linebuffers:
-                wire(cls.I, lb_sequence[0].I)
-                wire(cls.CE, lb_sequence[0].CE)
-                for lb in lb_sequence:
-                    wire(lb.O, cls.O)
+            for lb_sequence_index in range(head_pixel_per_clock):
+                wire(cls.I[lb_sequence_index], lower_dimensional_linebuffers[lb_sequence_index][0].I)
+                wire(cls.CE, lower_dimensional_linebuffers[lb_sequence_index][0].CE)
+                for lb_index in range(number_of_linebuffers_in_sequence):
+                    wire(lower_dimensional_linebuffers[lb_sequence_index][lb_index].O,
+                         cls.O[lb_sequence_index][lb_index])
 
             # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
             # linebuffers. just valid when earlier linebuffers are ready.
@@ -369,17 +370,17 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
 
             # if stride is greater than pixel per clock in this dimension, then need a counter to not be valid
             if head_stride > head_pixel_per_clock:
-                # how many times is the lower dimension valid before this dimension increments by 1
-                number_of_lower_dimension_valids_per_increment = lower_dimensional_linebuffers[0][0].windows_per_active_clock
+                # how many active clock cycles does each entry of this dimension (like a row for outer dimension of 2d
+                # image) does this take
+                time_per_entry_in_dimension = reduce(lambda x, y: x * y, [s // p for (p, s) in
+                                                                          zip(tail_pixel_per_clock, tail_stride)])
 
+                dimension_period = time_per_entry_in_dimension * head_stride // head_pixel_per_clock
                 # this slows the main stride counter to only increment once per number_of_lower_dimension_valids_per_increment
-                stride_per_lower_dimension_counter = SizedCounterModM(number_of_lower_dimension_valids_per_increment, has_ce=True)
-                stride_per_lower_dimension_max = DefineCoreirConst(len(stride_per_lower_dimension_counter.O),
-                                                                   number_of_lower_dimension_valids_per_increment - 1)()
-                stride_counter = SizedCounterModM(head_stride // head_pixel_per_clock, has_ce=True)
-                stride_counter_0 = DefineCoreirConst(len(stride_counter.O), 0)()
+                stride_counter = SizedCounterModM(dimension_period, has_ce=True)
+                stride_counter_valid_const = DefineCoreirConst(len(stride_counter.O), time_per_entry_in_dimension - 1)()
 
-                wire(lower_dimensional_linebuffers_valid, stride_per_lower_dimension_counter.CE)
+                wire(lower_dimensional_linebuffers_valid, stride_counter.CE)
 
                 wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
                      stride_counter.CE)
