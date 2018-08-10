@@ -41,11 +41,11 @@ def DefineAnyDimensionalLineBuffer(
 
 
         top_layer_valid = ['valid', Out(Bit)] if top_layer else []
-        IO = ['I', In(get_type_recursive(pixels_per_clock)),
-              'O', Out(Array(windows_per_active_clock, get_type_recursive(window_widths)))] + \
+        IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
+              'O', Out(Array(windows_per_active_clock, get_type_recursive(pixel_type, window_widths)))] + \
               top_layer_valid + ClockInterface(has_ce=True)
         if not last_row:
-            IO += ['next_row', Out(Array(pixels_per_clock, Out(pixel_type)))]
+            IO += ['next_row', Out(get_type_recursive(pixel_type, pixels_per_clock))]
 
         @classmethod
         def definition(cls):
@@ -161,11 +161,11 @@ def DefineAnyDimensionalLineBuffer(
             shift_register = make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
                 cirb,
                 pixel_type,
-                pixel_per_clock,
-                window_width,
-                image_size,
-                stride,
-                origin
+                pixels_per_clock,
+                window_widths,
+                image_sizes,
+                strides,
+                origins
                 #registers_to_window_outputs # use this once I have a rowbuffer and
                                              # worth it to separate registers and SRAMS
             )
@@ -205,7 +205,7 @@ def DefineAnyDimensionalLineBuffer(
                     wire(shift_register.O[sr][sr_index], term.I)
 
             # make a counter for valid only if this is 1D, otherwise let lower dimensions handle valid
-            if len(pixel_per_clock) == 1:
+            if len(pixels_per_clock) == 1:
                 # valid when the maximum coordinate used (minus origin, as origin can in
                 # invalid space when emitting) gets data
                 # add 1 here as coordinates are 0 indexed, and the denominator of this
@@ -241,6 +241,7 @@ def DefineAnyDimensionalLineBuffer(
                 else:
                     wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
             else:
+                print(pixels_per_clock)
                 wire(shift_register.valid, cls.valid)
 
     return _LB
@@ -275,25 +276,25 @@ def AnyDimensionalLineBuffer(
 def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
         cirb: CoreIRBackend,
         pixel_type: Kind,
-        pixel_per_clock: list,
-        window_width: list,
-        image_size: list,
-        stride: list,
-        origin: list) -> Circuit:
+        pixels_per_clock: list,
+        window_widths: list,
+        image_sizes: list,
+        strides: list,
+        origins: list) -> Circuit:
     """
     make a series of linebuffers that are all one dimenision lower than the one trying to create
     the first and last linebuffers don't expose the internal next_row port
     """
-    head_pixel_per_clock, tail_pixel_per_clock = pixel_per_clock
-    head_window_width, tail_window_width = window_width
-    head_image_size, tail_image_size = image_size
-    head_stride, tail_stride = stride
-    head_origin, tail_origin = origin
+    head_pixel_per_clock, *tail_pixel_per_clock = pixels_per_clock
+    head_window_width, *tail_window_width = window_widths
+    head_image_size, *tail_image_size = image_sizes
+    head_stride, *tail_stride = strides
+    head_origin, *tail_origin = origins
     number_of_linebuffers_in_sequence = head_image_size // head_pixel_per_clock
 
     # don't make linebuffer, just return SIPO if 1D case
-    if len(tail_image_size) == 1:
-        return MapParallel(cirb, pixel_per_clock,
+    if len(image_sizes) == 1:
+        return MapParallel(cirb, head_pixel_per_clock,
                            SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
                                        pixel_type, 0, has_ce=True))
 
@@ -365,11 +366,11 @@ def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
     return lower_dimensional_linebuffers
 
 
-def get_type_recursive(self, dimensions: list):
+def get_type_recursive(pixel_type: Kind, dimensions: list):
     if len(dimensions) == 0:
-        return self.pixel_type
+        return pixel_type
     else:
-        return Array(dimensions[0], get_type_recursive(dimensions[1:]))
+        return Array(dimensions[0], get_type_recursive(pixel_type, dimensions[1:]))
 
 class RegisterToWindowMapping():
     def __init__(self, current_shift_register: int, index_in_shift_register: int,
