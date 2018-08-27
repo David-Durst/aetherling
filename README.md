@@ -26,6 +26,14 @@ Aetherling is a library for creating data-parallel pipelines in hardware. Aether
     1. [PyCoreIR](https://github.com/leonardt/pycoreir)
         1. This provides the Python API for interfacing with CoreIR.
         1. How to install: https://github.com/leonardt/pycoreir#development-setup
+    1. [Fault](https://github.com/leonardt/fault)
+        1. This provides hardware testing features in Python
+        1. How to install:
+        ```Shell
+            git clone git@github.com:leonardt/fault.git
+            cd fault
+            pip install -e .
+        ```
     1. [Magma](https://github.com/phanrahan/magma)
         1. This provides the Python API for creating circuits and basic computer architecture components.
         1. How to install: https://github.com/phanrahan/magma#installation
@@ -33,18 +41,18 @@ Aetherling is a library for creating data-parallel pipelines in hardware. Aether
         1. This is a library of useful Magma components.
         1. How to install: https://github.com/phanrahan/mantle#setup
 1. Install Aetherling:
-    ```
+    ```Shell
     git clone https://github.com/David-Durst/aetherling/
     cd aetherling
     pip install -r requirements.txt
     pip install -e .
     ```
 1. Set the following environment variable (if you didn't already do so in the Mantle installation):
-    ```
+    ```Shell
     export MANTLE=coreir
     ```
 1. Run the unit tests:
-    ```
+    ```Shell
     pytest -s tests
     ```
 

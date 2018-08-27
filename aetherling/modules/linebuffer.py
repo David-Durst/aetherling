@@ -2,6 +2,7 @@ from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper
 from ..helpers.nameCleanup import cleanName
 from magma import Circuit, Array, ArrayKind, Kind, In, Out, Bit, wire
+from mantle.coreir.type_helpers import Term
 
 """
 import coreir
@@ -40,8 +41,10 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
         out : Out(outType)
         wen : In(Bit) -- this is a clock enable port. TODO: wrap this module and call it CE
 
-        AND IF SET
+        AND IF VALID SET
         valid : Out(Bit)
+        valid_chain : Out(Bit) (this is an internal property that is being
+        exposed on linebuffer's external interface. always send it to a term)
     """
     # Reason for weird False/True settings in get_type
     # get_type does some funky things, False means not input, and since
@@ -96,6 +99,7 @@ def Linebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
     """
     return DefineLinebuffer(cirb, inType, outType, imgType, has_valid)()
 
+# Note: This removes valid_chain for convenience
 def DefineLinebuffer1DPartitioned(cirb: CoreIRBackend, pxPerClock: int, stencilWidth: int,
                                   elementType: ArrayKind, imgType: ArrayKind, has_valid = False):
     class _1DLinebuffer(Circuit):
@@ -126,6 +130,8 @@ def DefineLinebuffer1DPartitioned(cirb: CoreIRBackend, pxPerClock: int, stencilW
 
             if (has_valid):
                 cls.wire(lb.valid, cls.valid)
+                validChainTerm = Term(cirb, 1)
+                wire(lb.valid_chain, validChainTerm.I[0])
 
     return _1DLinebuffer
 

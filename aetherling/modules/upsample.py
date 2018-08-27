@@ -1,6 +1,6 @@
 import math
 
-from mantle import Register, SizedCounterModM, Decode
+from mantle import Register, SizedCounterModM, Decode, Mux
 from mantle.common.operator import *
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend

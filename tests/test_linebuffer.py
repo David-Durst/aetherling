@@ -7,7 +7,8 @@ from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
-from mantle import CounterModM, Decode
+from magma.frontend.coreir_ import GetCoreIRModule
+from mantle.coreir.type_helpers import Term
 
 def test_linebuffer_1pxPerClock_3pxWindow():
     c = coreir.Context()
@@ -32,20 +33,41 @@ def test_linebuffer_2pxPerClock_4pxWindow():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = Array(2, Array(3, BitIn))
-    outType = Array(4, Array(3, Out(Bit)))
-    imgType = Array(30, Array(3, BitIn))
-    args = ['I', inType, 'O', outType] + ClockInterface(False, False)
+    width = 8
+    inType = Array(2, Array(width, BitIn))
+    outType = Array(4, Array(width, Out(Bit)))
+    imgType = Array(30, Array(width, BitIn))
+    args = ['I', inType, 'O', outType, 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('lb1_3_Test', *args)
 
-    lb = Linebuffer(cirb, inType, outType, imgType, False)
+    lb = Linebuffer(cirb, inType, outType, imgType, True)
     wire(lb.I, testcircuit.I)
     wire(testcircuit.O, lb.out)
 
     wire(1, lb.wen)
+    wire(lb.valid, testcircuit.valid)
+    validChainTerm = Term(cirb, 1)
+    wire(lb.valid_chain, validChainTerm.I[0])
 
     EndCircuit()
+    
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    for i in range(3):
+        sim.set_value(testcircuit.I[0], int2seq(2*i, width), scope)
+        sim.set_value(testcircuit.I[1], int2seq(2*i+1, width), scope)
+        sim.evaluate()
+        assert sim.get_value(testcircuit.valid, scope) == (i >= 1)
+        if i >= 1:
+            assert seq2int(sim.get_value(testcircuit.O[0], scope)) == (i-1)*2
+            assert seq2int(sim.get_value(testcircuit.O[1], scope)) == (i-1)*2+1
+            assert seq2int(sim.get_value(testcircuit.O[2], scope)) == i*2
+            assert seq2int(sim.get_value(testcircuit.O[3], scope)) == i*2+1
+        sim.advance_cycle()
+        sim.evaluate()
+
 
 def test_linebuffer_2pxPerClock_3pxWindow():
     c = coreir.Context()
