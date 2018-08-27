@@ -56,6 +56,84 @@ def ReduceSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circui
     return moduleToReturn
 
 @cache_definition
+def DefineReducePartiallyParallel(
+        cirb: CoreIRBackend, 
+        numInputs: int, 
+        parallelism: int,
+        op: Circuit) -> Circuit:
+    """
+    Reduce multiple numInputs into one over numInputs/parallelism clock cycles, parallelism per clock cycle
+    Aetherling Type: {1, T[numInputs]} -> {numInputs/parallelism, S[parallelism]}
+
+    :param cirb: The CoreIR backend currently be used
+    :param numInputs: The total number of input elements
+    :param numInputs: The number of input elements to process each clock cycle
+    :param op: The operator (the magma circuit) to map over the elements. It should have type T -> T -> T,
+    with input ports in0 and in1.
+    
+    Restrictions:
+    1. numInputs % parallelism == 0
+
+
+    :return: A module with all the ports of op, except the input is parallelized into an array of
+      length parallelism. The module also requires an identity constant corresponding to the 
+      op (e.g. 0 for Add, 1 for Multiply) formatted as a CoreirConstant, and includes a write enable 
+      port on the input and a valid bit for the output. For an op with input port I and output O, 
+      the ports will be:
+      I : In(Array(parallelism, T)
+      O : Out(T)
+      WE : In(Bit)
+      C : In(T)
+      V :  Out(Bit)
+    """
+
+    class _ReducePartiallyParallel(Circuit):
+        # numInputs/parallelism is the number of clock cycles to reduce over,
+        # so must be an integer
+        if numInputs % parallelism != 0:
+                raise Exception("Reduce Partially Parallel has invalid "
+                                "parameters: numInputs {} not divisible by "
+                                "parallelism {}".format(numInputs, parallelism))
+
+        name = "Reduce_n{}_p{}_op{}".format(str(numInputs), str(parallelism), 
+            cleanName(op.name))
+        
+        token_type = type(op.in0)
+
+        IO = ['I', In(Array(parallelism, token_type)),
+              'O', Out(token_type),
+              'WE', In(Bit),
+              'C', In(token_type),
+              'V', Out(Bit)] + ClockInterface(False, False)
+
+        @classmethod
+        def definition(rpp):
+            num_clocks = numInputs // parallelism
+
+            # reduce Parallel
+            reducePar = ReduceParallel(cirb, parallelism, renameCircuitForReduce(op))
+
+            # reduce sequential
+            reduceSeq = ReduceSequential(cirb, num_clocks, renameCircuitForReduce(op))
+
+            # top level input fed to reduce parallel input
+            wire(rpp.I, reducePar.I.data)
+            wire(reducePar.I.identity, rpp.C)
+
+            # reduce parallel output fed to reduce sequential input
+            wire(reducePar.out, reduceSeq.I)
+
+            # output of reduce sequential fed to top level output
+            wire(reduceSeq.out, rpp.O)
+            wire(reduceSeq.valid, rpp.V)
+
+    return _ReducePartiallyParallel
+
+def ReducePartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
+                         op: Circuit, has_ce=False):
+    return DefineReducePartiallyParallel(cirb, numInputs, parallelism, op)()
+
+@cache_definition
 def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     """
     Given an operation definition with two input ports and one output port
