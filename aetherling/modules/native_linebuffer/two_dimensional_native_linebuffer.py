@@ -109,7 +109,7 @@ def DefineTwoDimensionalLineBuffer(
                             .format(image_rows, stride_rows, reason))
 
         if ((stride_cols * stride_rows) %
-            (pixels_per_row_per_clock * rows_of_pixels_per_clock) != 0) and \
+            (pixels_per_row_per_clock * rows_of_pixels_per_clock) != 0) or \
                 ((pixels_per_row_per_clock * rows_of_pixels_per_clock) %
                  (stride_cols * stride_rows) != 0):
             reason = """
