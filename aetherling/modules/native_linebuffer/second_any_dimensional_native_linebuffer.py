@@ -309,20 +309,22 @@ def create_parallel_shift_registers(
     """
     Create the nested parallel, high dimensional shift registers
     """
-    parallelized_shift_registers = define_n_dimensional_shift_registers(
+    parallelized_shift_registers_list = [define_n_dimensional_shift_registers(
         cirb,
         parent_name,
         pixel_type,
         pixels_per_clock,
         image_sizes
-    )
+    )]
 
     # speed up with the inner most dimensions (the later ones in the pixels_per_clock array)
     # wrapped the deepest
     for pixel_per_clock in pixels_per_clock[::-1]:
-        parallelized_shift_registers = DefineMapParallel(cirb, pixel_per_clock, parallelized_shift_registers)\
+        parallelized_shift_registers_list.append(
+            DefineMapParallel(cirb, pixel_per_clock, parallelized_shift_registers_list[-1])
+        )
 
-    parallelized_shift_registers = parallelized_shift_registers()
+    parallelized_shift_registers = parallelized_shift_registers_list[-1]()
 
     term = TermAnyType(cirb, get_nested_type(pixel_type, pixels_per_clock))
 
