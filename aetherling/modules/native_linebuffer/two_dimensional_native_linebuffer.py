@@ -1,6 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.hydrate import Dehydrate, Hydrate
-from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import AnyDimensionalLineBuffer
+from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import AnyDimensionalLineBuffer
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
