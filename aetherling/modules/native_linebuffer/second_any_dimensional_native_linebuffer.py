@@ -8,6 +8,7 @@ from aetherling.modules.sipo_any_type import SIPOAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from math import ceil
 from itertools import product
+import builtins
 from functools import reduce
 from operator import mul
 
@@ -25,9 +26,7 @@ def DefineAnyDimensionalLineBuffer(
         window_widths: list,
         image_sizes: list,
         strides: list,
-        origins: list,
-        first_row: bool = True,
-        last_row: bool = True) -> Circuit:
+        origins: list) -> Circuit:
 
     class _LB(Circuit):
         if len(pixels_per_clock) != len(window_widths) and \
@@ -40,9 +39,9 @@ def DefineAnyDimensionalLineBuffer(
             raise Exception("any dimensional linebuffer must have at least 1D inputs, parameters are empty lists")
 
         name_args = [cleanName(str(s)) for s in [pixel_type, pixels_per_clock, window_widths, image_sizes,
-            strides, [abs(i) for i in origins], first_row, last_row]]
+            strides, [abs(i) for i in origins]]]
         name = "AnyDimensionalLineBuffer_{}type_{}pxPerClock_{}window" \
-               "_{}img_{}stride_{}origin_{}firstRow_{}lastRow".format(*name_args)
+               "_{}img_{}stride_{}origin".format(*name_args)
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
         windows_per_active_clock = [max(p // s, 1) for (p, s) in zip(pixels_per_clock, strides)]
@@ -50,9 +49,6 @@ def DefineAnyDimensionalLineBuffer(
         IO = ['I', In(get_nested_type(pixel_type, pixels_per_clock)),
               'O', Out(get_nested_type(pixel_type, windows_per_active_clock + window_widths))] + \
              ['valid', Out(Bit)] + ClockInterface(has_ce=True)
-        if not last_row:
-            IO += ['next_row', Out(get_nested_type(pixel_type, pixels_per_clock)),
-                   'next_row_valid', Out(Bit)]
 
         @classmethod
         def definition(cls):
@@ -130,9 +126,9 @@ def DefineAnyDimensionalLineBuffer(
                 for cur_dimension in range(num_dimensions):
                     ND_coordinate_reversed_indexing = oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - \
                                                       new_coordinates[cur_dimension]
-                    oldest_needed_pixel_forward_ND_coordinates[cur_dimension] = \
+                    coordinates_2N_dimensional[num_dimensions + cur_dimension] = \
                         ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension]
-                    oldest_needed_pixel_forward_ND_coordinates[num_dimensions + cur_dimension] = \
+                    coordinates_2N_dimensional[cur_dimension] = \
                         ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension]
 
 
@@ -165,12 +161,18 @@ def DefineAnyDimensionalLineBuffer(
                     )
                 # for every value in window, wire up output to location in shift registers
                 for coordinates_in_window in product(*[range(w) for w in window_widths]):
+                    if coordinates_in_window == (0, 2) and current_window_index == (0, 1):
+                        print("hi")
+
                     set_shift_register_location_using_ND_coordinates([sum(window_and_coordinates_in_it) for
                                           window_and_coordinates_in_it in
                                          zip(window_coordinate, coordinates_in_window)])
 
-                    used_coordinates.add(coordinates_2N_dimensional)
-                    output_to_shift_register_mapping.add((window_coordinate + coordinates_in_window, coordinates_2N_dimensional))
+
+                    used_coordinates.add(builtins.tuple(coordinates_2N_dimensional))
+                    output_to_shift_register_mapping.add(
+                        (builtins.tuple(window_coordinate + builtins.list(coordinates_in_window)),
+                         builtins.tuple(coordinates_2N_dimensional)))
 
 
             shift_registers = create_parallel_shift_registers(cirb, cls.name, pixel_type,
@@ -188,16 +190,16 @@ def DefineAnyDimensionalLineBuffer(
                         wire(lb_CE, shift_register_CE[i])
                 else:
                     for i in range(len(lb_inputs)):
-                        recursively_wire_input(lb_inputs[len(lb_inputs - i - 1)],
+                        recursively_wire_input(lb_inputs[len(lb_inputs) - i - 1],
                                                shift_register_inputs[i], lb_CE,
-                                               shift_registers[i], dimension_depth - 1)
+                                               shift_register_CE[i], dimension_depth - 1)
 
             recursively_wire_input(cls.I, shift_registers.I,
                                    cls.CE, shift_registers.CE, len(pixels_per_clock))
 
             def multidimensionalLookup(arr, indexes):
                 if len(indexes) == 1:
-                    return arr[indexes]
+                    return arr[indexes[0]]
                 else:
                     return multidimensionalLookup(arr[indexes[0]], indexes[1:])
 
@@ -253,7 +255,8 @@ def DefineAnyDimensionalLineBuffer(
 
             # for each dimnesion, if stride is greater than pixels_per_clock, then need a stride counter as
             # not active every clock. Invalid clocks create striding in this case
-            stride_counters_valid = DefineCoreirConst(1, 1)
+            trueGen = DefineCoreirConst(1,1)()
+            stride_counters_valid = trueGen.out == trueGen.out
 
             for d in range(num_dimensions):
                 if strides[d] > pixels_per_clock[d]:
@@ -284,9 +287,7 @@ def AnyDimensionalLineBuffer(
         window_width: list,
         image_size: list,
         stride: list,
-        origin: list,
-        first_row: bool = True,
-        last_row: bool = True) -> Circuit:
+        origin: list) -> Circuit:
 
     return DefineAnyDimensionalLineBuffer(
         cirb,
@@ -295,9 +296,7 @@ def AnyDimensionalLineBuffer(
         window_width,
         image_size,
         stride,
-        origin,
-        first_row,
-        last_row
+        origin
     )()
 
 
@@ -321,13 +320,15 @@ def create_parallel_shift_registers(
     # speed up with the inner most dimensions (the later ones in the pixels_per_clock array)
     # wrapped the deepest
     for pixel_per_clock in pixels_per_clock[::-1]:
-        parallelized_shift_registers = DefineMapParallel(cirb, pixel_per_clock, parallelized_shift_registers)
+        parallelized_shift_registers = DefineMapParallel(cirb, pixel_per_clock, parallelized_shift_registers)\
 
-    term = TermAnyType(cirb,  get_nested_type(pixel_type, pixels_per_clock))
+    parallelized_shift_registers = parallelized_shift_registers()
+
+    term = TermAnyType(cirb, get_nested_type(pixel_type, pixels_per_clock))
 
     wire(parallelized_shift_registers.next, term.I)
 
-    return parallelized_shift_registers()
+    return parallelized_shift_registers
 
 def define_n_dimensional_shift_registers(
         cirb: CoreIRBackend,
