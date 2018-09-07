@@ -198,7 +198,7 @@ def DefineTwoDimensionalLineBuffer(
                             "greater than or equal to image_rows {}. \n Reason: {}"
                             .format(window_rows, origin_rows, image_rows, reason))
 
-        name = "OneDimensionalLineBuffer_{}type_{}x{}pxPerClock_{}x{}window" \
+        name = "TwoDimensionalLineBuffer_{}type_{}x{}pxPerClock_{}x{}window" \
                "_{}x{}img_{}x{}stride_{}x{}origin".format(
             cleanName(str(pixel_type)),
             pixels_per_row_per_clock,
@@ -215,8 +215,10 @@ def DefineTwoDimensionalLineBuffer(
 
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
-        windows_per_active_clock = max(pixels_per_row_per_clock // stride_cols, 1) * \
-                                   max(rows_of_pixels_per_clock // stride_rows, 1)
+        windows_per_row_per_clock = max(pixels_per_row_per_clock // stride_cols, 1)
+        rows_of_windows_per_clock = max(rows_of_pixels_per_clock // stride_rows, 1)
+        windows_per_active_clock = windows_per_row_per_clock * rows_of_windows_per_clock
+
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
@@ -233,7 +235,10 @@ def DefineTwoDimensionalLineBuffer(
                 [origin_cols, origin_rows]
             )
             wire(cls.I, lb.I)
-            wire(cls.O, lb.O)
+            for row_of_windows in range(cls.rows_of_windows_per_clock):
+                for window_per_row in range(cls.windows_per_row_per_clock):
+                    wire(cls.O[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
+                         lb.O[row_of_windows][window_per_row])
             wire(cls.valid, lb.valid)
             wire(cls.CE, lb.CE)
 
