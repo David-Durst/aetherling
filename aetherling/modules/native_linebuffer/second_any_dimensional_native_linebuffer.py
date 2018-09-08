@@ -97,6 +97,10 @@ def DefineAnyDimensionalLineBuffer(
             # to determine number of clock cycles needed to satisfy input
             oldest_needed_pixel_forward_ND_coordinates = [0] * num_dimensions
 
+            # since can be fully parallel in a dimension, then oldest_needed is actually greater
+            # max valid in that dimension. These track the max that can actually be valid
+            oldest_possibly_valid_pixel_ND_coordinates = [0] * num_dimensions
+
             for dimension in range(num_dimensions):
                 if cls.windows_per_active_clock[dimension] == 1:
                     needed_pixels_cur_dim = window_widths[dimension]
@@ -104,9 +108,15 @@ def DefineAnyDimensionalLineBuffer(
                     needed_pixels_cur_dim = window_widths[dimension] + strides[dimension] * \
                                                (cls.windows_per_active_clock[dimension] - 1)
 
-                # get the maximum 1D coordinate when aligning needed pixels to the number
+                # get the maximum coordinate when aligning needed pixels to the number
                 # of pixels per clock
-                if needed_pixels_cur_dim % pixels_per_clock[dimension] == 0:
+
+                # if need more than all values in a dimension (as parallelism is so great that
+                # a window extends off the last value in this dimension) then oldest_need is just
+                # the last valid entry in this dimension
+                if needed_pixels_cur_dim >= image_sizes[dimension]:
+                    oldest_needed_pixel_forward_ND_coordinates[dimension] = image_sizes[dimension]
+                elif needed_pixels_cur_dim % pixels_per_clock[dimension] == 0:
                     oldest_needed_pixel_forward_ND_coordinates[dimension] = needed_pixels_cur_dim
                 else:
                     oldest_needed_pixel_forward_ND_coordinates[dimension] = \
@@ -114,6 +124,9 @@ def DefineAnyDimensionalLineBuffer(
 
                 # adjust by 1 for 0 indexing
                 oldest_needed_pixel_forward_ND_coordinates[dimension] -= 1
+
+                oldest_possibly_valid_pixel_ND_coordinates[dimension] = min(oldest_needed_pixel_forward_ND_coordinates[dimension],
+                                                                 image_sizes[dimension] - 1)
 
             def get_shift_register_location_in_ND_coordinates() -> list:
                 coordinates_to_return = []
@@ -124,8 +137,10 @@ def DefineAnyDimensionalLineBuffer(
 
             def set_shift_register_location_using_ND_coordinates(new_coordinates):
                 for cur_dimension in range(num_dimensions):
-                    ND_coordinate_reversed_indexing = oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - \
-                                                      new_coordinates[cur_dimension]
+                    ND_coordinate_reversed_indexing = min(
+                        oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - new_coordinates[cur_dimension],
+                        image_sizes[cur_dimension] - 1
+                    )
                     coordinates_2N_dimensional[num_dimensions + cur_dimension] = \
                         ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension]
                     coordinates_2N_dimensional[cur_dimension] = \
@@ -161,7 +176,7 @@ def DefineAnyDimensionalLineBuffer(
                     )
                 # for every value in window, wire up output to location in shift registers
                 for coordinates_in_window in product(*[range(w) for w in window_widths]):
-                    if coordinates_in_window == (0, 2) and current_window_index == (0, 1):
+                    if window_coordinate == [0, 0] and coordinates_in_window == (1, 2):
                         print("hi")
 
                     set_shift_register_location_using_ND_coordinates([sum(window_and_coordinates_in_it) for
@@ -170,6 +185,8 @@ def DefineAnyDimensionalLineBuffer(
 
 
                     used_coordinates.add(builtins.tuple(coordinates_2N_dimensional))
+                    if coordinates_2N_dimensional == [3, 0, 1, 0]:
+                        print('bye')
                     output_to_shift_register_mapping.add(
                         (builtins.tuple(window_coordinate + builtins.list(coordinates_in_window)),
                          builtins.tuple(coordinates_2N_dimensional)))
@@ -236,14 +253,14 @@ def DefineAnyDimensionalLineBuffer(
                     # subtract 1 here as need second to oldest needed pixel in this dimension
                     # but then add 1 as 0 indexed, so multiply by 3 for pixel 2.
                     # these cancel each other out
-                    ceil((oldest_needed_pixel_forward_ND_coordinates[d] + origins[d]) / pixels_per_clock[d])
+                    ceil((oldest_possibly_valid_pixel_ND_coordinates[d] + origins[d]) / pixels_per_clock[d])
                 )
 
 
             # valid when the maximum coordinate used in the inner most dimension and all outer most dimensions
             # have been satisfied
             # add 1 as reading from a register, 1 cycle delay
-            valid_counter_max_value = ceil((oldest_needed_pixel_forward_ND_coordinates[-1] + 1 + origins[-1]) /
+            valid_counter_max_value = ceil((oldest_possibly_valid_pixel_ND_coordinates[-1] + 1 + origins[-1]) /
                                            pixels_per_clock[-1]) + clocks_to_fill_in_outer_dimensions
 
             # add 1 as sizedcounter counts to 1 less than the provided max
