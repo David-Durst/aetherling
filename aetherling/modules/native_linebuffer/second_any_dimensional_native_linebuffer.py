@@ -242,7 +242,8 @@ def DefineAnyDimensionalLineBuffer(
 
             # valid when the maximum coordinate used in the inner most dimension and all outer most dimensions
             # have been satisfied
-            valid_counter_max_value = ceil((oldest_needed_pixel_forward_ND_coordinates[-1] + origins[-1]) /
+            # add 1 as reading from a register, 1 cycle delay
+            valid_counter_max_value = ceil((oldest_needed_pixel_forward_ND_coordinates[-1] + 1 + origins[-1]) /
                                            pixels_per_clock[-1]) + clocks_to_fill_in_outer_dimensions
 
             # add 1 as sizedcounter counts to 1 less than the provided max
