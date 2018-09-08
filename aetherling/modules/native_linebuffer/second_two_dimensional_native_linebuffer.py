@@ -3,7 +3,7 @@ from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
 from magma.backend.coreir_ import CoreIRBackend
-from aetherling.modules.map_fully_parallel_sequential import MapParallel
+from aetherling.modules.map_fully_parallel_sequential import DefineMapParallel
 from aetherling.modules.sipo_any_type import SIPOAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from math import ceil
@@ -39,44 +39,48 @@ def DefineAnyDimensionalLineBuffer(
         # else just emit one per clock when have enough pixels to do so
         windows_per_active_clock = [max(p // s, 1) for (p, s) in zip(pixels_per_clock, strides)]
 
-        IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
-              'O', Out(get_type_recursive(pixel_type, windows_per_active_clock + window_widths))] + \
-              ['valid', Out(Bit)] + ClockInterface(has_ce=True)
+        IO = ['I', In(get_nested_type(pixel_type, pixels_per_clock)),
+              'O', Out(get_nested_type(pixel_type, windows_per_active_clock + window_widths))] + \
+             ['valid', Out(Bit)] + ClockInterface(has_ce=True)
         if not last_row:
-            IO += ['next_row', Out(get_type_recursive(pixel_type, pixels_per_clock)),
+            IO += ['next_row', Out(get_nested_type(pixel_type, pixels_per_clock)),
                    'next_row_valid', Out(Bit)]
 
         @classmethod
         def definition(cls):
 
+            num_dimensions = len(pixels_per_clock)
             pixel_per_clock = pixels_per_clock[0]
             window_width = window_widths[0]
             image_size = image_sizes[0]
             stride = strides[0]
             origin = origins[0]
 
+            shift_registers = create_parallel_shift_registers(cirb, cls.name, pixel_type,
+                                            pixels_per_clock, image_sizes)
 
-            # these two variables provide a 2D coordinate system for the SIPOs.
-            # the inner dimension is current_shift_register
-            # the outer dimension is index_in_shift_register
-            # greater values in current_shift_register are inputs from older clocks
-            # greater values in index_in_shift_register are inputs from lower index
-            # values in the inputs in a single clock (due to above cls.I, type_to_bits reversing)
-            # the index_in_shift_register is reversed so that bigger number always
-            # means lower indexed value in the input image. For example, if asking
-            # for location 0 with a 2 px per clock, 3 window width, then the
-            # 2D location is index_in_shift_register = 1, current_shift_register = 1
-            # and walking back in 2D space as increasing 1D location.
-            current_shift_register = 0
-            index_in_shift_register = 0
+            def recursively_wire_input(lb_inputs, shift_register_inputs, dimension_depth):
+                if dimension_depth == 1:
+                    wire(lb_inputs[::-1], shift_register_inputs)
+                else:
+                    for i in range(len(lb_inputs)):
+                        recursively_wire_input(lb_inputs[len(lb_inputs - i - 1)],
+                                         shift_register_inputs[i], dimension_depth - 1)
 
-            # since current_shift_register and index_in_shift_register form a
-            # 2D shape where current_shift_registers is inner dimension and
-            # index_in_shift_register is outer, get_shift_register_location_in_1D_coordinates
-            # and set_shift_register_location_using_1D_coordinates  convert between
-            # 2D coordinates in the SIPOs and 1D coordinates in the 1D image
+            recursively_wire_input(cls.I, shift_registers.I, len(pixels_per_clock))
 
-            # To do the reversing of 1D coordinates, need to find the oldest pixel that should be output,
+
+            # these two variables provide a 2N dimensional, where N is the number
+            # of dimensions in the images. The dimensions using shift registers is
+            # 2N dimensional as you need an extra dimension for each level of parallelism.
+            # greater values in dimensions are earlier indexes in input image
+            coordinates_2N_dimensional = [0] * (2*num_dimensions)
+
+            # get_shift_register_location_in_ND_coordinates
+            # and set_shift_register_location_using_ND_coordinates convert between
+            # 2ND coordinates in the shift registers and ND coordinates in the ND image
+
+            # To do the reversing of coordinates, need to find the oldest pixel that should be output,
             # ignoring origin as origin doesn't impact this computation.
             # This is done by finding the number of relevant pixels for outputting and adjusting it
             # so that it aligns with the number of pixels per clock cycle.
@@ -88,28 +92,39 @@ def DefineAnyDimensionalLineBuffer(
             # need to be able to handle situations with swizzling. Swizzling is
             # where a pixel inputted this clock is not used until next clock.
             # This is handled by wiring up in reverse order. If a pixel is inputted
-            # in a clock but not used, it will have a high 1D location as it will be
-            # one of the first registers in the first index_in_shift_register.
-            # The swizzled pixel's large 1D location ensures it isn't wired directly
+            # in a clock but not used, it will have a high ND location as it will be
+            # one of the first registers.
+            # The swizzled pixel's large ND location ensures it isn't wired directly
             # to an output
 
             # get needed pixels (ignoring origin as that can be garbage)
             # to determine number of clock cycles needed to satisfy input
-            if cls.windows_per_active_clock[0] == 1:
-                needed_pixels = window_width
-            else:
-                needed_pixels = window_width + stride * (cls.windows_per_active_clock[0] - 1)
+            oldest_needed_pixel_forward_ND_coordinates = [0] * num_dimensions
 
-            # get the maximum 1D coordinate when aligning needed pixels to the number
-            # of pixels per clock
-            if needed_pixels % pixel_per_clock == 0:
-                oldest_needed_pixel_forward_1D_coordinates = needed_pixels
-            else:
-                oldest_needed_pixel_forward_1D_coordinates = ceil(needed_pixels / pixel_per_clock) * \
-                                                             pixel_per_clock
+            for dimension in range(num_dimensions):
+                if cls.windows_per_active_clock[dimension] == 1:
+                    needed_pixels_cur_dim = window_widths[dimension]
+                else:
+                    needed_pixels_cur_dim = window_widths[dimension] + strides[dimension] * \
+                                               (cls.windows_per_active_clock[dimension] - 1)
 
-            # adjust by 1 for 0 indexing
-            oldest_needed_pixel_forward_1D_coordinates -= 1
+                # get the maximum 1D coordinate when aligning needed pixels to the number
+                # of pixels per clock
+                if needed_pixels % pixel_per_clock == 0:
+                    oldest_needed_pixel_forward_ND_coordinates[dimension] = needed_pixels_cur_dim
+                else:
+                    oldest_needed_pixel_forward_ND_coordinates[dimension] = \
+                        ceil(needed_pixels_cur_dim / pixels_per_clock[dimension]) * pixels_per_clock[dimension]
+
+                # adjust by 1 for 0 indexing
+                oldest_needed_pixel_forward_ND_coordinates[dimension] -= 1
+
+            # this function all wrong, think its intermixing coordinates
+            def get_shift_register_location_in_ND_coordinates(input_coordinates: list, dimension) -> int:
+                current_dimension_coordinate = sum([pixel_per_clock * input_coordinates[] / image_sizes[dimension]
+                return [current_dimension_coordinate] get_shift_register_location_in_ND_coordinates(
+                    input_coordinates
+                )
 
             def get_shift_register_location_in_1D_coordinates() -> int:
                 return oldest_needed_pixel_forward_1D_coordinates - \
@@ -282,128 +297,108 @@ def AnyDimensionalLineBuffer(
     )()
 
 
-def make_two_dimensional_set_of_lower_dimensional_linebuffer_as_shift_registers(
+def create_parallel_shift_registers(
         cirb: CoreIRBackend,
         parent_name: str,
         pixel_type: Kind,
         pixels_per_clock: list,
-        window_widths: list,
-        image_sizes: list,
-        strides: list,
-        origins: list) -> Circuit:
+        image_sizes: list) -> Circuit:
     """
-    make a series of linebuffers that are all one dimenision lower than the one trying to create
-    the first and last linebuffers don't expose the internal next_row port
+    Create the nested parallel, high dimensional shift registers
+    """
+    parallelized_shift_registers = define_n_dimensional_shift_registers(
+        cirb,
+        parent_name,
+        pixel_type,
+        pixels_per_clock,
+        image_sizes
+    )
+
+    # speed up with the inner most dimensions (the later ones in the pixels_per_clock array)
+    # wrapped the deepest
+    for pixel_per_clock in pixels_per_clock[::-1]:
+        parallelized_shift_registers = DefineMapParallel(cirb, pixel_per_clock, parallelized_shift_registers)
+
+    return parallelized_shift_registers()
+
+def define_n_dimensional_shift_registers(
+        cirb: CoreIRBackend,
+        parent_name: str,
+        pixel_type: Kind,
+        pixels_per_clock: list,
+        image_sizes: list) -> Circuit:
+    """
+    make a high dimensional shift register based on a series of lower dimensional ones
     """
     class _SR(Circuit):
 
-        name = "shift_registers_for_" + parent_name
+        name = "shift_registers_for_{}_with_{}_pxPerClock_{}_imgSizes".format(
+            parent_name,
+            cleanName(str(pixels_per_clock)),
+            cleanName(str(image_sizes))
+        )
 
-        valid_port = [] if len(pixels_per_clock) == 1 else ['valid', Out(Bit)]
-        IO = ['I', In(get_type_recursive(pixel_type, pixels_per_clock)),
-              'O', Out(Array(pixels_per_clock[0], Array(image_sizes[0] // pixels_per_clock[0],
-                                                        get_type_recursive(pixel_type, pixels_per_clock[1:]))))] + \
-            valid_port + ClockInterface(has_ce=True)
+        # since may be parallel in each dimension, amount of out ports
+        # for each shift register is scaled down by amount of parallelism
+        # will be maping over the top shift register for parallelism
+        lengths_per_shift_register_per_dimension = [
+            image_size // pixel_per_clock for (image_size, pixel_per_clock) in
+            zip(image_sizes, pixels_per_clock)
+        ]
+
+        IO = ['I', In(pixel_type),
+              'O', Out(get_nested_type(pixel_type, lengths_per_shift_register_per_dimension)),
+              'next', Out(pixel_type)] + \
+             ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
-            head_pixel_per_clock, *tail_pixel_per_clock = pixels_per_clock
-            head_window_width, *tail_window_width = window_widths
-            head_image_size, *tail_image_size = image_sizes
-            head_stride, *tail_stride = strides
-            head_origin, *tail_origin = origins
-            number_of_linebuffers_in_sequence = head_image_size // head_pixel_per_clock
+            head_pixel_per_clock, *tail_pixels_per_clock = pixels_per_clock
+            head_image_size, *tail_image_sizes = image_sizes
 
-            # don't make linebuffer, just return SIPO if 1D case
+            # don't make shift registers, just return SIPO if 1D case
             if len(image_sizes) == 1:
-                sipos = MapParallel(cirb, head_pixel_per_clock,
-                                    SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
-                                                pixel_type, 0, has_ce=True))
+                sipos = SIPOAnyType(cirb, head_image_size // head_pixel_per_clock,
+                                    pixel_type, 0, has_ce=True)
                 wire(cls.I, sipos.I)
-                for i in range(len(sipos.CE)):
-                    wire(cls.CE, sipos.CE[i])
+                wire(cls.CE, sipos.CE)
                 wire(sipos.O, cls.O)
+                wire(sipos.O[-1], cls.next)
                 return sipos
 
-
-            lower_dimensional_linebuffers = [
-                [
-                    AnyDimensionalLineBuffer(cirb,
-                                             pixel_type,
-                                             tail_pixel_per_clock,
-                                             tail_window_width,
-                                             tail_image_size,
-                                             tail_stride,
-                                             tail_origin,
-                                             i == 0,
-                                             i == number_of_linebuffers_in_sequence - 1)
-                    for i in range(number_of_linebuffers_in_sequence)
-                ]
-                for _ in range(head_pixel_per_clock)
-            ]
-
-            # wire up the next_rows
-            for sequence_of_linebuffers in lower_dimensional_linebuffers:
-                for i in range(len(sequence_of_linebuffers) - 1):
-                    wire(sequence_of_linebuffers[i].next_row, sequence_of_linebuffers[i+1].I)
-                    wire(sequence_of_linebuffers[i].next_row_valid, sequence_of_linebuffers[i+1].CE)
-
-            for lb_sequence_index in range(head_pixel_per_clock):
-                wire(cls.I[lb_sequence_index], lower_dimensional_linebuffers[lb_sequence_index][0].I)
-                wire(cls.CE, lower_dimensional_linebuffers[lb_sequence_index][0].CE)
-                for lb_index in range(number_of_linebuffers_in_sequence):
-                    wire(lower_dimensional_linebuffers[lb_sequence_index][lb_index].O,
-                         cls.O[lb_sequence_index][lb_index])
-
-            # for origin of more than 1 clock cycle, handle the early clock cycle by ignoring the valids of the later
-            # linebuffers. just valid when earlier linebuffers are ready.
-            all_valids = [lb.valid for lb in lower_dimensional_linebuffers[0]]
-            early_origin_clocks = head_origin // head_pixel_per_clock
-            used_valids = all_valids[:len(all_valids) + early_origin_clocks]
-            ignored_valids = all_valids[len(all_valids) + early_origin_clocks:]
-
-            # wire up all non-used valids to terms
-            for v in ignored_valids:
-                term = TermAnyType(cirb, Bit)
-                wire(v, term.I)
-
-            lower_dimensional_linebuffers_valid = reduce(lambda valid0, valid1: valid0 & valid1, used_valids)
-
-            # if stride is greater than pixel per clock in this dimension, then need a counter to not be valid
-            if head_stride > head_pixel_per_clock:
-                # how many active clock cycles does each entry of this dimension (like a row for outer dimension of 2d
-                # image) does this take
-                time_per_entry_in_dimension = reduce(lambda x, y: x * y, [s // p for (p, s) in
-                                                                          zip(tail_pixel_per_clock, tail_stride)])
-
-                dimension_period = time_per_entry_in_dimension * head_stride // head_pixel_per_clock
-                # this slows the main stride counter to only increment once per number_of_lower_dimension_valids_per_increment
-                stride_counter = SizedCounterModM(dimension_period, has_ce=True)
-                stride_counter_valid_const = DefineCoreirConst(len(stride_counter.O), time_per_entry_in_dimension - 1)()
-
-                wire(lower_dimensional_linebuffers_valid, stride_counter.CE)
-
-                wire(enable(stride_per_lower_dimension_max.O == stride_per_lower_dimension_counter.O),
-                     stride_counter.CE)
-
-                wire(lower_dimensional_linebuffers_valid & (stride_counter_0.O == stride_counter.O),
-                     cls.valid)
             else:
-                wire(lower_dimensional_linebuffers_valid, cls.valid)
+                one_dimensional_lower_shift_register_def = define_n_dimensional_shift_registers(
+                    cirb,
+                    cls.name,
+                    pixel_type,
+                    tail_pixels_per_clock,
+                    tail_image_sizes)
 
+                one_dimensional_lower_shift_registers = [
+                    one_dimensional_lower_shift_register_def() for _ in
+                    range(cls.lengths_per_shift_register_per_dimension[0])
+                ]
+
+                # connect each next's to the following's input, except the last
+                for i in range(len(one_dimensional_lower_shift_registers) - 1):
+                    wire(one_dimensional_lower_shift_registers[i].next,
+                         one_dimensional_lower_shift_registers[i+1].I)
+
+                # connect the edge input and next of the lower dimenisonal shift registers to those of this
+                # higher dimensional shift register
+                wire(cls.I, one_dimensional_lower_shift_registers[0].I)
+                wire(one_dimensional_lower_shift_registers[-1].next, cls.next)
+
+                for i in range(len(one_dimensional_lower_shift_registers)):
+                    wire(one_dimensional_lower_shift_registers[i].O, cls.O[i])
+                    wire(cls.CE, one_dimensional_lower_shift_registers[i].CE)
+
+                return one_dimensional_lower_shift_registers
 
     return _SR
 
 
-def get_type_recursive(pixel_type: Kind, dimensions: list):
+def get_nested_type(pixel_type: Kind, dimensions: list):
     if len(dimensions) == 0:
         return pixel_type
     else:
-        return Array(dimensions[0], get_type_recursive(pixel_type, dimensions[1:]))
-
-class RegisterToWindowMapping():
-    def __init__(self, current_shift_register: int, index_in_shift_register: int,
-                 current_window_index: int, index_in_window):
-        self.current_shift_register = current_shift_register
-        self.index_in_shift_register = index_in_shift_register
-        self.current_window_index = current_window_index
-        self.index_in_window = index_in_window
+        return Array(dimensions[0], get_nested_type(pixel_type, dimensions[1:]))

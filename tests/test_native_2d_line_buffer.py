@@ -221,9 +221,9 @@ random_generators (rng should be callable with no args).
         [
             [
                 [
-                    rng() for x in range(parameters.image_x)
+                    rng() for x in range(parameters.x_per_clk)
                 ]
-                for y in range(parameters.image_y)
+                for y in range(parameters.y_per_clk)
             ]
             for cycle in range(cycle_count)
         ]

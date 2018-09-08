@@ -13,6 +13,8 @@ import coreir
 from magma.scope import Scope
 from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer import \
     OneDimensionalLineBuffer, DefineOneDimensionalLineBuffer
+from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import \
+    AnyDimensionalLineBuffer
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.common.sipo import SIPO
 from mantle.common.countermod import SizedCounterModM
@@ -27,6 +29,18 @@ def test_basic_native_linebuffer():
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
     lb = OneDimensionalLineBuffer(cirb, Array(3, Bit), 1, 3, 100, 1, 0)
+
+    EndCircuit()
+
+def test_basic_native_any_d_linebuffer():
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    args = ClockInterface(False, False)
+
+    testcircuit = DefineCircuit('create_native_lb_test', *args)
+
+    lb = AnyDimensionalLineBuffer(cirb, Array(7, Bit), [1, 4], [3,3], [30, 30], [1,1], [0,0])
 
     EndCircuit()
 

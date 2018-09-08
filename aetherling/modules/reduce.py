@@ -24,7 +24,7 @@ def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
-    name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(type(op))))
+    name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "reduceParallel", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
                                                          {"numInputs": numInputs,
@@ -48,7 +48,7 @@ def ReduceSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circui
     """
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
-    name = "ReduceSequentail_n{}_op{}".format(str(numInputs), cleanName(str(type(op))))
+    name = "ReduceSequentail_n{}_op{}".format(str(numInputs), cleanName(str(op)))
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "reduceSequential", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
                                                          {"numInputs": numInputs,
