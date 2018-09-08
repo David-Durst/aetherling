@@ -238,7 +238,8 @@ def DefineAnyDimensionalLineBuffer(
                 )
 
 
-            # valid when the maximum coordinate used
+            # valid when the maximum coordinate used in the inner most dimension and all outer most dimensions
+            # have been satisfied
             # add 1 here as coordinates are 0 indexed, and the denominator of this
             # fraction is the last register accessed
             valid_counter_max_value = ceil((oldest_needed_pixel_forward_ND_coordinates[-1] + 1 + origins[-1]) /
