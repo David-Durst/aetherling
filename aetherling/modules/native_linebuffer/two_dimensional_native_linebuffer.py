@@ -109,7 +109,7 @@ def DefineTwoDimensionalLineBuffer(
                             .format(image_rows, stride_rows, reason))
 
         if ((stride_cols * stride_rows) %
-            (pixels_per_row_per_clock * rows_of_pixels_per_clock) != 0) or \
+            (pixels_per_row_per_clock * rows_of_pixels_per_clock) != 0) and \
                 ((pixels_per_row_per_clock * rows_of_pixels_per_clock) %
                  (stride_cols * stride_rows) != 0):
             reason = """
@@ -126,10 +126,11 @@ def DefineTwoDimensionalLineBuffer(
             throughput become an integer.
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: stride_cols {} not divisible by"
-                            "pixels_per_row_per_clock {} nor vice-verse. One of them must"
+                            "parameters: stride_cols {} * stride_rows{} not divisible by"
+                            "pixels_per_row_per_clock {} * rows_of_pixels_per_clock* nor vice-verse. One of them must"
                             "be divisible by the other. \n Reason: {}"
-                            .format(stride_cols, pixels_per_row_per_clock, reason))
+                            .format(stride_cols, stride_rows, pixels_per_row_per_clock,
+                                    rows_of_pixels_per_clock, reason))
 
         if abs(origin_cols) >= window_cols:
             reason = """
