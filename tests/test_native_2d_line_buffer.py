@@ -389,14 +389,18 @@ and run it on test data sets."""
             f"{len_expected} outputs.\n" \
             f"Waited {extra_cycles} cycles after last input."
 
+        print(parameters.as_kwargs())
+        print('\x1b[32m', actual, '\x1b[31m', expected, '\n')
         fill_garbage_with_none(actual, expected)
         assert actual == expected, "Outputs don't match expected values."
 
 # Test stub functions that call the actual implementation function
 # with specified parameters.
-def test_2D_bit_line_buffer_1_1_3_3_5_5_1_1_0_0():
+
+# Simplest (almost) bit line buffer
+def test_2D_int4_line_buffer_1_1_3_3_5_5_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
-        magma_type=Bit,
+        magma_type=Array(4,Bit),
         y_per_clk=1, x_per_clk=1,
         window_y=3, window_x=3,
         image_y=5, image_x=5,
@@ -404,12 +408,47 @@ def test_2D_bit_line_buffer_1_1_3_3_5_5_1_1_0_0():
         origin_y=0, origin_x=0
     ))
 
-def test_2D_int4_line_buffer_1_1_3_3_5_5_1_1_0_0():
+# Process 1 row at a time of 5x5 image.
+def test_2D_int4_line_buffer_1_5_3_3_5_5_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
-        magma_type=Array(4, Bit),
-        y_per_clk=1, x_per_clk=1,
+        magma_type=Array(4,Bit),
+        y_per_clk=1, x_per_clk=5,
         window_y=3, window_x=3,
         image_y=5, image_x=5,
         stride_y=1, stride_x=1,
         origin_y=0, origin_x=0
     ))
+
+# Simple example (3x3 window) but bigger image.
+def test_2D_int4_line_buffer_1_1_3_3_6_12_1_1_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(4,Bit),
+        y_per_clk=1, x_per_clk=1,
+        window_y=3, window_x=3,
+        image_y=6, image_x=12,
+        stride_y=1, stride_x=1,
+        origin_y=0, origin_x=0
+    ))
+
+# Change the origin of the simple line buffer.
+def test_2D_int4_line_buffer_1_1_3_3_6_12_1_1_1_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(4,Bit),
+        y_per_clk=1, x_per_clk=1,
+        window_y=3, window_x=3,
+        image_y=6, image_x=12,
+        stride_y=1, stride_x=1,
+        origin_y=-1, origin_x=-1
+    ))
+
+# Another origin change test.
+def test_2D_int4_line_buffer_1_1_3_3_6_12_1_1_2_2():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(4,Bit),
+        y_per_clk=1, x_per_clk=1,
+        window_y=3, window_x=3,
+        image_y=6, image_x=12,
+        stride_y=1, stride_x=1,
+        origin_y=-2, origin_x=-2
+    ))
+
