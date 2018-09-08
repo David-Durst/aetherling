@@ -226,21 +226,23 @@ def DefineAnyDimensionalLineBuffer(
                 clocks_to_complete_each_dimension = [dim_size * clocks_to_complete_each_dimension[0]] + \
                                                     clocks_to_complete_each_dimension
 
-            # need to fill in all but the oldest for each dimension except inner most,
-            # then just first few of inner most dimension
+            # to compute valid_counter_max_value (aka when to be valid after warmup):
+            # for each dimension other than inner most, need to fill in 1 less than oldest needed.
+            # then, for inner most, fill that up thrgouh oldest needed. Then ready to start emitting values
             clocks_to_fill_in_outer_dimensions = 0
             for d in range(num_dimensions)[:-1]:
-                # for each dimension, to advance one value, need to fill in the inner dimension.
-                # thus, using clocks to complete the d-1th dimnesion
-                clocks_to_fill_in_outer_dimensions += clocks_to_complete_each_dimension[d-1] * (
-                    # subtract 1 here as need second to last pixel in this dimension
-                    ceil((oldest_needed_pixel_forward_ND_coordinates[d] - 1 + origins[d]) / pixels_per_clock[d])
+                # the time to complete dimension d+1 is the time to get 1 value for dimension d
+                clocks_to_fill_in_outer_dimensions += clocks_to_complete_each_dimension[d+1] * (
+                    # subtract 1 here as need second to oldest needed pixel in this dimension
+                    # but then add 1 as 0 indexed, so multiply by 3 for pixel 2.
+                    # these cancel each other out
+                    ceil((oldest_needed_pixel_forward_ND_coordinates[d] + origins[d]) / pixels_per_clock[d])
                 )
 
 
-            # valid when the maximum coordinate used
-            # add 1 here as coordinates are 0 indexed, and the denominator of this
-            # fraction is the last register accessed
+            # valid when the maximum coordinate used in the inner most dimension and all outer most dimensions
+            # have been satisfied
+            # add 1 as reading from a register, 1 cycle delay
             valid_counter_max_value = ceil((oldest_needed_pixel_forward_ND_coordinates[-1] + 1 + origins[-1]) /
                                            pixels_per_clock[-1]) + clocks_to_fill_in_outer_dimensions
 
