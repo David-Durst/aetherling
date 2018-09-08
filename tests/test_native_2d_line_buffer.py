@@ -345,6 +345,7 @@ and run it on test data sets."""
             context=cirb.context,
             namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
         )
+        sim.set_value(LineBufferDef.CE, 1, scope)
 
         # List for recording sequence of valid outputs (in 4D format
         # in header, skipping entries on cycles where valid is not
