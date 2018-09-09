@@ -397,10 +397,12 @@ and run it on test data sets."""
 # Test stub functions that call the actual implementation function
 # with specified parameters.
 
-# Simplest (almost) int4 line buffer
-def test_2D_int4_line_buffer_1_1_3_3_5_5_1_1_0_0():
+# BIT TESTS
+
+# Simplest (almost) line buffer
+def test_2D_bit_line_buffer_1_1_3_3_5_5_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
-        magma_type=Array(4,Bit),
+        magma_type=Bit,
         y_per_clk=1, x_per_clk=1,
         window_y=3, window_x=3,
         image_y=5, image_x=5,
@@ -409,9 +411,9 @@ def test_2D_int4_line_buffer_1_1_3_3_5_5_1_1_0_0():
     ))
 
 # Process 1 row at a time of 5x5 image.
-def test_2D_int4_line_buffer_1_5_3_3_5_5_1_1_0_0():
+def test_2D_bit_line_buffer_1_5_3_3_5_5_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
-        magma_type=Array(4,Bit),
+        magma_type=Bit,
         y_per_clk=1, x_per_clk=5,
         window_y=3, window_x=3,
         image_y=5, image_x=5,
@@ -420,12 +422,72 @@ def test_2D_int4_line_buffer_1_5_3_3_5_5_1_1_0_0():
     ))
 
 # Simplest int4 line buffer, but 6x8 image now.
-def test_2D_int4_line_buffer_1_1_3_3_6_8_1_1_0_0():
+def test_2D_bit_line_buffer_1_1_3_3_6_8_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
-        magma_type=Array(4,Bit),
+        magma_type=Bit,
         y_per_clk=1, x_per_clk=1,
         window_y=3, window_x=3,
         image_y=6, image_x=8,
+        stride_y=1, stride_x=1,
+        origin_y=0, origin_x=0
+    ))
+
+# Change the origin of the simple 6x8 line buffer.
+def test_2D_bit_line_buffer_1_1_3_3_6_8_1_1_2_2():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=1,
+        window_y=3, window_x=3,
+        image_y=6, image_x=8,
+        stride_y=1, stride_x=1,
+        origin_y=-2, origin_x=-2
+    ))
+
+# 6x4 image, 2x2 stride and window.
+def test_2D_bit_line_buffer_1_1_2_2_6_4_2_2_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=1,
+        window_y=2, window_x=2,
+        image_y=6, image_x=4,
+        stride_y=2, stride_x=2,
+        origin_y=0, origin_x=0
+    ))
+
+# 4x6 image, 2x2 stride and window, sped up.
+def test_2D_bit_line_buffer_1_2_2_2_4_6_2_2_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=2,
+        window_y=2, window_x=2,
+        image_y=4, image_x=6,
+        stride_y=2, stride_x=2,
+        origin_y=0, origin_x=0
+    ))
+
+# Weird strides, image size, parallelism, and origin.
+def test_2D_bit_line_buffer_1_3_2_4_7_6_3_1_0_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=3,
+        window_y=2, window_x=4,
+        image_y=7, image_x=6,
+        stride_y=3, stride_x=1,
+        origin_y=0, origin_x=-1
+    ))
+
+
+
+# INT TESTS
+# (Only upgrade a few cause CoreIR simulator is slowww.
+
+# Process 1 row at a time of 5x5 image.
+def test_2D_int4_line_buffer_1_5_3_3_5_5_1_1_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(4,Bit),
+        y_per_clk=1, x_per_clk=5,
+        window_y=3, window_x=3,
+        image_y=5, image_x=5,
         stride_y=1, stride_x=1,
         origin_y=0, origin_x=0
     ))
@@ -441,3 +503,13 @@ def test_2D_int4_line_buffer_1_1_3_3_6_8_1_1_2_2():
         origin_y=-2, origin_x=-2
     ))
 
+# Weird strides, image size, parallelism, and origin.
+def test_2D_int3_line_buffer_1_3_2_4_7_6_3_1_0_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(3,Bit),
+        y_per_clk=1, x_per_clk=3,
+        window_y=2, window_x=4,
+        image_y=7, image_x=6,
+        stride_y=3, stride_x=1,
+        origin_y=0, origin_x=-1
+    ))
