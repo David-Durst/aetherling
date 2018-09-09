@@ -104,9 +104,15 @@ def DefineAnyDimensionalLineBuffer(
                     needed_pixels_cur_dim = window_widths[dimension] + strides[dimension] * \
                                                (cls.windows_per_active_clock[dimension] - 1)
 
-                # get the maximum 1D coordinate when aligning needed pixels to the number
+                # get the maximum coordinate when aligning needed pixels to the number
                 # of pixels per clock
-                if needed_pixels_cur_dim % pixels_per_clock[dimension] == 0:
+
+                # if need more than all values in a dimension (as parallelism is so great that
+                # a window extends off the last value in this dimension) then oldest_need is just
+                # the last valid entry in this dimension
+                if needed_pixels_cur_dim >= image_sizes[dimension]:
+                    oldest_needed_pixel_forward_ND_coordinates[dimension] = image_sizes[dimension]
+                elif needed_pixels_cur_dim % pixels_per_clock[dimension] == 0:
                     oldest_needed_pixel_forward_ND_coordinates[dimension] = needed_pixels_cur_dim
                 else:
                     oldest_needed_pixel_forward_ND_coordinates[dimension] = \
@@ -127,9 +133,9 @@ def DefineAnyDimensionalLineBuffer(
                     ND_coordinate_reversed_indexing = oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - \
                                                       new_coordinates[cur_dimension]
                     coordinates_2N_dimensional[num_dimensions + cur_dimension] = \
-                        ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension]
+                        max(ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension], 0)
                     coordinates_2N_dimensional[cur_dimension] = \
-                        ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension]
+                        max(ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension], 0)
 
 
             # used coordinates tracks all the ND coordinates used for window outputs
@@ -161,15 +167,13 @@ def DefineAnyDimensionalLineBuffer(
                     )
                 # for every value in window, wire up output to location in shift registers
                 for coordinates_in_window in product(*[range(w) for w in window_widths]):
-                    if coordinates_in_window == (0, 2) and current_window_index == (0, 1):
-                        print("hi")
-
                     set_shift_register_location_using_ND_coordinates([sum(window_and_coordinates_in_it) for
                                           window_and_coordinates_in_it in
                                          zip(window_coordinate, coordinates_in_window)])
 
 
                     used_coordinates.add(builtins.tuple(coordinates_2N_dimensional))
+
                     output_to_shift_register_mapping.add(
                         (builtins.tuple(window_coordinate + builtins.list(coordinates_in_window)),
                          builtins.tuple(coordinates_2N_dimensional)))
@@ -222,9 +226,13 @@ def DefineAnyDimensionalLineBuffer(
             # start with 1 as the time to complete each pixel is 1 clock, not really a dimension
             # but helpful to have this for computing other dimensions
             clocks_to_complete_each_dimension = [1]
-            for dim_size in image_sizes[::-1]:
-                clocks_to_complete_each_dimension = [dim_size * clocks_to_complete_each_dimension[0]] + \
-                                                    clocks_to_complete_each_dimension
+            #for dim_size in image_sizes[::-1]:
+            #    clocks_to_complete_each_dimension = [dim_size * clocks_to_complete_each_dimension[0]] + \
+            #                                        clocks_to_complete_each_dimension
+            for d in range(num_dimensions)[::-1]:
+                clocks_to_complete_each_dimension = [image_sizes[d] // pixels_per_clock[d] *
+                                                     clocks_to_complete_each_dimension[0]] + clocks_to_complete_each_dimension
+
 
             # to compute valid_counter_max_value (aka when to be valid after warmup):
             # for each dimension other than inner most, need to fill in 1 less than oldest needed.

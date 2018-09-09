@@ -229,11 +229,11 @@ def DefineTwoDimensionalLineBuffer(
             lb = AnyDimensionalLineBuffer(
                 cirb,
                 pixel_type,
-                [pixels_per_row_per_clock, rows_of_pixels_per_clock],
-                [window_cols, window_rows],
-                [image_cols, image_rows],
-                [stride_cols, stride_rows],
-                [origin_cols, origin_rows]
+                [rows_of_pixels_per_clock, pixels_per_row_per_clock],
+                [window_rows, window_cols],
+                [image_rows, image_cols],
+                [stride_rows, stride_cols],
+                [origin_rows, origin_cols]
             )
             wire(cls.I, lb.I)
             for row_of_windows in range(cls.rows_of_windows_per_clock):
