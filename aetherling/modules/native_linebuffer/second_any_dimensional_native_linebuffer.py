@@ -97,10 +97,6 @@ def DefineAnyDimensionalLineBuffer(
             # to determine number of clock cycles needed to satisfy input
             oldest_needed_pixel_forward_ND_coordinates = [0] * num_dimensions
 
-            # since can be fully parallel in a dimension, then oldest_needed is actually greater
-            # max valid in that dimension. These track the max that can actually be valid
-            oldest_possibly_valid_pixel_ND_coordinates = [0] * num_dimensions
-
             for dimension in range(num_dimensions):
                 if cls.windows_per_active_clock[dimension] == 1:
                     needed_pixels_cur_dim = window_widths[dimension]
@@ -125,9 +121,6 @@ def DefineAnyDimensionalLineBuffer(
                 # adjust by 1 for 0 indexing
                 oldest_needed_pixel_forward_ND_coordinates[dimension] -= 1
 
-                oldest_possibly_valid_pixel_ND_coordinates[dimension] = min(oldest_needed_pixel_forward_ND_coordinates[dimension],
-                                                                 image_sizes[dimension] - 1)
-
             def get_shift_register_location_in_ND_coordinates() -> list:
                 coordinates_to_return = []
                 for cur_dimension in range(num_dimensions):
@@ -137,14 +130,12 @@ def DefineAnyDimensionalLineBuffer(
 
             def set_shift_register_location_using_ND_coordinates(new_coordinates):
                 for cur_dimension in range(num_dimensions):
-                    ND_coordinate_reversed_indexing = min(
-                        oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - new_coordinates[cur_dimension],
-                        image_sizes[cur_dimension] - 1
-                    )
+                    ND_coordinate_reversed_indexing = oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - \
+                                                      new_coordinates[cur_dimension]
                     coordinates_2N_dimensional[num_dimensions + cur_dimension] = \
-                        ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension]
+                        max(ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension], 0)
                     coordinates_2N_dimensional[cur_dimension] = \
-                        ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension]
+                        max(ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension], 0)
 
 
             # used coordinates tracks all the ND coordinates used for window outputs
@@ -176,17 +167,13 @@ def DefineAnyDimensionalLineBuffer(
                     )
                 # for every value in window, wire up output to location in shift registers
                 for coordinates_in_window in product(*[range(w) for w in window_widths]):
-                    if window_coordinate == [0, 0] and coordinates_in_window == (1, 2):
-                        print("hi")
-
                     set_shift_register_location_using_ND_coordinates([sum(window_and_coordinates_in_it) for
                                           window_and_coordinates_in_it in
                                          zip(window_coordinate, coordinates_in_window)])
 
 
                     used_coordinates.add(builtins.tuple(coordinates_2N_dimensional))
-                    if coordinates_2N_dimensional == [3, 0, 1, 0]:
-                        print('bye')
+
                     output_to_shift_register_mapping.add(
                         (builtins.tuple(window_coordinate + builtins.list(coordinates_in_window)),
                          builtins.tuple(coordinates_2N_dimensional)))
@@ -239,9 +226,13 @@ def DefineAnyDimensionalLineBuffer(
             # start with 1 as the time to complete each pixel is 1 clock, not really a dimension
             # but helpful to have this for computing other dimensions
             clocks_to_complete_each_dimension = [1]
-            for dim_size in image_sizes[::-1]:
-                clocks_to_complete_each_dimension = [dim_size * clocks_to_complete_each_dimension[0]] + \
-                                                    clocks_to_complete_each_dimension
+            #for dim_size in image_sizes[::-1]:
+            #    clocks_to_complete_each_dimension = [dim_size * clocks_to_complete_each_dimension[0]] + \
+            #                                        clocks_to_complete_each_dimension
+            for d in range(num_dimensions)[::-1]:
+                clocks_to_complete_each_dimension = [image_sizes[d] // pixels_per_clock[d] *
+                                                     clocks_to_complete_each_dimension[0]] + clocks_to_complete_each_dimension
+
 
             # to compute valid_counter_max_value (aka when to be valid after warmup):
             # for each dimension other than inner most, need to fill in 1 less than oldest needed.
@@ -253,14 +244,14 @@ def DefineAnyDimensionalLineBuffer(
                     # subtract 1 here as need second to oldest needed pixel in this dimension
                     # but then add 1 as 0 indexed, so multiply by 3 for pixel 2.
                     # these cancel each other out
-                    ceil((oldest_possibly_valid_pixel_ND_coordinates[d] + origins[d]) / pixels_per_clock[d])
+                    ceil((oldest_needed_pixel_forward_ND_coordinates[d] + origins[d]) / pixels_per_clock[d])
                 )
 
 
             # valid when the maximum coordinate used in the inner most dimension and all outer most dimensions
             # have been satisfied
             # add 1 as reading from a register, 1 cycle delay
-            valid_counter_max_value = ceil((oldest_possibly_valid_pixel_ND_coordinates[-1] + 1 + origins[-1]) /
+            valid_counter_max_value = ceil((oldest_needed_pixel_forward_ND_coordinates[-1] + 1 + origins[-1]) /
                                            pixels_per_clock[-1]) + clocks_to_fill_in_outer_dimensions
 
             # add 1 as sizedcounter counts to 1 less than the provided max
@@ -308,7 +299,7 @@ def AnyDimensionalLineBuffer(
         stride: list,
         origin: list) -> Circuit:
 
-    return DefineAnyDimensionalLineBuffer(
+    x = DefineAnyDimensionalLineBuffer(
         cirb,
         pixel_type,
         pixel_per_clock,
@@ -316,7 +307,8 @@ def AnyDimensionalLineBuffer(
         image_size,
         stride,
         origin
-    )()
+    )
+    return x()
 
 
 def create_parallel_shift_registers(

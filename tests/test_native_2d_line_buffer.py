@@ -354,6 +354,8 @@ and run it on test data sets."""
         # output received when the simulated module asserts valid.
         actual = []
         expected = expected_valid_outputs_2D(test_set, parameters)
+        lbscope = Scope(instance=LineBufferDef._instances[0], parent=scope)
+        srscope = Scope(instance=LineBufferDef._instances[0]._instances[0], parent=lbscope)
         def tick_sim_collect_outputs():
             sim.evaluate()
             sim.advance_cycle()
