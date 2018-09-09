@@ -299,7 +299,7 @@ def AnyDimensionalLineBuffer(
         stride: list,
         origin: list) -> Circuit:
 
-    x = DefineAnyDimensionalLineBuffer(
+    return DefineAnyDimensionalLineBuffer(
         cirb,
         pixel_type,
         pixel_per_clock,
@@ -307,8 +307,7 @@ def AnyDimensionalLineBuffer(
         image_size,
         stride,
         origin
-    )
-    return x()
+    )()
 
 
 def create_parallel_shift_registers(
