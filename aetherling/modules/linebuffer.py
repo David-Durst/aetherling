@@ -51,9 +51,9 @@ def DefineLinebuffer(cirb: CoreIRBackend, inType: ArrayKind, outType: ArrayKind,
     # looking from inside module, output port is an input as it receives input
     # But, linebuffer wants these ports from perspective of outside,
     # so need inverse, inputs are BitIns and outputs are Bits
-    cirInType = cirb.get_type(inType, False)
-    cirOutType = cirb.get_type(outType, True)
-    cirImgType = cirb.get_type(imgType, False)
+    cirInType = cirb.get_type(inType)
+    cirOutType = cirb.get_type(outType)
+    cirImgType = cirb.get_type(imgType)
     strForValid = "_Valid" if has_valid else ""
     name = "linebuffer_in{}_out{}_img{}{}".format(cleanName(str(inType)),
                                                   cleanName(str(outType)),
@@ -105,8 +105,8 @@ def DefineLinebuffer1DPartitioned(cirb: CoreIRBackend, pxPerClock: int, stencilW
     class _1DLinebuffer(Circuit):
         assert elementType == imgType.T, "For 1D linebuffer, image must be a 1D array of elements"
         strForValid = "_Valid" if has_valid else ""
-        cirElementType = cirb.get_type(elementType, False)
-        cirImgType = cirb.get_type(imgType, False)
+        cirElementType = cirb.get_type(elementType)
+        cirImgType = cirb.get_type(imgType)
 
         name = "linebuffer1d_p{}_w{}_img{}_elm{}".format(pxPerClock, stencilWidth, cleanName(str(imgType)),
                                                          cleanName(str(elementType)), strForValid)

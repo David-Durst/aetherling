@@ -20,7 +20,7 @@ def DefineTermAnyType(cirb: CoreIRBackend, t: Kind):
         IO = ['I', In(t)]
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t, True).size
+            type_size_in_bits = cirb.get_type(t).size
             type_to_bits = Dehydrate(cirb, t)
             term = Term(cirb, type_size_in_bits)
             wire(cls.I, type_to_bits.I)

@@ -34,7 +34,7 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
         name = "serialize_t{}_n{}".format(cleanName(str(T)), str(N))
 
         if has_count:
-            cirType = cirb.get_type(T, True)
+            cirType = cirb.get_type(T)
             count_interface = ["count", Out(Array(T.size, Bit))]
         else:
             count_interface = []

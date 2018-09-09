@@ -283,7 +283,7 @@ def DefineOneDimensionalLineBuffer(
                                                            valid_counter_max_value)()
 
             wire(enable(bit(cls.CE) &
-                        (valid_counter.O < valid_counter_max_instance.out)), valid_counter.CE)
+                        (valid_counter.O < valid_counter_max_instance.O)), valid_counter.CE)
 
             # if stride is greater than pixels_per_clock, then need a stride counter as
             # not active every clock. Invalid clocks create striding in this case
@@ -292,15 +292,15 @@ def DefineOneDimensionalLineBuffer(
                 stride_counter = SizedCounterModM(stride // pixel_per_clock, has_ce=True)
                 stride_counter_0 = DefineCoreirConst(len(stride_counter.O),0)()
 
-                wire(enable((stride_counter.O == stride_counter_0.out) &
-                            (valid_counter.O == valid_counter_max_instance.out)),
+                wire(enable((stride_counter.O == stride_counter_0.O) &
+                            (valid_counter.O == valid_counter_max_instance.O)),
                      cls.valid)
 
                 # only increment stride if trying to emit data this clock cycle
-                wire(valid_counter.O == valid_counter_max_instance.out, stride_counter.CE)
+                wire(valid_counter.O == valid_counter_max_instance.O, stride_counter.CE)
 
             else:
-                wire((valid_counter.O == valid_counter_max_instance.out), cls.valid)
+                wire((valid_counter.O == valid_counter_max_instance.O), cls.valid)
 
 
 

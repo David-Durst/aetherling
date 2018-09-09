@@ -25,7 +25,7 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
                 ClockInterface(has_ce,has_reset)
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t, True).size
+            type_size_in_bits = cirb.get_type(t).size
             type_to_bits = Dehydrate(cirb, t)
             sipos = MapParallel(cirb, type_size_in_bits, SIPO(n, init, has_ce, has_reset))
             bits_to_type = MapParallel(cirb, n, Hydrate(cirb, t))

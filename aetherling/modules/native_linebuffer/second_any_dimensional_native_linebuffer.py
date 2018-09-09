@@ -261,12 +261,12 @@ def DefineAnyDimensionalLineBuffer(
                                                            valid_counter_max_value)()
 
             wire(enable(bit(cls.CE) &
-                        (valid_counter.O < valid_counter_max_instance.out)), valid_counter.CE)
+                        (valid_counter.O < valid_counter_max_instance.O)), valid_counter.CE)
 
             # for each dimnesion, if stride is greater than pixels_per_clock, then need a stride counter as
             # not active every clock. Invalid clocks create striding in this case
             trueGen = DefineCoreirConst(1,1)()
-            stride_counters_valid = trueGen.out == trueGen.out
+            stride_counters_valid = trueGen.O == trueGen.O
 
             for d in range(num_dimensions):
                 if strides[d] > pixels_per_clock[d]:
@@ -277,14 +277,14 @@ def DefineAnyDimensionalLineBuffer(
                                                                     clocks_to_complete_each_dimension[d - 1])()
 
                     stride_counters_valid = stride_counters_valid & (
-                            stride_counter.O < stride_counter_valid_values.out
+                            stride_counter.O < stride_counter_valid_values.O
                     )
 
                     # only increment stride if trying to emit data this clock cycle
-                    wire(valid_counter.O == valid_counter_max_instance.out, stride_counter.CE)
+                    wire(valid_counter.O == valid_counter_max_instance.O, stride_counter.CE)
 
             wire(enable(stride_counters_valid &
-                        (valid_counter.O == valid_counter_max_instance.out)),
+                        (valid_counter.O == valid_counter_max_instance.O)),
                  cls.valid)
 
     return _LB
