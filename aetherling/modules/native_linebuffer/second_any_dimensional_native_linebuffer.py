@@ -130,12 +130,13 @@ def DefineAnyDimensionalLineBuffer(
 
             def set_shift_register_location_using_ND_coordinates(new_coordinates):
                 for cur_dimension in range(num_dimensions):
-                    ND_coordinate_reversed_indexing = oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - \
-                                                      new_coordinates[cur_dimension]
+                    ND_coordinate_reversed_indexing = max(
+                        oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - new_coordinates[cur_dimension], 0
+                    )
                     coordinates_2N_dimensional[num_dimensions + cur_dimension] = \
-                        max(ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension], 0)
+                        ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension]
                     coordinates_2N_dimensional[cur_dimension] = \
-                        max(ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension], 0)
+                        ND_coordinate_reversed_indexing % pixels_per_clock[cur_dimension]
 
 
             # used coordinates tracks all the ND coordinates used for window outputs
@@ -154,10 +155,7 @@ def DefineAnyDimensionalLineBuffer(
                 # less than normal
                 window_coordinate = []
                 for cur_dimension in range(num_dimensions):
-                    if strides[cur_dimension] < pixels_per_clock[cur_dimension]:
-                        strideMultiplier = strides[cur_dimension]
-                    else:
-                        strideMultiplier = 1
+                    strideMultiplier = strides[cur_dimension]
                     window_coordinate.append(
                         strideMultiplier * current_window_index[cur_dimension] +
                         # handle origin across multiple clocks by changing valid, but within a single clock
@@ -174,9 +172,10 @@ def DefineAnyDimensionalLineBuffer(
 
                     used_coordinates.add(builtins.tuple(coordinates_2N_dimensional))
 
-                    output_to_shift_register_mapping.add(
-                        (builtins.tuple(window_coordinate + builtins.list(coordinates_in_window)),
-                         builtins.tuple(coordinates_2N_dimensional)))
+                    output_to_shift_register_mapping.add((
+                        current_window_index + coordinates_in_window,
+                        builtins.tuple(coordinates_2N_dimensional)
+                    ))
 
 
             shift_registers = create_parallel_shift_registers(cirb, cls.name, pixel_type,
