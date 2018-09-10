@@ -130,9 +130,14 @@ def DefineAnyDimensionalLineBuffer(
 
             def set_shift_register_location_using_ND_coordinates(new_coordinates):
                 for cur_dimension in range(num_dimensions):
-                    ND_coordinate_reversed_indexing = max(
+                    # min is to ensure that origins don't overrun end of shift registers. If very parallel
+                    # origin can force you past end of shift registers (aka first window goes to far back
+                    # in time)
+                    # max is to verify that stride doesn't force last windows past beginning of shift
+                    # registers
+                    ND_coordinate_reversed_indexing = min(max(
                         oldest_needed_pixel_forward_ND_coordinates[cur_dimension] - new_coordinates[cur_dimension], 0
-                    )
+                    ), image_sizes[cur_dimension] - 1)
                     coordinates_2N_dimensional[num_dimensions + cur_dimension] = \
                         ND_coordinate_reversed_indexing // pixels_per_clock[cur_dimension]
                     coordinates_2N_dimensional[cur_dimension] = \
