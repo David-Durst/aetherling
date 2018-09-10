@@ -445,6 +445,18 @@ def test_2D_bit_line_buffer_1_1_3_3_6_8_1_1_2_2():
         origin_y=-2, origin_x=-2
     ))
 
+# 8x4 image, 1x2 stride, 2x2 window, and 1x4 px per clock
+def test_2D_bit_line_buffer_1_4_2_2_6_4_1_2_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=4,
+        window_y=2, window_x=2,
+        image_y=6, image_x=4,
+        stride_y=1, stride_x=2,
+        origin_y=0, origin_x=0
+    ))
+
+
 # 6x4 image, 2x2 stride and window.
 def test_2D_bit_line_buffer_1_1_2_2_6_4_2_2_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
