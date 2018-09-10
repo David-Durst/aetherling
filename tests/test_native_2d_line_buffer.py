@@ -72,8 +72,14 @@ requirements (especially divisibility requirements).
             raise ValueError("Can't have nonpositive line buffer parameter\n"
                 + str(self.as_kwargs()))
 
-        if self.y_per_clk != 1:
-            raise ValueError("Need y_per_clk (px/clk height) to be 1.")
+        if self.y_per_clk % self.stride_y != 0 and \
+           self.stride_y % self.y_per_clk != 0:
+               raise ValueError("y stride must divide y pxPerClk, or the other "
+                                "way around.")
+
+        if self.y_per_clk > 1 and self.x_per_clk != self.image_x:
+            raise ValueError("For multiple rows per clk (y_per_clk > 1), "
+                             "need x_per_clk to equal image width.")
 
         a_divides_b = lambda a, b: b % a == 0
 
@@ -423,6 +429,17 @@ def test_2D_bit_line_buffer_1_5_3_3_5_5_1_1_0_0():
         origin_y=0, origin_x=0
     ))
 
+# Process 3 rows at a time of 9x5 image.
+def test_2D_bit_line_buffer_3_5_3_3_9_5_1_1_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=3, x_per_clk=5,
+        window_y=3, window_x=3,
+        image_y=9, image_x=5,
+        stride_y=1, stride_x=1,
+        origin_y=0, origin_x=0
+    ))
+
 # Simplest int4 line buffer, but 6x8 image now.
 def test_2D_bit_line_buffer_1_1_3_3_6_8_1_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
@@ -478,6 +495,17 @@ def test_2D_bit_line_buffer_1_6_3_2_6_12_3_1_0_1():
         origin_y=0, origin_x=-1
     ))
 
+# Weird mix of parameters, input rate now 2 rows / clk, stride 2,2.
+def test_2D_bit_line_buffer_2_12_3_2_6_12_2_2_0_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=2, x_per_clk=12,
+        window_y=3, window_x=2,
+        image_y=6, image_x=12,
+        stride_y=2, stride_x=2,
+        origin_y=0, origin_x=-1
+    ))
+
 
 # INT TESTS
 # (Only upgrade a few cause CoreIR simulator is slowww).
@@ -504,6 +532,17 @@ def test_2D_int4_line_buffer_1_1_3_3_6_8_1_1_2_2():
         origin_y=-2, origin_x=-2
     ))
 
+# 6x4 image, 2x2 stride and window.
+def test_2D_int8_line_buffer_1_1_2_2_6_4_2_2_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(8,Bit),
+        y_per_clk=1, x_per_clk=1,
+        window_y=2, window_x=2,
+        image_y=6, image_x=4,
+        stride_y=2, stride_x=2,
+        origin_y=0, origin_x=0
+    ))
+
 # Weird mix of parameters.
 def test_2D_int3_line_buffer_1_6_3_2_6_12_3_1_0_1():
     impl_test_2D_line_buffer(LineBufferParameters(
@@ -512,5 +551,16 @@ def test_2D_int3_line_buffer_1_6_3_2_6_12_3_1_0_1():
         window_y=3, window_x=2,
         image_y=6, image_x=12,
         stride_y=3, stride_x=1,
+        origin_y=0, origin_x=-1
+    ))
+
+# Weird mix of parameters, input rate now 2 rows / clk, stride 2,2.
+def test_2D_int2_line_buffer_2_12_3_2_6_12_2_2_0_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Array(2,Bit),
+        y_per_clk=2, x_per_clk=12,
+        window_y=3, window_x=2,
+        image_y=6, image_x=12,
+        stride_y=2, stride_x=2,
         origin_y=0, origin_x=-1
     ))
