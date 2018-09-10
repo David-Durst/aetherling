@@ -398,8 +398,9 @@ and run it on test data sets."""
             f"Waited {extra_cycles} cycles after last input."
 
         print(parameters.as_kwargs())
-        print('\x1b[31mActual: ', actual, '\n\x1b[34mExpected: ', expected, '\x1b[0m')
+
         fill_garbage_with_none(actual, expected)
+        print('\x1b[31mActual: ', actual, '\n\x1b[34mExpected: ', expected, '\x1b[0m')
         assert actual == expected, "Outputs don't match expected values."
 
 # Test stub functions that call the actual implementation function
