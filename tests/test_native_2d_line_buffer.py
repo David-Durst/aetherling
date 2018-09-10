@@ -356,9 +356,13 @@ and run it on test data sets."""
         # output received when the simulated module asserts valid.
         actual = []
         expected = expected_valid_outputs_2D(test_set, parameters)
+        i = 0
         def tick_sim_collect_outputs():
+            nonlocal i
             sim.evaluate()
             sim.advance_cycle()
+            i += 0
+            print("step {}: {}".format(i, sim.get_value(LineBufferDef.valid, scope)))
             if sim.get_value(LineBufferDef.valid, scope):
                 actual.append(
                     [ # Parallel output windows
@@ -480,6 +484,46 @@ def test_2D_bit_line_buffer_1_2_2_2_4_6_2_2_0_0():
     ))
 
 # Weird mix of parameters.
+def test_2D_bit_line_buffer_1_2_1_2_2_2_1_1_0_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=2,
+        window_y=1, window_x=2,
+        image_y=4, image_x=4,
+        stride_y=1, stride_x=1,
+        origin_y=0, origin_x=-1
+    ))
+
+def test_2D_bit_line_buffer_1_2_1_2_2_2_2_1_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=2,
+        window_y=1, window_x=2,
+        image_y=4, image_x=4,
+        stride_y=2, stride_x=1,
+        origin_y=0, origin_x=0
+    ))
+
+def test_2D_bit_line_buffer_1_6_3_2_6_12_1_1_0_1():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=6,
+        window_y=3, window_x=2,
+        image_y=6, image_x=12,
+        stride_y=1, stride_x=1,
+        origin_y=0, origin_x=-1
+    ))
+
+def test_2D_bit_line_buffer_1_6_3_2_6_12_3_1_0_0():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=6,
+        window_y=3, window_x=2,
+        image_y=6, image_x=12,
+        stride_y=3, stride_x=1,
+        origin_y=0, origin_x=0
+    ))
+
 def test_2D_bit_line_buffer_1_6_3_2_6_12_3_1_0_1():
     impl_test_2D_line_buffer(LineBufferParameters(
         magma_type=Bit,
@@ -489,7 +533,6 @@ def test_2D_bit_line_buffer_1_6_3_2_6_12_3_1_0_1():
         stride_y=3, stride_x=1,
         origin_y=0, origin_x=-1
     ))
-
 
 # INT TESTS
 # (Only upgrade a few cause CoreIR simulator is slowww).
