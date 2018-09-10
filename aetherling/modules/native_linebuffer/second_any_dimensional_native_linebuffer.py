@@ -271,9 +271,9 @@ def DefineAnyDimensionalLineBuffer(
                 if strides[d] > pixels_per_clock[d]:
 
                     stride_counter = SizedCounterModM(strides[d] // pixels_per_clock[d]
-                                                      * clocks_to_complete_each_dimension[d - 1], has_ce=True)
+                                                      * clocks_to_complete_each_dimension[d + 1], has_ce=True)
                     stride_counter_valid_values = DefineCoreirConst(len(stride_counter.O),
-                                                                    clocks_to_complete_each_dimension[d - 1])()
+                                                                    clocks_to_complete_each_dimension[d + 1])()
 
                     stride_counters_valid = stride_counters_valid & (
                             stride_counter.O < stride_counter_valid_values.O
