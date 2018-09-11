@@ -16,7 +16,7 @@ def DefineRAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
     """
 
     class _RAM(Circuit):
-        name = 'RAM_{}t'.format(cleanName(str(t)))
+        name = 'RAM_{}t_{}n'.format(cleanName(str(t)), n)
         addr_width = getRAMAddrWidth(n)
         IO = ['RADDR', In(Bits(addr_width)),
               'RDATA', Out(t),

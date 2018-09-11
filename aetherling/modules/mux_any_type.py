@@ -18,7 +18,7 @@ def DefineMuxAnyType(cirb: CoreIRBackend, t: Kind, n: int):
     """
 
     class _Mux(Circuit):
-        name = 'Mux_{}t'.format(cleanName(str(t)))
+        name = 'Mux_{}t_{}n'.format(cleanName(str(t)), n)
         addr_width = getRAMAddrWidth(n)
         IO = ['data', In(Array(n, t)),
               'sel', In(Bits(addr_width)),
