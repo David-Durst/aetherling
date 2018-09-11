@@ -75,20 +75,20 @@ def DefineTwoDimensionalLineBuffer(
             where input pixels are from two different rows in the input image.
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: image_cols {} not divisiable by"
+                            "parameters: image_cols {} not divisible by"
                             "pixels_per_row_per_clock {}. \n Reason {}"
                             .format(image_cols, pixels_per_row_per_clock, reason))
 
-        if image_cols % rows_of_pixels_per_clock != 0:
+        if image_rows % rows_of_pixels_per_clock != 0:
             reason = """
             this is necessary so that input a complete image with the same number 
             of input pixels every clock, don't have a weird ending
             with only 1 pixel from the image left to input
             """
             raise Exception("Aetherling's Native LineBuffer has invalid "
-                            "parameters: image_cols {} not divisiable by"
+                            "parameters: image_rows {} not divisible by"
                             "pixels_per_row_per_clock {}"
-                            .format(image_cols, rows_of_pixels_per_clock, reason))
+                            .format(image_rows, rows_of_pixels_per_clock, reason))
 
         if image_cols % stride_cols != 0:
             reason = "stride_cols is downsample factor for number of columns." \
