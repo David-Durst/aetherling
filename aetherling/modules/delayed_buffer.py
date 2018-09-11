@@ -24,17 +24,24 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
     """
 
     class _RAM(Circuit):
+
+        out_per_clock = max(n // total_emitting_period, 1)
         if n % k != 0:
             raise Exception("Total number of elements must be divisible by inputs per"
                             "active clock. Instead, n {} % k {} is {}".format(n, k, n % k))
 
-        if total_emitting_period % n != 0:
+        if total_emitting_period % n != 0 and n % total_emitting_period != 0:
             raise Exception("Total number of clocks must be divisible by total inputs."
                             "Instead, total_emitting_period {} % n {} is {}"
                             .format(total_emitting_period, n, total_emitting_period % n))
 
+        if k % out_per_clock != 0:
+            raise Exception("Emitted elements per clock must divide cleanly into input"
+                            "elements per clock, but k {} % out_per_clock {} is {}"
+                            .format(k, out_per_clock, k % out_per_clock))
+
         name = 'RAM_{}t_{}n_{}k_{}emittingPeriod'.format(cleanName(str(t)), n, k, total_emitting_period)
-        IO = ['I', In(Array(k, t)), 'O', Out(t), 'WE', In(Bit)] + ClockInterface(has_ce=True)
+        IO = ['I', In(Array(k, t)), 'O', Out(Array(out_per_clock, t)), 'WE', In(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             # a counter that tracks the current clock in the total emitting period
@@ -59,8 +66,9 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             for i in range(k):
                 wire(current_element_per_banked_ram, rams.RADDR[i])
 
-            ram_bank_selector = MuxAnyType(cirb, t, k)
-            wire(rams.RDATA, ram_bank_selector.data)
+            ram_bank_selector = MuxAnyType(cirb, Array(cls.out_per_clock, t), k)
+            for i in range(k):
+                wire(rams.RDATA[i], ram_bank_selector.data[i // cls.out_per_clock][i % cls.out_per_clock])
             wire(current_bank, ram_bank_selector.sel)
 
             # remove latency of RAMs of by emitting first input on first clock immediately
