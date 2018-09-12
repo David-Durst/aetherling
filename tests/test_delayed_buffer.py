@@ -6,6 +6,8 @@ from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
+from magma.bitutils import *
+
 
 def test_delayed_buffer():
     width = 5
@@ -16,52 +18,34 @@ def test_delayed_buffer():
     scope = Scope()
     inType = Array(width, In(BitIn))
     outType = Out(inType)
-
-    testcircuit = DefineDelayedBuffer(cirb, Array(4, Bit), 6, 2, 12)
+    testcircuit = DefineDelayedBuffer(cirb, Array(8, Bit), 3, 1, 12)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context)
 
+    sim.set_value(testcircuit.CE, True, scope)
+    last_output = 0
+    last_input = 0
+    # do two cycles
+    for clock_index in range(24):
+        # for each cycle, input every other of first half
+        if clock_index % 12 < 6 and clock_index % 2 == 0:
+            sim.set_value(testcircuit.WE, True, scope)
+            sim.set_value(testcircuit.I[0], int2seq(last_input, 8), scope)
+            last_input += 1
+        else:
+            sim.set_value(testcircuit.WE, False, scope)
+        sim.evaluate()
+
+        if clock_index % 4 == 0:
+            assert sim.get_value(testcircuit.valid, scope) == True
+            assert seq2int(sim.get_value(testcircuit.O, scope)[0]) == last_output
+            last_output += 1
+        else:
+            assert sim.get_value(testcircuit.valid, scope) == False
+        sim.advance_cycle()
+        sim.evaluate()
+
+
+
 if __name__ == "__main__":
     test_delayed_buffer()
-
-"""
-
-width = 5
-numElements = 1
-testVal = 3
-c = coreir.Context()
-scope = Scope()
-inType = Array(width, In(BitIn))
-#outType = Array(width, Out(BitIn)) #uncomment this line
-#outType = Array(numElements, Out(inType))
-outType = Array(numElements, Out(Array(width, Bit))) #comment this line
-args = ['I', inType, 'O', outType] + ClockInterface(False, False)
-
-testcircuit = DefineCircuit('Test', *args)
-
-#upParallel = UpParallel(numElements, inType)
-#wire(upParallel.I, testcircuit.I)
-#wire(testcircuit.O, upParallel.O)
-#wire(testcircuit.O, testcircuit.I) # uncomment this line
-wire(testcircuit.O[0], testcircuit.I) # comment this line
-
-
-EndCircuit()
-
-sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-#coreir_testcircuit = compile(testcircuit, context=c)
-
-#c.run_passes(["rungenerators", "verifyconnectivity-onlyinputs-noclkrst",
-                    #"wireclocks-coreir", "flatten", "flattentypes", "verifyconnectivity",
-                    #"deletedeadinstances"])
-
-#sim_testcircuit = coreir.SimulatorState(coreir_testcircuit)
-
-
-#sim_testcircuit.set_value(["self.I"], bit_vector.BitVector(width, testVal).as_bool_list())
-#sim = PythonSimulator(testcircuit)
-sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-simulate(testcircuit, CoreIRSimulator)
-"""

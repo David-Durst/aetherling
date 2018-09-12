@@ -62,18 +62,22 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             ticks_per_element = total_emitting_period // n
             ticks_per_row_of_elements = ticks_per_element // k
             # this completes a cycle ever time the current_element_per_bank_ram increments by 1
-            if ticks_per_row_of_elements > 1:
+            if n // k == 1:
+                current_element_per_banked_ram_counter = DefineCoreirConst(1, 0)()
+            elif ticks_per_row_of_elements == 1:
+                current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
+                wire(cls.CE, current_element_per_banked_ram_counter.CE)
+            else:
                 bank_ram_tick_counter = SizedCounterModM(ticks_per_row_of_elements, has_ce=True)
-                ticks_per_row_of_elements_const = DefineCoreirConst(len(bank_ram_tick_counter.O), ticks_per_row_of_elements - 1)
+                ticks_per_row_of_elements_const = DefineCoreirConst(len(bank_ram_tick_counter.O), ticks_per_row_of_elements - 1)()
 
                 current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
                 wire(cls.CE, bank_ram_tick_counter.CE)
-                wire(cls.CE & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.O),
+                wire(bit(cls.CE) & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.O),
                      current_element_per_banked_ram_counter.CE)
-            else:
-                current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
-                wire(cls.CE, current_element_per_banked_ram_counter.CE)
 
+            for i in range(k):
+                wire(current_element_per_banked_ram_counter.O, rams.RADDR[i])
 
             # the mux bank selector counter tracks which of the banks to read from right now
 
@@ -81,22 +85,24 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             # (k // cls.out_per_clock) to get ticks per mux output
             outputs_per_row = k // cls.out_per_clock
             ticks_per_mux_output = ticks_per_row_of_elements // outputs_per_row
+            if ticks_per_mux_output == 1:
+                ticks_per_mux_counter = DefineCoreirConst(1, 0)()
+            else:
+                ticks_per_mux_counter = SizedCounterModM(ticks_per_mux_output, has_ce=True)
 
             # this counter completes a cycle once for every mux output
-            if ticks_per_mux_output > 1:
-                ticks_per_mux_counter = SizedCounterModM(ticks_per_mux_output, has_ce=True)
-                ticks_per_mux_output_const = DefineCoreirConst(len(ticks_per_mux_counter.O), ticks_per_mux_output - 1)
+            if outputs_per_row == 1:
+                mux_bank_selector_counter = DefineCoreirConst(1, 0)()
+            elif ticks_per_mux_output == 1:
+                mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
+                wire(cls.CE, mux_bank_selector_counter.CE)
+            else:
+                ticks_per_mux_output_const = DefineCoreirConst(len(ticks_per_mux_counter.O), ticks_per_mux_output - 1)()
 
                 mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
                 wire(cls.CE, ticks_per_mux_counter.CE)
-                wire(cls.CE & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
+                wire(bit(cls.CE) & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
                      mux_bank_selector_counter.CE)
-            else:
-                mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
-                wire(cls.CE, mux_bank_selector_counter.CE)
-
-            for i in range(k):
-                wire(current_element_per_banked_ram_counter.O, rams.RADDR[i])
 
             ram_bank_selector = MuxAnyType(cirb, Array(cls.out_per_clock, t), k // cls.out_per_clock)
             for i in range(k):
@@ -105,21 +111,22 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
             # remove latency of RAMs of by emitting first input on first clock immediately
             first_input_or_rams = MuxAnyType(cirb, Array(cls.out_per_clock, t), 2)
-            wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[0])
-            wire(ram_bank_selector.out, first_input_or_rams.data[1])
+            wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[1])
+            wire(ram_bank_selector.out, first_input_or_rams.data[0])
 
+            # emit input directly only on first clock
             # a counter that tracks the current clock in the total emitting period
             point_in_emitting_period = SizedCounterModM(total_emitting_period, has_ce=True)
-            ticks_per_element_const = DefineCoreirConst(len(point_in_emitting_period.O), ticks_per_element)()
+            zero_const = DefineCoreirConst(len(point_in_emitting_period.O), 0)()
 
-            wire(point_in_emitting_period.O < ticks_per_element_const.O, first_input_or_rams.sel[0])
+            wire(point_in_emitting_period.O == zero_const.O, first_input_or_rams.sel[0])
 
             wire(first_input_or_rams.out, cls.O)
 
             # valid on first enabled clock where on new output of mux
-            zero_const = DefineCoreirConst(len(mux_bank_selector_counter.O), 0)()
+            zero_const = DefineCoreirConst(len(ticks_per_mux_counter.O), 0)()
 
-            wire(bit(cls.CE) & (mux_bank_selector_counter.O == zero_const.O), cls.valid)
+            wire(bit(cls.CE) & (ticks_per_mux_counter.O == zero_const.O), cls.valid)
 
     return _DelayedBuffer
 
