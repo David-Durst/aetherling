@@ -65,6 +65,34 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             out_per_clockConst = DefineCoreirConst(len(point_in_emitting_period.O), cls.out_per_clock)()
             zeroConst = DefineCoreirConst(len(point_in_emitting_period.O), 0)()
 
+            # the bank ram counter tracks which entry in all the banked rams RADDR should be set to
+            ticks_per_element = total_emitting_period // n
+            ticks_per_row_of_elements = ticks_per_element // k
+            ticks_per_row_of_elements_const = DefineCoreirConst(len(ticks_per_row_of_elements - 1), ticks_per_row_of_elements - 1)
+            # this completes a cycle ever time the current_element_per_bank_ram increments by 1
+            bank_ram_tick_counter = SizedCounterModM(ticks_per_row_of_elements, has_ce=True)
+            current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
+            wire(cls.CE, bank_ram_tick_counter.CE)
+            wire(cls.CE & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.out),
+                 current_element_per_banked_ram_counter.CE)
+
+            # the mux bank selector counter tracks which of the banks to read from right now
+
+            # divide the number of ticks per row by the number of mux outputs per row
+            # (k // cls.out_per_clock) to get ticks per mux output
+            outputs_per_row = k // cls.out_per_clock
+            ticks_per_mux_output = ticks_per_row_of_elements // outputs_per_row
+            ticks_per_mux_output_const = DefineCoreirConst(len(ticks_per_mux_output - 1), ticks_per_mux_output - 1)
+
+            # this counter completes a cycle once for every mux output
+            ticks_per_mux_counter = SizedCounterModM(ticks_per_mux_output, has_ce=True)
+            mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
+            wire(cls.CE, ticks_per_mux_counter.CE)
+            wire(cls.CE & (ticks_per_mux_counter.O == ticks_per_mux_output_const.out),
+                 mux_bank_selector_counter.CE)
+
+
+            current_bank = SizedCounterModM(cls.out_per_clock)
             # divide point in the current emitting period by n to get current element
             current_element = point_in_emitting_period.O / nConst.O
             # then get the current element to emit per each bank and then the right bank to emit
@@ -79,18 +107,18 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             wire(term_current_bank.I, current_bank)
 
             for i in range(k):
-                wire(current_element_per_banked_ram[0:len(rams.RADDR[i])], rams.RADDR[i])
+                wire(current_element_per_banked_ram_counter.out, rams.RADDR[i])
 
             ram_bank_selector = MuxAnyType(cirb, Array(cls.out_per_clock, t), k // cls.out_per_clock)
             for i in range(k):
                 wire(rams.RDATA[i], ram_bank_selector.data[i // cls.out_per_clock][i % cls.out_per_clock])
-            wire(current_bank[0:len(ram_bank_selector.sel)], ram_bank_selector.sel)
+            wire(mux_bank_selector_counter.out, ram_bank_selector.sel)
 
             # remove latency of RAMs of by emitting first input on first clock immediately
             first_input_or_rams = MuxAnyType(cirb, Array(cls.out_per_clock, t), 2)
             wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[0])
             wire(ram_bank_selector.out, first_input_or_rams.data[1])
-            wire(point_in_emitting_period.O == zeroConst.O, first_input_or_rams.sel[0])
+            wire(point_in_emitting_period.O < ticks_per_element, first_input_or_rams.sel[0])
 
             wire(first_input_or_rams.out, cls.O)
 
