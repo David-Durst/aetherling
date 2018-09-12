@@ -1,14 +1,11 @@
 from aetherling.helpers.nameCleanup import cleanName
-from aetherling.modules.hydrate import Dehydrate, Hydrate
 from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import AnyDimensionalLineBuffer
-from magma import *
-from mantle import DefineCoreirConst
+from aetherling.modules.delayed_buffer import DelayedBuffer
 from mantle.common.countermod import SizedCounterModM
-from mantle.common.sipo import SIPO
+from mantle import DefineCoreirConst
+from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from mantle.coreir.type_helpers import Term
-from math import ceil
+
 
 
 def DefineTwoDimensionalLineBuffer(
@@ -254,7 +251,23 @@ def DefineTwoDimensionalLineBuffer(
         # else just emit one per clock when have enough pixels to do so
         windows_per_row_per_clock = max(pixels_per_row_per_clock // stride_cols, 1)
         rows_of_windows_per_clock = max(rows_of_pixels_per_clock // stride_rows, 1)
-        windows_per_active_clock = windows_per_row_per_clock * rows_of_windows_per_clock
+        # if stride in y (stride_rows) is greater than parallelism across rows,
+        # then need a buffer, so windows_per_active_clock is for average rate of windows out over time
+        if stride_rows <= rows_of_pixels_per_clock:
+            windows_per_active_clock = windows_per_row_per_clock * rows_of_windows_per_clock
+        else:
+            # average pixels per clock out = (note: if less than 1 window out every clock, then 1 is floor
+            # as will emit 1 sometimes)
+
+            # this division is integer as condition already holds that stride_rows > rows_of_pixels_per_clock
+            # and image_cols must be divisible by parallelism across columns
+
+            time_per_buffered_cycle = ((image_cols * stride_rows) //
+                                       (rows_of_pixels_per_clock * pixels_per_row_per_clock))
+            windows_per_active_clock = max(
+                # input pixels (pixels in first row not dropped) divided by time to complete window
+                (image_cols * stride_cols) // time_per_buffered_cycle, 1
+            )
 
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
@@ -272,11 +285,32 @@ def DefineTwoDimensionalLineBuffer(
                 [origin_rows, origin_cols]
             )
             wire(cls.I, lb.I)
-            for row_of_windows in range(cls.rows_of_windows_per_clock):
-                for window_per_row in range(cls.windows_per_row_per_clock):
-                    wire(cls.O[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
-                         lb.O[row_of_windows][window_per_row])
-            wire(cls.valid, lb.valid)
+            if stride_rows <= rows_of_pixels_per_clock:
+                for row_of_windows in range(cls.rows_of_windows_per_clock):
+                    for window_per_row in range(cls.windows_per_row_per_clock):
+                        wire(cls.O[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
+                             lb.O[row_of_windows][window_per_row])
+                wire(cls.valid, lb.valid)
+
+            else:
+                db = DelayedBuffer(cirb, pixel_type, image_cols // stride_cols,
+                                   max(pixels_per_row_per_clock // stride_cols, 1),
+                                   cls.time_per_buffered_cycle)
+                for row_of_windows in range(cls.rows_of_windows_per_clock):
+                    for window_per_row in range(cls.windows_per_row_per_clock):
+                        wire(db.I[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
+                             lb.O[row_of_windows][window_per_row])
+                wire(lb.valid, db.WE)
+                wire(db.O, cls.O)
+
+                # first time lb is valid, delayed buffer becomes
+                # valid permanently
+                first_valid_counter = SizedCounterModM(2, has_ce=True)
+                zero_const = DefineCoreirConst(1, 0)()
+                wire(lb.valid & (zero_const.O == first_valid_counter.O),
+                     first_valid_counter.CE)
+                wire(first_valid_counter.O & cls.CE, db.CE)
+
             wire(cls.CE, lb.CE)
 
     return _LB

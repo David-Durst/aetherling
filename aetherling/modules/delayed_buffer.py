@@ -22,6 +22,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
     1. n % k == 0
     2. total_emitting_period % n == 0
+    3. k % out_per_clock == 0 (out_per_clock = max(n // total_emitting_period, 1)
     """
 
     class _DelayedBuffer(Circuit):
@@ -42,8 +43,9 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                             "Note: out_per_clock = max(n // total_emitting_period, 1)"
                             .format(k, out_per_clock, k % out_per_clock))
 
-        name = 'RAM_{}t_{}n_{}k_{}emittingPeriod'.format(cleanName(str(t)), n, k, total_emitting_period)
-        IO = ['I', In(Array(k, t)), 'O', Out(Array(out_per_clock, t)), 'WE', In(Bit)] + ClockInterface(has_ce=True)
+        name = 'DelayedBuffer_{}t_{}n_{}k_{}emittingPeriod'.format(cleanName(str(t)), n, k, total_emitting_period)
+        IO = ['I', In(Array(k, t)), 'O', Out(Array(out_per_clock, t)), 'WE', In(Bit),
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             rams = MapParallel(cirb, k, RAMAnyType(cirb, t, n // k))
@@ -113,6 +115,11 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             wire(point_in_emitting_period.O < ticks_per_element_const.O, first_input_or_rams.sel[0])
 
             wire(first_input_or_rams.out, cls.O)
+
+            # valid on first enabled clock where on new output of mux
+            zero_const = DefineCoreirConst(len(mux_bank_selector_counter.O), 0)
+
+            wire(cls.CE & (mux_bank_selector_counter.O == zero_const.out), cls.valid)
 
     return _DelayedBuffer
 
