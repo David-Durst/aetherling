@@ -68,7 +68,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
                 current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
                 wire(cls.CE, bank_ram_tick_counter.CE)
-                wire(cls.CE & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.out),
+                wire(cls.CE & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.O),
                      current_element_per_banked_ram_counter.CE)
             else:
                 current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
@@ -89,7 +89,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
                 mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
                 wire(cls.CE, ticks_per_mux_counter.CE)
-                wire(cls.CE & (ticks_per_mux_counter.O == ticks_per_mux_output_const.out),
+                wire(cls.CE & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
                      mux_bank_selector_counter.CE)
             else:
                 mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
@@ -117,11 +117,11 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             wire(first_input_or_rams.out, cls.O)
 
             # valid on first enabled clock where on new output of mux
-            zero_const = DefineCoreirConst(len(mux_bank_selector_counter.O), 0)
+            zero_const = DefineCoreirConst(len(mux_bank_selector_counter.O), 0)()
 
-            wire(cls.CE & (mux_bank_selector_counter.O == zero_const.out), cls.valid)
+            wire(bit(cls.CE) & (mux_bank_selector_counter.O == zero_const.O), cls.valid)
 
     return _DelayedBuffer
 
-def DelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, total_emitting_period: int):
-    return DefineDelayedBuffer(cirb, t, n, total_emitting_period)()
+def DelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int):
+    return DefineDelayedBuffer(cirb, t, n, k, total_emitting_period)()

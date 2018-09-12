@@ -293,7 +293,7 @@ def DefineTwoDimensionalLineBuffer(
                 wire(cls.valid, lb.valid)
 
             else:
-                db = DelayedBuffer(cirb, pixel_type, image_cols // stride_cols,
+                db = DelayedBuffer(cirb,  Array(window_rows, Array(window_cols, pixel_type)), image_cols // stride_cols,
                                    max(pixels_per_row_per_clock // stride_cols, 1),
                                    cls.time_per_buffered_cycle)
                 for row_of_windows in range(cls.rows_of_windows_per_clock):
@@ -301,6 +301,7 @@ def DefineTwoDimensionalLineBuffer(
                         wire(db.I[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
                              lb.O[row_of_windows][window_per_row])
                 wire(lb.valid, db.WE)
+                wire(db.valid, cls.valid)
                 wire(db.O, cls.O)
 
                 # first time lb is valid, delayed buffer becomes
@@ -309,7 +310,7 @@ def DefineTwoDimensionalLineBuffer(
                 zero_const = DefineCoreirConst(1, 0)()
                 wire(lb.valid & (zero_const.O == first_valid_counter.O),
                      first_valid_counter.CE)
-                wire(first_valid_counter.O & cls.CE, db.CE)
+                wire(first_valid_counter.O[0] & bit(cls.CE), db.CE)
 
             wire(cls.CE, lb.CE)
 
