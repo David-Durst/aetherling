@@ -23,8 +23,8 @@ def test_delayed_buffer():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context)
 
     sim.set_value(testcircuit.CE, True, scope)
-    last_output = 0
-    last_input = 0
+    last_output = 1
+    last_input = 1
     # do two cycles
     for clock_index in range(24):
         # for each cycle, input every other of first half
