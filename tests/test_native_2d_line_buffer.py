@@ -377,17 +377,17 @@ and run it on test data sets."""
             # print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
             # print("\n")
             if sim.get_value(LineBufferDef.valid, scope):
-                actual.append(sim.get_value(LineBufferDef.O, scope))
-                #     [ # Parallel output windows
-                #         [ # Rows
-                #             [ # Columns
-                #                 get_pixel(window_index, y, x)
-                #                 for x in range(window_x)
-                #             ]
-                #             for y in range(window_y)
-                #         ] for window_index in range(parallelism)
-                #     ]
-                # )
+                actual.append(
+                    [ # Parallel output windows
+                        [ # Rows
+                            [ # Columns
+                                get_pixel(window_index, y, x)
+                                for x in range(window_x)
+                            ]
+                            for y in range(window_y)
+                        ] for window_index in range(parallelism)
+                    ]
+                )
             sim.advance_cycle()
             sim.evaluate()
 
@@ -405,6 +405,11 @@ and run it on test data sets."""
             tick_sim_collect_outputs()
 
         len_actual, len_expected = len(actual), len(expected)
+
+        actual_parallelism = len(LineBufferDef.O)
+        assert actual_parallelism == parallelism, \
+            f"Expected {parallelism} outputs per (valid) cycle, seem to " \
+            f"actually have {actual_parallelism}."
 
         assert len_actual >= len_expected, \
             f"Got {len_actual} outputs (counts of valid asserts); expected " \
