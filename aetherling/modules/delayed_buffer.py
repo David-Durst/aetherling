@@ -3,7 +3,7 @@ from magma import *
 from mantle import DefineCoreirConst
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from aetherling.modules.ram_any_type import RAMAnyType
+from aetherling.modules.ram_any_type import DefineRAMAnyType
 from aetherling.modules.mux_any_type import MuxAnyType
 from mantle.common.countermod import SizedCounterModM
 
@@ -48,7 +48,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
-            rams = MapParallel(cirb, k, RAMAnyType(cirb, t, n // k))
+            rams = MapParallel(cirb, k, DefineRAMAnyType(cirb, t, n // k))
 
             # each clock WE is set, write to the RAMs and increment the address
             writing_location_per_bank = SizedCounterModM(n // k, has_ce=True)
