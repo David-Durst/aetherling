@@ -60,7 +60,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
             # the bank ram counter tracks which group of entries in all the banked rams RADDR should be set to
             ticks_per_element = total_emitting_period // (n // cls.out_per_clock)
-            ticks_per_row_of_elements = ticks_per_element * k
+            ticks_per_row_of_elements = ticks_per_element * (k // cls.out_per_clock)
             # this completes a cycle ever time the current_element_per_bank_ram increments by 1
             if n // k == 1:
                 current_element_per_banked_ram_counter = DefineCoreirConst(1, 0)()
