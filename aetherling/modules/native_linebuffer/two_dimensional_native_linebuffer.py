@@ -266,18 +266,15 @@ def DefineTwoDimensionalLineBuffer(
                                        (rows_of_pixels_per_clock * pixels_per_row_per_clock))
             windows_per_active_clock = max(
                 # input pixels (pixels in first row not dropped) divided by time to complete window
-                (image_cols * stride_cols) // time_per_buffered_cycle, 1
+                (image_cols // stride_cols) // time_per_buffered_cycle, 1
             )
 
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True)+ \
-            ['srout', Out(Array(1, Array(2, Array(4, Array(2, Bit)))))] + \
-            ['valid_counter', Out(Array(2, Bit)), 'valid_max', Out(Array(2, Bit)), 'other_valid', Out(Bit)]
-
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
-            lbdef = DefineAnyDimensionalLineBuffer(
+            lb = AnyDimensionalLineBuffer(
                 cirb,
                 pixel_type,
                 [rows_of_pixels_per_clock, pixels_per_row_per_clock],
@@ -286,11 +283,6 @@ def DefineTwoDimensionalLineBuffer(
                 [stride_rows, stride_cols],
                 [origin_rows, origin_cols]
             )
-            lb = lbdef()
-            wire(lb.srout, cls.srout)
-            wire(lb.valid_counter, cls.valid_counter)
-            wire(lb.valid_max, cls.valid_max)
-            wire(lb.other_valid, cls.other_valid)
             wire(cls.I, lb.I)
             if stride_rows <= rows_of_pixels_per_clock:
                 for row_of_windows in range(cls.rows_of_windows_per_clock):

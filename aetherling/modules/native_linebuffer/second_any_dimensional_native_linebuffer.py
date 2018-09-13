@@ -48,10 +48,7 @@ def DefineAnyDimensionalLineBuffer(
 
         IO = ['I', In(get_nested_type(pixel_type, pixels_per_clock)),
               'O', Out(get_nested_type(pixel_type, windows_per_active_clock + window_widths))] + \
-             ['valid', Out(Bit)] + ClockInterface(has_ce=True) + \
-            ['srout', Out(Array(1, Array(2, Array(4, Array(2, Bit)))))] + \
-            ['valid_counter', Out(Array(2, Bit)), 'valid_max', Out(Array(2, Bit)), 'other_valid', Out(Bit)]
-
+             ['valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
 
@@ -210,7 +207,6 @@ def DefineAnyDimensionalLineBuffer(
 
             recursively_wire_input(cls.I, shift_registers.I,
                                    cls.CE, shift_registers.CE, len(pixels_per_clock))
-            wire(shift_registers.O, cls.srout)
 
             def multidimensionalLookup(arr, indexes):
                 if len(indexes) == 1:
@@ -220,10 +216,10 @@ def DefineAnyDimensionalLineBuffer(
 
             for mapping in output_to_shift_register_mapping:
                 (output_index, shift_register_index) = mapping
-                print("wiring sr {} to output {}".format(
-                    multidimensionalLookup(shift_registers.O, shift_register_index),
-                    multidimensionalLookup(cls.O, output_index)
-                ))
+                # print("wiring sr {} to output {}".format(
+                #     multidimensionalLookup(shift_registers.O, shift_register_index),
+                #     multidimensionalLookup(cls.O, output_index)
+                # ))
                 wire(multidimensionalLookup(shift_registers.O, shift_register_index),
                      multidimensionalLookup(cls.O, output_index))
 
@@ -241,9 +237,7 @@ def DefineAnyDimensionalLineBuffer(
             # start with 1 as the time to complete each pixel is 1 clock, not really a dimension
             # but helpful to have this for computing other dimensions
             clocks_to_complete_each_dimension = [1]
-            #for dim_size in image_sizes[::-1]:
-            #    clocks_to_complete_each_dimension = [dim_size * clocks_to_complete_each_dimension[0]] + \
-            #                                        clocks_to_complete_each_dimension
+
             for d in range(num_dimensions)[::-1]:
                 clocks_to_complete_each_dimension = [image_sizes[d] // pixels_per_clock[d] *
                                                      clocks_to_complete_each_dimension[0]] + clocks_to_complete_each_dimension
@@ -301,10 +295,6 @@ def DefineAnyDimensionalLineBuffer(
             wire(enable(stride_counters_valid &
                         (valid_counter.O == valid_counter_max_instance.O)),
                  cls.valid)
-
-            wire(valid_counter.O, cls.valid_counter)
-            wire(valid_counter_max_instance.O, cls.valid_max)
-            wire(stride_counters_valid, cls.other_valid)
 
     return _LB
 

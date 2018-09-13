@@ -367,18 +367,15 @@ and run it on test data sets."""
             nonlocal quijibo
             sim.evaluate()
             quijibo += 1
-            print("step {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid, scope)))
-            print("input {}: {}".format(quijibo, sim.get_value(LineBufferDef.I, scope)))
-            print("sr output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].srout, scope)))
-            print("lb output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].O, scope)))
-            print("lb valid counter {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid_counter, scope)))
-            print("lb valid max {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid_max, scope)))
-            print("lb other valid {}: {}".format(quijibo, sim.get_value(LineBufferDef.other_valid, scope)))
-            print("lb valid {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].valid, scope)))
-            print("db input {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].I, scope)))
-            print("db output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].O, scope)))
-            print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
-            print("\n")
+            # print("step {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid, scope)))
+            # print("input {}: {}".format(quijibo, sim.get_value(LineBufferDef.I, scope)))
+            # print("lb output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].O, scope)))
+            # print("lb valid {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].valid, scope)))
+            # if len(LineBufferDef._instances) > 1:
+            #     print("db input {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].I, scope)))
+            #     print("db output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].O, scope)))
+            # print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
+            # print("\n")
             if sim.get_value(LineBufferDef.valid, scope):
                 actual.append(sim.get_value(LineBufferDef.O, scope))
                 #     [ # Parallel output windows
