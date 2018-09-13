@@ -253,7 +253,7 @@ def DefineAnyDimensionalLineBuffer(
                     # subtract 1 here as need second to oldest needed pixel in this dimension
                     # but then add 1 as 0 indexed, so multiply by 3 for pixel 2.
                     # these cancel each other out
-                    ceil((oldest_needed_pixel_forward_ND_coordinates[d] + origins[d]) / pixels_per_clock[d])
+                    (oldest_needed_pixel_forward_ND_coordinates[d] + origins[d]) // pixels_per_clock[d]
                 )
 
 
