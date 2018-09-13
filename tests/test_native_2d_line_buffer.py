@@ -571,16 +571,6 @@ def test_2D_bit_line_buffer_1_6_3_2_6_12_1_1_0_1():
         origin_y=0, origin_x=-1
     ))
 
-def test_2D_int4_line_buffer_1_6_3_2_6_12_3_1_0_0_smaller():
-    impl_test_2D_line_buffer(LineBufferParameters(
-        magma_type=Array(4, Bit),
-        y_per_clk=1, x_per_clk=3,
-        window_y=3, window_x=2,
-        image_y=6, image_x=6,
-        stride_y=3, stride_x=1,
-        origin_y=0, origin_x=0
-    ))
-
 def test_2D_bit_line_buffer_1_6_3_2_6_12_3_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
         magma_type=Bit,
