@@ -1,5 +1,5 @@
 from aetherling.helpers.nameCleanup import cleanName
-from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import AnyDimensionalLineBuffer, DefineAnyDimensionalLineBuffer
+from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import AnyDimensionalLineBuffer, DefineAnyDimensionalLineBuffer
 from aetherling.modules.delayed_buffer import DelayedBuffer
 from mantle.common.countermod import SizedCounterModM
 from mantle import DefineCoreirConst

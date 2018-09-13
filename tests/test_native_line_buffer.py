@@ -13,7 +13,7 @@ import coreir
 from magma.scope import Scope
 from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer import \
     OneDimensionalLineBuffer, DefineOneDimensionalLineBuffer
-from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import \
+from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import \
     AnyDimensionalLineBuffer
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from mantle.common.sipo import SIPO
