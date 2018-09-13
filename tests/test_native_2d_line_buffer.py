@@ -362,25 +362,38 @@ and run it on test data sets."""
         # output received when the simulated module asserts valid.
         actual = []
         expected = expected_valid_outputs_2D(test_set, parameters)
-        i = 0
+        quijibo = -1
         def tick_sim_collect_outputs():
-            nonlocal i
+            nonlocal quijibo
             sim.evaluate()
-            sim.advance_cycle()
-            i += 0
-            print("step {}: {}".format(i, sim.get_value(LineBufferDef.valid, scope)))
+            quijibo += 1
+            print("step {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid, scope)))
+            print("input {}: {}".format(quijibo, sim.get_value(LineBufferDef.I, scope)))
+            print("sr output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].srout, scope)))
+            print("lb output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].O, scope)))
+            print("lb valid counter {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid_counter, scope)))
+            print("lb valid max {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid_max, scope)))
+            print("lb other valid {}: {}".format(quijibo, sim.get_value(LineBufferDef.other_valid, scope)))
+            print("lb valid {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].valid, scope)))
+            print("db input {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].I, scope)))
+            print("db output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].O, scope)))
+            print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
+            print("\n")
             if sim.get_value(LineBufferDef.valid, scope):
-                actual.append(
-                    [ # Parallel output windows
-                        [ # Rows
-                            [ # Columns
-                                get_pixel(window_index, y, x)
-                                for x in range(window_x)
-                            ]
-                            for y in range(window_y)
-                        ] for window_index in range(parallelism)
-                    ]
-                )
+                actual.append(sim.get_value(LineBufferDef.O, scope))
+                #     [ # Parallel output windows
+                #         [ # Rows
+                #             [ # Columns
+                #                 get_pixel(window_index, y, x)
+                #                 for x in range(window_x)
+                #             ]
+                #             for y in range(window_y)
+                #         ] for window_index in range(parallelism)
+                #     ]
+                # )
+            sim.advance_cycle()
+            sim.evaluate()
+
 
         for input_window in test_set:
             set_value(input_window)
@@ -502,7 +515,9 @@ def test_2D_bit_line_buffer_1_2_2_2_4_6_2_2_0_0():
     ))
 
 # Weird mix of parameters.
-def test_2D_bit_line_buffer_1_2_1_2_2_2_1_1_0_1():
+# these two test if origin causes wiring to go to next row of
+# shift register
+def test_2D_bit_line_buffer_1_2_1_2_4_4_1_1_0_1():
     impl_test_2D_line_buffer(LineBufferParameters(
         magma_type=Bit,
         y_per_clk=1, x_per_clk=2,
@@ -512,6 +527,17 @@ def test_2D_bit_line_buffer_1_2_1_2_2_2_1_1_0_1():
         origin_y=0, origin_x=-1
     ))
 
+def test_2D_bit_line_buffer_1_2_1_3_4_6_1_1_0_2():
+    impl_test_2D_line_buffer(LineBufferParameters(
+        magma_type=Bit,
+        y_per_clk=1, x_per_clk=2,
+        window_y=1, window_x=3,
+        image_y=4, image_x=6,
+        stride_y=1, stride_x=1,
+        origin_y=0, origin_x=-2
+    ))
+
+# tests skipping rows with parallelism in a row
 def test_2D_bit_line_buffer_1_2_1_2_2_2_2_1_0_0():
     impl_test_2D_line_buffer(LineBufferParameters(
         magma_type=Bit,

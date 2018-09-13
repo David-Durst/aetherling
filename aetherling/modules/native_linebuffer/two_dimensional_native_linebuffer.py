@@ -1,5 +1,5 @@
 from aetherling.helpers.nameCleanup import cleanName
-from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import AnyDimensionalLineBuffer
+from aetherling.modules.native_linebuffer.second_any_dimensional_native_linebuffer import AnyDimensionalLineBuffer, DefineAnyDimensionalLineBuffer
 from aetherling.modules.delayed_buffer import DelayedBuffer
 from mantle.common.countermod import SizedCounterModM
 from mantle import DefineCoreirConst
@@ -271,11 +271,13 @@ def DefineTwoDimensionalLineBuffer(
 
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True)
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)+ \
+            ['srout', Out(Array(1, Array(2, Array(4, Array(2, Bit)))))] + \
+            ['valid_counter', Out(Array(2, Bit)), 'valid_max', Out(Array(2, Bit)), 'other_valid', Out(Bit)]
 
         @classmethod
         def definition(cls):
-            lb = AnyDimensionalLineBuffer(
+            lbdef = DefineAnyDimensionalLineBuffer(
                 cirb,
                 pixel_type,
                 [rows_of_pixels_per_clock, pixels_per_row_per_clock],
@@ -284,6 +286,11 @@ def DefineTwoDimensionalLineBuffer(
                 [stride_rows, stride_cols],
                 [origin_rows, origin_cols]
             )
+            lb = lbdef()
+            wire(lb.srout, cls.srout)
+            wire(lb.valid_counter, cls.valid_counter)
+            wire(lb.valid_max, cls.valid_max)
+            wire(lb.other_valid, cls.other_valid)
             wire(cls.I, lb.I)
             if stride_rows <= rows_of_pixels_per_clock:
                 for row_of_windows in range(cls.rows_of_windows_per_clock):
@@ -310,7 +317,9 @@ def DefineTwoDimensionalLineBuffer(
                 zero_const = DefineCoreirConst(1, 0)()
                 wire(lb.valid & (zero_const.O == first_valid_counter.O),
                      first_valid_counter.CE)
-                wire(first_valid_counter.O[0] & bit(cls.CE), db.CE)
+                # need lb.valid or counter as lb.valid will be 1 on first clock where valid
+                # while counter will still be 0
+                wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), db.CE)
 
             wire(cls.CE, lb.CE)
 
