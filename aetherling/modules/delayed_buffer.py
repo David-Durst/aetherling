@@ -5,16 +5,24 @@ from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from aetherling.modules.ram_any_type import DefineRAMAnyType
 from aetherling.modules.mux_any_type import MuxAnyType
+from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from mantle.common.countermod import SizedCounterModM
 
 
 __all__ = ['DefineDelayedBuffer', 'DelayedBuffer']
 
 @cache_definition
-def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int):
+def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int,
+                        initial_emitting_delay: int = 0):
     """
     Generate a buffer that accepts n items, k at a time, emtting them evenly spaced over a total_emitting_period
-     number of clocks.
+     number of clocks. Initial_emitting_delay states to wait that many clocks the first period between getting
+     the first input and emitting the first output. This ensures a delay between inputs and outputs.
+
+     Note: This buffer does not verify the user won't overwrite its contents before they are read if
+     initial_emitting_delay > 0. One could fill up the buffer by having total_emitting_period 4, n = 2, k = 2,
+     initial_emitting_delay 6. Input would be provided on clock 0 and 4. Before the first input is emitted on
+     clock 5, it would be overwitten with the second input.
 
     I: In(Array(k, t)), O: Out(t), WE: In(Bit), CE: In(Enable)
 
@@ -43,7 +51,8 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                             "Note: out_per_clock = max(n // total_emitting_period, 1)"
                             .format(k, out_per_clock, k % out_per_clock))
 
-        name = 'DelayedBuffer_{}t_{}n_{}k_{}emittingPeriod'.format(cleanName(str(t)), n, k, total_emitting_period)
+        name = 'DelayedBuffer_{}t_{}n_{}k_{}emittingPeriod_{}initialDelay'.format(cleanName(str(t)), n, k,
+                                                                                 total_emitting_period, initial_emitting_delay)
         IO = ['I', In(Array(k, t)), 'O', Out(Array(out_per_clock, t)), 'WE', In(Bit),
               'valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
@@ -56,7 +65,13 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             for i in range(k):
                 wire(writing_location_per_bank.O, rams.WADDR[i])
                 wire(cls.WE, rams.WE[i])
-            wire(cls.WE, writing_location_per_bank.CE)
+            wire(cls.WE & bit(cls.CE), writing_location_per_bank.CE)
+
+            if initial_emitting_delay > 0:
+                initial_delay_counter = InitialDelayCounter(initial_emitting_delay)
+                ce_with_delay = bit(cls.CE) & initial_delay_counter.valid
+            else:
+                ce_with_delay = bit(cls.CE)
 
             # the bank ram counter tracks which group of entries in all the banked rams RADDR should be set to
             ticks_per_element = total_emitting_period // (n // cls.out_per_clock)
@@ -66,14 +81,14 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                 current_element_per_banked_ram_counter = DefineCoreirConst(1, 0)()
             elif ticks_per_row_of_elements == 1:
                 current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
-                wire(cls.CE, current_element_per_banked_ram_counter.CE)
+                wire(ce_with_delay, current_element_per_banked_ram_counter.CE)
             else:
                 bank_ram_tick_counter = SizedCounterModM(ticks_per_row_of_elements, has_ce=True)
                 ticks_per_row_of_elements_const = DefineCoreirConst(len(bank_ram_tick_counter.O), ticks_per_row_of_elements - 1)()
 
                 current_element_per_banked_ram_counter = SizedCounterModM(n // k, has_ce=True)
-                wire(cls.CE, bank_ram_tick_counter.CE)
-                wire(bit(cls.CE) & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.O),
+                wire(ce_with_delay, bank_ram_tick_counter.CE)
+                wire(ce_with_delay & (bank_ram_tick_counter.O == ticks_per_row_of_elements_const.O),
                      current_element_per_banked_ram_counter.CE)
 
             for i in range(k):
@@ -89,19 +104,19 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                 ticks_per_mux_counter = DefineCoreirConst(1, 0)()
             else:
                 ticks_per_mux_counter = SizedCounterModM(ticks_per_mux_output, has_ce=True)
+                wire(ce_with_delay, ticks_per_mux_counter.CE)
 
             # this counter completes a cycle once for every mux output
             if outputs_per_row == 1:
                 mux_bank_selector_counter = DefineCoreirConst(1, 0)()
             elif ticks_per_mux_output == 1:
                 mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
-                wire(cls.CE, mux_bank_selector_counter.CE)
+                wire(ce_with_delay, mux_bank_selector_counter.CE)
             else:
                 ticks_per_mux_output_const = DefineCoreirConst(len(ticks_per_mux_counter.O), ticks_per_mux_output - 1)()
 
                 mux_bank_selector_counter = SizedCounterModM(outputs_per_row, has_ce=True)
-                wire(cls.CE, ticks_per_mux_counter.CE)
-                wire(bit(cls.CE) & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
+                wire(ce_with_delay & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
                      mux_bank_selector_counter.CE)
 
             ram_bank_selector = MuxAnyType(cirb, Array(cls.out_per_clock, t), k // cls.out_per_clock)
@@ -109,19 +124,26 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                 wire(rams.RDATA[i], ram_bank_selector.data[i // cls.out_per_clock][i % cls.out_per_clock])
             wire(mux_bank_selector_counter.O, ram_bank_selector.sel)
 
+            # if not delaying,
             # remove latency of RAMs of by emitting first input on first clock immediately
-            first_input_or_rams = MuxAnyType(cirb, Array(cls.out_per_clock, t), 2)
-            wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[1])
-            wire(ram_bank_selector.out, first_input_or_rams.data[0])
+            if initial_emitting_delay == 0:
+                first_input_or_rams = MuxAnyType(cirb, Array(cls.out_per_clock, t), 2)
+                wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[1])
+                wire(ram_bank_selector.out, first_input_or_rams.data[0])
 
-            # emit input directly only on first clock
-            # a counter that tracks the current clock in the total emitting period
-            point_in_emitting_period = SizedCounterModM(total_emitting_period, has_ce=True)
-            zero_const = DefineCoreirConst(len(point_in_emitting_period.O), 0)()
+                # emit input directly only on first clock
+                # a counter that tracks the current clock in the total emitting period
+                point_in_emitting_period = SizedCounterModM(total_emitting_period, has_ce=True)
+                zero_const = DefineCoreirConst(len(point_in_emitting_period.O), 0)()
 
-            wire(point_in_emitting_period.O == zero_const.O, first_input_or_rams.sel[0])
+                # don't delay this if delaying output, as then don't want input, want whatever ram says.
+                wire(cls.CE, point_in_emitting_period.CE)
 
-            wire(first_input_or_rams.out, cls.O)
+                wire(point_in_emitting_period.O == zero_const.O, first_input_or_rams.sel[0])
+
+                wire(first_input_or_rams.out, cls.O)
+            else:
+                wire(ram_bank_selector.out, cls.O)
 
             # valid on first enabled clock where on new output of mux
             zero_const = DefineCoreirConst(len(ticks_per_mux_counter.O), 0)()
@@ -130,5 +152,6 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
     return _DelayedBuffer
 
-def DelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int):
-    return DefineDelayedBuffer(cirb, t, n, k, total_emitting_period)()
+def DelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int,
+                  initial_emitting_delay: int = 0):
+    return DefineDelayedBuffer(cirb, t, n, k, total_emitting_period, initial_emitting_delay)()

@@ -1,7 +1,7 @@
 from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
-from mantle.common.sipo import SIPO
+from mantle.common.sipo import DefineSIPO
 from mantle.common.register import _RegisterName
 from aetherling.modules.hydrate import Dehydrate, Hydrate
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
@@ -27,7 +27,7 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
         def definition(cls):
             type_size_in_bits = cirb.get_type(t).size
             type_to_bits = Dehydrate(cirb, t)
-            sipos = MapParallel(cirb, type_size_in_bits, SIPO(n, init, has_ce, has_reset))
+            sipos = MapParallel(cirb, type_size_in_bits, DefineSIPO(n, init, has_ce, has_reset))
             bits_to_type = MapParallel(cirb, n, Hydrate(cirb, t))
 
             for bit_in_type in range(type_size_in_bits):

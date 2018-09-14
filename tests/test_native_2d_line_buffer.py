@@ -371,9 +371,9 @@ and run it on test data sets."""
             # print("input {}: {}".format(quijibo, sim.get_value(LineBufferDef.I, scope)))
             # print("lb output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].O, scope)))
             # print("lb valid {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].valid, scope)))
-            # if len(LineBufferDef._instances) > 1:
-            #     print("db input {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].I, scope)))
-            #     print("db output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].O, scope)))
+            # # if len(LineBufferDef._instances) > 1:
+            # #     print("db input {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].I, scope)))
+            # #     print("db output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].O, scope)))
             # print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
             # print("\n")
             if sim.get_value(LineBufferDef.valid, scope):
