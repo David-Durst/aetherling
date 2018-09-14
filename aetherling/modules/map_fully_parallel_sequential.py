@@ -54,6 +54,21 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> C
     """
     return DefineMapParallel(cirb, numInputs, op)()
 
+def DefineNativeMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
+    class _Map(Circuit):
+        name = "NativeMapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
+        IO = []
+        for i in range(len(op.IO.Decl) // 2):
+            IO += [op.IO.Decl[i*2], Array(numInputs, op.IO.Decl[i*2+1])]
+        @classmethod
+        def definition(cls):
+            for i in range(numInputs):
+                op_instance = op()
+                for j in range(len(op.IO.Decl) // 2):
+                    port_name = op.IO.Decl[j*2]
+                    wire(getattr(cls, port_name)[i], getattr(op_instance, port_name))
+    return _Map
+
 def DefineMapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
     """
     Map an operation over numInputs inputs over numInputs cycles.

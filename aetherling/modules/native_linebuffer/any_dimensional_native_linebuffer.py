@@ -3,7 +3,7 @@ from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
 from magma.backend.coreir_ import CoreIRBackend
-from aetherling.modules.map_fully_parallel_sequential import DefineMapParallel
+from aetherling.modules.map_fully_parallel_sequential import DefineMapParallel, DefineNativeMapParallel
 from aetherling.modules.sipo_any_type import SIPOAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.delayed_buffer import DelayedBuffer
@@ -347,7 +347,7 @@ def create_parallel_shift_registers(
     # wrapped the deepest
     for pixel_per_clock in pixels_per_clock[::-1]:
         parallelized_shift_registers_list.append(
-            DefineMapParallel(cirb, pixel_per_clock, parallelized_shift_registers_list[-1])
+            DefineNativeMapParallel(cirb, pixel_per_clock, parallelized_shift_registers_list[-1])
         )
 
     parallelized_shift_registers = parallelized_shift_registers_list[-1]()
@@ -411,7 +411,7 @@ def define_n_dimensional_shift_registers(
                         wire(sipos.O[-1], cls.next)
                     else:
                         rowbuffer = DelayedBuffer(cirb, pixel_type, rest_of_row_buffer_size, 1,
-                                                  rest_of_row_buffer_size, rest_of_row_buffer_size - 1)
+                                                  rest_of_row_buffer_size, rest_of_row_buffer_size)
                         wire(sipos.O[-1], rowbuffer.I[0])
                         wire(rowbuffer.O[0], cls.next)
                         valid_term = TermAnyType(cirb, Bit)
