@@ -11,7 +11,7 @@ import math
 
 
 __all__ = ['DefineDelayedBuffer', 'DelayedBuffer']
-DEBUGGING = True
+
 @cache_definition
 def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int,
                         initial_emitting_delay: int = 0):
@@ -55,8 +55,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
         name = 'DelayedBuffer_{}t_{}n_{}k_{}emittingPeriod_{}initialDelay'.format(cleanName(str(t)), n, k,
                                                                                  total_emitting_period, initial_emitting_delay)
         IO = ['I', In(Array(k, t)), 'O', Out(Array(out_per_clock, t)), 'WE', In(Bit),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True) + \
-             (['WADDR', Out(Array(math.ceil(math.log(n // k, 2)), Bit)), 'RADDR', Out(Array(math.ceil(math.log(n // k, 2)), Bit))])
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             rams = MapParallel(cirb, k, DefineRAMAnyType(cirb, t, n // k))
@@ -68,8 +67,6 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                 wire(writing_location_per_bank.O, rams.WADDR[i])
                 wire(cls.WE, rams.WE[i])
             wire(cls.WE & bit(cls.CE), writing_location_per_bank.CE)
-            if DEBUGGING:
-                wire(writing_location_per_bank.O, cls.WADDR)
 
             if initial_emitting_delay > 0:
                 initial_delay_counter = InitialDelayCounter(initial_emitting_delay)
@@ -97,8 +94,6 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
             for i in range(k):
                 wire(current_element_per_banked_ram_counter.O, rams.RADDR[i])
-            if DEBUGGING:
-                wire(current_element_per_banked_ram_counter.O, cls.RADDR)
 
             # the mux bank selector counter tracks which of the banks to read from right now
 

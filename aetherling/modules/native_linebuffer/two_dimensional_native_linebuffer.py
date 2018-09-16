@@ -271,8 +271,7 @@ def DefineTwoDimensionalLineBuffer(
 
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True) + ['sr_out', Out(Array(windows_per_active_clock, Array(window_rows, Array(1, Out(pixel_type)))))] + ['next_collection', Out(Array(windows_per_active_clock, Array(window_rows, Array(1, Out(pixel_type)))))] + \
-             ['RADDR', Out(Array(windows_per_active_clock, Array(window_rows, Array(1, Out(Array(3, Bit))))))] + ['WADDR', Out(Array(windows_per_active_clock, Array(window_rows, Array(1, Out(Array(3, Bit))))))]
+              'valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             lb = AnyDimensionalLineBuffer(
@@ -315,10 +314,6 @@ def DefineTwoDimensionalLineBuffer(
                 wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), db.CE)
 
             wire(cls.CE, lb.CE)
-            wire(lb.sr_out[0], cls.sr_out)
-            wire(lb.next_collection[0], cls.next_collection)
-            wire(lb.WADDR[0],cls.WADDR)
-            wire(lb.RADDR[0], cls.RADDR)
 
     return _LB
 

@@ -257,7 +257,7 @@ def make_bit_generators():
     def rng():
         return stdlib_rng.random() >= 0.5
 
-    return [rng, third_true, every_fifth_false, rng]
+    return [third_true, every_fifth_false, rng]
 
 def make_int_generators(bit_width=8):
     """Create list of bit_width-int generators. The ints are actually
@@ -367,44 +367,40 @@ and run it on test data sets."""
             nonlocal quijibo
             sim.evaluate()
             quijibo += 1
-            test1_scope = Scope(instance=LineBufferDef._instances[0], parent=scope)
-            test2_scope = Scope(instance=LineBufferDef._instances[0]._instances[0], parent=scope)
-            #print("testing test2 {}".format(sim.get_value(LineBufferDef._instances[0]._instances[0].O, test2_scope)))
-            test3_scope = Scope(instance=LineBufferDef._instances[0]._instances[0]._instances[0], parent=test2_scope)
-            test4_scope = Scope(instance=LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0], parent=test3_scope)
-            test5_scope = Scope(instance=LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[0],
-                                parent=test4_scope)
-            test6_scope = Scope(
-                instance=LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[1],
-                parent=test4_scope)
-            first_rb = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[0]._instances[1]
-            delayed_buffer_of_first_shift_register = Scope(
-                instance=first_rb,
-                parent=test5_scope
-            )
-            first_sipo = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[0]._instances[0]
-            sipo_of_first_shift_register = Scope(
-                instance=first_sipo,
-                parent=test5_scope
-            )
-            second_rb = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[1]._instances[1]
-            delayed_buffer_of_second_shift_register = Scope(
-                instance=second_rb,
-                parent=test5_scope
-            )
-            second_sipo = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[1]._instances[0]
-            sipo_of_second_shift_register = Scope(
-                instance=second_sipo,
-                parent=test5_scope
-            )
-            print("step {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid, scope)))
-            print("input {}: {}".format(quijibo, sim.get_value(LineBufferDef.I, scope)))
-            print("real sr outputs {}: {}".format(quijibo, sim.get_value(LineBufferDef.sr_out, scope)))
-            print("real rb outputs {}: {}".format(quijibo, sim.get_value(LineBufferDef.next_collection, scope)))
-            print("real rb WADDR {}: {}".format(quijibo, sim.get_value(LineBufferDef.WADDR, scope)))
-            print("real rb RADDR {}: {}".format(quijibo, sim.get_value(LineBufferDef.RADDR, scope)))
-            print("lb output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].O, scope)))
-            print("lb valid {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].valid, scope)))
+            # test1_scope = Scope(instance=LineBufferDef._instances[0], parent=scope)
+            # test2_scope = Scope(instance=LineBufferDef._instances[0]._instances[0], parent=scope)
+            # #print("testing test2 {}".format(sim.get_value(LineBufferDef._instances[0]._instances[0].O, test2_scope)))
+            # test3_scope = Scope(instance=LineBufferDef._instances[0]._instances[0]._instances[0], parent=test2_scope)
+            # test4_scope = Scope(instance=LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0], parent=test3_scope)
+            # test5_scope = Scope(instance=LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[0],
+            #                     parent=test4_scope)
+            # test6_scope = Scope(
+            #     instance=LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[1],
+            #     parent=test4_scope)
+            # first_rb = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[0]._instances[1]
+            # delayed_buffer_of_first_shift_register = Scope(
+            #     instance=first_rb,
+            #     parent=test5_scope
+            # )
+            # first_sipo = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[0]._instances[0]
+            # sipo_of_first_shift_register = Scope(
+            #     instance=first_sipo,
+            #     parent=test5_scope
+            # )
+            # second_rb = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[1]._instances[1]
+            # delayed_buffer_of_second_shift_register = Scope(
+            #     instance=second_rb,
+            #     parent=test5_scope
+            # )
+            # second_sipo = LineBufferDef._instances[0]._instances[0]._instances[0]._instances[0]._instances[1]._instances[0]
+            # sipo_of_second_shift_register = Scope(
+            #     instance=second_sipo,
+            #     parent=test5_scope
+            # )
+            # print("step {}: {}".format(quijibo, sim.get_value(LineBufferDef.valid, scope)))
+            # print("input {}: {}".format(quijibo, sim.get_value(LineBufferDef.I, scope)))
+            # print("lb output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].O, scope)))
+            # print("lb valid {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[0].valid, scope)))
             # print("first sipo input {}: {}".format(quijibo, sim.get_value(first_sipo.I, sipo_of_first_shift_register)))
             # print("first sipo output {}: {}".format(quijibo, sim.get_value(first_sipo.defn._instances[0].O[2], sipo_of_first_shift_register)))
             # print("first rb input {}: {}".format(quijibo, sim.get_value(first_sipo.defn._instances[1].I[0], delayed_buffer_of_first_shift_register)))
@@ -421,8 +417,8 @@ and run it on test data sets."""
             # # if len(LineBufferDef._instances) > 1:
             # #     print("db input {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].I, scope)))
             # #     print("db output {}: {}".format(quijibo, sim.get_value(LineBufferDef._instances[1].O, scope)))
-            print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
-            print("\n")
+            # print("output {}: {}".format(quijibo, sim.get_value(LineBufferDef.O, scope)))
+            # print("\n")
             if sim.get_value(LineBufferDef.valid, scope):
                 actual.append(
                     [ # Parallel output windows

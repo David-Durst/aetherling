@@ -49,8 +49,7 @@ def DefineAnyDimensionalLineBuffer(
 
         IO = ['I', In(get_nested_type(pixel_type, pixels_per_clock)),
               'O', Out(get_nested_type(pixel_type, windows_per_active_clock + window_widths))] + \
-             ['valid', Out(Bit)] + ClockInterface(has_ce=True) + ['sr_out', Out(get_nested_type(pixel_type, windows_per_active_clock + window_widths[:-1] + [1]))]+ ['next_collection', Out(get_nested_type(pixel_type, windows_per_active_clock + window_widths[:-1] + [1]))] + \
-             ['RADDR', Out(get_nested_type(Array(3, Bit), windows_per_active_clock + window_widths[:-1] + [1]))] + ['WADDR', Out(get_nested_type(Array(3, Bit), windows_per_active_clock + window_widths[:-1] + [1]))]
+             ['valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
 
@@ -177,10 +176,6 @@ def DefineAnyDimensionalLineBuffer(
             needed_2ND_coordinates = get_need_size_for_each_dimension(used_coordinates, 2 * num_dimensions)
             shift_registers = create_parallel_shift_registers(cirb, cls.name, pixel_type,
                                             pixels_per_clock, image_sizes, needed_2ND_coordinates)
-            wire(shift_registers.sr_out, cls.sr_out)
-            wire(shift_registers.next_collection, cls.next_collection)
-            wire(shift_registers.RADDR, cls.RADDR)
-            wire(shift_registers.WADDR, cls.WADDR)
 
 
             def recursively_wire_input(lb_inputs, shift_register_inputs,
@@ -394,8 +389,7 @@ def define_n_dimensional_shift_registers(
 
         IO = ['I', In(pixel_type),
               'O', Out(get_nested_type(pixel_type, needed_2ND_coordinates))] + \
-             (['next', Out(pixel_type)] if not last_in_dimension else []) + ClockInterface(has_ce=True) + ['sr_out', Out(get_nested_type(pixel_type, needed_2ND_coordinates[:-1] + [1]))] + ['next_collection', Out(get_nested_type(pixel_type, needed_2ND_coordinates[:-1] + [1]))] + \
-             ['RADDR', Out(get_nested_type(Array(3, Bit), needed_2ND_coordinates[:-1] + [1]))] + ['WADDR', Out(get_nested_type(Array(3, Bit), needed_2ND_coordinates[:-1] + [1]))]
+             (['next', Out(pixel_type)] if not last_in_dimension else []) + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             head_pixel_per_clock, *tail_pixels_per_clock = pixels_per_clock
@@ -418,7 +412,6 @@ def define_n_dimensional_shift_registers(
                     # feed one element every clock, delayed on output by size of buffer so equivalent to shift register
                     if rest_of_row_buffer_size < 2:
                         wire(sipos.O[-1], cls.next)
-                        wire(sipos.O[-1], cls.next_collection)
                     else:
                         rowbuffer = DelayedBuffer(cirb, pixel_type, rest_of_row_buffer_size, 1,
                                                   rest_of_row_buffer_size, rest_of_row_buffer_size)
@@ -428,15 +421,7 @@ def define_n_dimensional_shift_registers(
                         wire(rowbuffer.valid, valid_term.I)
                         wire(cls.CE, rowbuffer.CE)
                         wire(cls.CE, rowbuffer.WE)
-                        wire(rowbuffer.O[0], cls.next_collection[0])
-                        wire(rowbuffer.RADDR, cls.RADDR[0])
-                        wire(rowbuffer.WADDR, cls.WADDR[0])
-                else:
-                    wire(sipos.O[-1], cls.next_collection[0])
-                    addr_const = DefineCoreirConst(3, 7)()
-                    wire(addr_const.O, cls.RADDR[0])
-                    wire(addr_const.O, cls.WADDR[0])
-                wire(sipos.O[-1], cls.sr_out[0])
+
                 return sipos
 
             else:
@@ -493,10 +478,6 @@ def define_n_dimensional_shift_registers(
 
                 for i in range(len(one_dimensional_lower_shift_registers)):
                     wire(one_dimensional_lower_shift_registers[i].O, cls.O[i])
-                    wire(one_dimensional_lower_shift_registers[i].sr_out, cls.sr_out[i])
-                    wire(one_dimensional_lower_shift_registers[i].next_collection, cls.next_collection[i])
-                    wire(one_dimensional_lower_shift_registers[i].RADDR, cls.RADDR[i])
-                    wire(one_dimensional_lower_shift_registers[i].WADDR, cls.WADDR[i])
                     wire(cls.CE, one_dimensional_lower_shift_registers[i].CE)
 
 
