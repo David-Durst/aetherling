@@ -18,7 +18,7 @@ def DefineInitialDelayCounter(num_clocks_delay: int):
         IO = ['valid', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
-            valid_counter = SizedCounterModM(max(num_clocks_delay, 2), has_ce=True)
+            valid_counter = SizedCounterModM(num_clocks_delay + 1, has_ce=True)
             delay_const = DefineCoreirConst(len(valid_counter.O), num_clocks_delay)()
             wire(enable(bit(cls.CE) & (valid_counter.O < delay_const.O)), valid_counter.CE)
             wire(valid_counter.O == delay_const.O, cls.valid)
