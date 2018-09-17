@@ -16,7 +16,7 @@ from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer impo
 from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import \
     AnyDimensionalLineBuffer
 from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel
-from mantle.common.sipo import DefineSIPO
+from mantle.common.sipo import DefineSIPO, SIPO
 from mantle.common.countermod import SizedCounterModM
 from aetherling.helpers.cli_helper import save_CoreIR_json
 
