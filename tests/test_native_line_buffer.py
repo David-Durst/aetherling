@@ -15,8 +15,8 @@ from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer impo
     OneDimensionalLineBuffer, DefineOneDimensionalLineBuffer
 from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import \
     AnyDimensionalLineBuffer
-from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from mantle.common.sipo import SIPO
+from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel
+from mantle.common.sipo import DefineSIPO
 from mantle.common.countermod import SizedCounterModM
 from aetherling.helpers.cli_helper import save_CoreIR_json
 
@@ -53,7 +53,7 @@ def test_multiple_sipo():
 
     testcircuit = DefineCircuit('multiple_sipo_test', *args)
 
-    map_sipo = MapParallel(cirb, 1, SIPO(4, 0, has_ce=True))
+    map_sipo = MapParallel(cirb, 1, DefineSIPO(4, 0, has_ce=True))
     wire(1, map_sipo.CE[0])
     wire(testcircuit.I, map_sipo.I[0])
     wire(testcircuit.O, map_sipo.O[0])
@@ -78,7 +78,7 @@ def test_double_nested_sipo():
 
     testcircuit = DefineCircuit('multiple_sipo_test', *args)
 
-    map_sipo = MapParallel(cirb, 1, MapParallel(cirb, 1, SIPO(4, 0, has_ce=True)))
+    map_sipo = MapParallel(cirb, 1, DefineMapParallel(cirb, 1, DefineSIPO(4, 0, has_ce=True)))
     wire(1, map_sipo.CE[0][0])
     wire(testcircuit.I, map_sipo.I[0][0])
     wire(testcircuit.O, map_sipo.O)
