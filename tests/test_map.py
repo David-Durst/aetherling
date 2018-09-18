@@ -51,9 +51,9 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock, parallelism)
     OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
                    imgSrc, parallelism)
-    wire(addParallel.I0, bitsToPixelHydrate.out)
-    wire(addParallel.I1, addConstants.out)
-    wire(addParallel.O, pixelToBitsDehydrate.I)
+    wire(addParallel.in0, bitsToPixelHydrate.out)
+    wire(addParallel.in1, addConstants.O)
+    wire(addParallel.out, pixelToBitsDehydrate.I)
     wire(testcircuit.CE, addParallel.CE)
 
     EndCircuit()

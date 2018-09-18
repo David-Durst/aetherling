@@ -69,8 +69,8 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     out: Out(T)
     """
     # note: directionaly reversed for definitions
-    inputs = getInputPorts(opDef.interface)
-    output = getOutputPorts(opDef.interface)
+    inputs = getInputPorts(opDef.IO)
+    output = getOutputPorts(opDef.IO)
     assert len(inputs) == 2 # must have only 2 inputs
     assert len(output) == 1 # must have only 1 output
     assert type(inputs[0][1]) == type(inputs[1][1]) # all inputs and outputs must be same type

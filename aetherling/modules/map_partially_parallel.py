@@ -3,6 +3,7 @@ from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from .partition import Partition
 from ..helpers.nameCleanup import cleanName
+from aetherling.helpers.magma_helpers import getOutputPorts, getInputPorts
 
 @cache_definition
 def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: float,
@@ -28,11 +29,11 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
     class _MapPartiallyParallel(Circuit):
         name = "Map_n{}_p{}_op{}".format(str(numInputs), str(parallelism), cleanName(str(op)))
         # extend each input to length of numInputs, each output to parallelism length
-        inputs = [nameOrPort if type(nameOrPort) == str else Array(numInputs, type(nameOrPort)) for nameOrPort in
-                  op.inputargs()]
-        outputs = [nameOrPort if type(nameOrPort) == str else \
-                       Array(parallelism, type(nameOrPort)) for nameOrPort in
-                   op.outputargs()]
+        # getting output ports for inputs and vice versa since
+        inputs = [nameOrPort if type(nameOrPort) == str else Array(numInputs, nameOrPort)
+                  for nameAndPort in getInputPorts(op.IO) for nameOrPort in nameAndPort]
+        outputs = [nameOrPort if type(nameOrPort) == str else Array(parallelism, nameOrPort)
+                   for nameAndPort in getOutputPorts(op.IO) for nameOrPort in nameAndPort]
         IO = inputs + outputs + ClockInterface(has_ce=has_ce)
 
         @classmethod
