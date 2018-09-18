@@ -28,7 +28,7 @@ def DefineMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind
     I : In(Array(numInputs, T))
     O : Out(Array(numInputs, S))
     """
-    if op.is_instance and op.defn.instances.__contains__(op):
+    if hasattr(op, 'is_instance') and op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
     name = "MapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
     definitionToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "mapParallel", name,

@@ -1,5 +1,5 @@
-from aetherling.modules.hydrate import Hydrate, Dehydrate
-from aetherling.modules.map_fully_parallel_sequential import MapParallel
+from aetherling.modules.hydrate import DefineHydrate, DefineDehydrate
+from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel, DefineNativeMapParallel
 from aetherling.modules.map_partially_parallel import MapPartiallyParallel
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import GetCoreIRModule
@@ -30,18 +30,18 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array(imgData.bandsPerPixel, Array(imgData.bitsPerBand, Bit))
-    bitsToPixelHydrate = MapParallel(cirb, pxPerClock, Hydrate(cirb, pixelType))
+    bitsToPixelHydrate = MapParallel(cirb, pxPerClock, DefineHydrate(cirb, pixelType))
     # do an add constant for each band, for each pixel
-    addConstants = MapParallel(cirb, pxPerClock,
-                               MapParallel(cirb, imgData.bandsPerPixel,
-                                           DefineCoreirConst(imgData.bitsPerBand, addAmount)()))
+    addConstants = DefineNativeMapParallel(cirb, pxPerClock,
+                               DefineNativeMapParallel(cirb, imgData.bandsPerPixel,
+                                           DefineCoreirConst(imgData.bitsPerBand, addAmount)))()
 
     addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
-                                       MapParallel(cirb, imgData.bandsPerPixel,
-                                                   DefineAdd(imgData.bitsPerBand)()),
+                                       DefineMapParallel(cirb, imgData.bandsPerPixel,
+                                                   DefineAdd(imgData.bitsPerBand)),
                                        has_ce=True)
 
-    pixelToBitsDehydrate = MapParallel(cirb, parallelism, Dehydrate(cirb, pixelType))
+    pixelToBitsDehydrate = MapParallel(cirb, parallelism, DefineDehydrate(cirb, pixelType))
 
 
     # Note: input image RAM will send data to hydrate,
