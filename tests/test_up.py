@@ -7,7 +7,7 @@ from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
-from mantle import CounterModM, Decode
+from mantle.common.countermod import CounterModM, Decode
 
 def test_up_parallel():
     width = 5

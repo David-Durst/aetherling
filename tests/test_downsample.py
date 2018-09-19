@@ -1,17 +1,13 @@
 from aetherling.modules.downsample import DownsampleSequential, DownsampleParallel
 from magma.frontend.coreir_ import GetCoreIRModule
-from magma.simulator import PythonSimulator
 from magma import *
 from magma.clock import *
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
-import bit_vector.bit_vector
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
-from magma.simulator.mdb import simulate
-from mantle import CounterModM, Decode
 
 
 def test_downsample_parallel():

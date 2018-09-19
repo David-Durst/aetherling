@@ -21,7 +21,7 @@ def DefineDehydrate(cirb: CoreIRBackend, T: Kind):
         The module also has the following data:
         size: width(T)
     """
-    cirType = cirb.get_type(T, True)
+    cirType = cirb.get_type(T)
     name = "dehydrate_t{}".format(cleanName(str(T)))
     defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
@@ -70,7 +70,7 @@ def DefineHydrate(cirb: CoreIRBackend, T):
         The module also has the following data:
         size: width(T)
     """
-    cirType = cirb.get_type(T, True)
+    cirType = cirb.get_type(T)
     name = "hydrate_t{}".format(cleanName(str(T)))
     defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
