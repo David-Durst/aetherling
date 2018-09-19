@@ -3,6 +3,7 @@ from magma.circuit import DefineCircuitKind
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule
 from ..helpers.nameCleanup import cleanName
+from aetherling.helpers.magma_helpers import *
 
 def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
@@ -24,7 +25,7 @@ def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
-    name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(type(op))))
+    name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "reduceParallel", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
                                                          {"numInputs": numInputs,
@@ -48,7 +49,7 @@ def ReduceSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circui
     """
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
-    name = "ReduceSequentail_n{}_op{}".format(str(numInputs), cleanName(str(type(op))))
+    name = "ReduceSequentail_n{}_op{}".format(str(numInputs), cleanName(str(op)))
     moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "reduceSequential", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
                                                          {"numInputs": numInputs,
@@ -146,24 +147,23 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     out: Out(T)
     """
     # note: directionaly reversed for definitions
-    inputs = list(zip(opDef.interface.outputargs()[::2], opDef.interface.outputargs()[1::2]))
-    output = (opDef.interface.inputargs()[0], opDef.interface.inputargs()[1])
+    inputs = getInputPorts(opDef.IO)
+    output = getOutputPorts(opDef.IO)
     assert len(inputs) == 2 # must have only 2 inputs
-    assert len(opDef.interface.inputargs()) == 2 # must have only 1 name and 1 type in interface list of outputs
+    assert len(output) == 1 # must have only 1 output
     assert type(inputs[0][1]) == type(inputs[1][1]) # all inputs and outputs must be same type
-    assert Out(type(output[1])) == type(inputs[0][1]) # need to do Out instead of in conversion as types reversed here
+    assert type(output[0][1]) == type(inputs[0][1]) # need to do Out instead of in conversion as types reversed here
 
     class _RenamedCircuit(Circuit):
         name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
-        typeOfPorts = type(inputs[0][1])
-        IO = ["in0", In(typeOfPorts), "in1", In(typeOfPorts), "out", Out(typeOfPorts)]
+        IO = ["in0", In(inputs[0][1]), "in1", In(inputs[0][1]), "out", Out(inputs[0][1])]
 
         @classmethod
         def definition(renamedCircuit):
             op = opDef()
             wire(getattr(op, inputs[0][0]), renamedCircuit.in0)
             wire(getattr(op, inputs[1][0]), renamedCircuit.in1)
-            wire(getattr(op, output[0]), renamedCircuit.out)
+            wire(getattr(op, output[0][0]), renamedCircuit.out)
             return renamedCircuit
 
     return _RenamedCircuit

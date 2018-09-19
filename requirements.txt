@@ -3,7 +3,6 @@ astor==0.6.2
 attrs==17.4.0
 Babel==2.5.3
 backports.functools-lru-cache==1.5
-bit-vector==0.3a0
 bitarray==0.8.1
 certifi==2017.11.5
 chardet==3.0.4
@@ -20,6 +19,7 @@ pluggy==0.6.0
 py==1.5.2
 Pygments==2.2.0
 pytest==3.4.2
+pytest-xdist==1.22.5
 pytz==2017.3
 pyverilog==1.1.1
 requests==2.18.4
