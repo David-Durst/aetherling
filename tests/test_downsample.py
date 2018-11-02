@@ -58,7 +58,7 @@ def test_downsample_sequential():
     EndCircuit()
 
     #testModule = GetCoreIRModule(cirb, testcircuit)
-    #cirb.context.run_passes(["rungenerators", "verifyconnectivity-noclkrst"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    #cirb.context.run_passes(["rungenerators", "verifyconnectivity --noclkrst"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     #testModule.save_to_file("downsampleSequential.json")
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,

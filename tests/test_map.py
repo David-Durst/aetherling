@@ -62,7 +62,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     #mod.save_to_file("test_map_partiallyParallel.json")
     #return
 
-    #cirb.context.run_passes(["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst","flattentypes", "flatten"],
+    #cirb.context.run_passes(["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst","flattentypes", "flatten"],
     #                        ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     #mod.save_to_file("test_map_muxnmapped.json")

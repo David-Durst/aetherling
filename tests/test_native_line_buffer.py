@@ -61,8 +61,8 @@ def test_multiple_sipo():
 
 
     mod = GetCoreIRModule(cirb, testcircuit)
-    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst",
-                             "flattentypes", "flatten", "verifyconnectivity-noclkrst", "deletedeadinstances"]:
+    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst",
+                             "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"]:
         print("Running pass {}".format(p))
         c.run_passes([p], namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     # save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
@@ -86,8 +86,8 @@ def test_double_nested_sipo():
 
 
     mod = GetCoreIRModule(cirb, testcircuit)
-    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity-noclkrst",
-                             "flattentypes", "flatten", "verifyconnectivity-noclkrst", "deletedeadinstances"]:
+    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst",
+                             "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"]:
         print("Running pass {}".format(p))
         c.run_passes([p], namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     # save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
