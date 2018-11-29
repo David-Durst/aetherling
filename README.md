@@ -3,7 +3,7 @@
 
 ## Overview
 Aetherling is a library for creating statically scheduled, data-parallel pipelines in hardware. Aetherling will eventually offer two APIs:
-1. Auto-scheduled - The user declares high-level operations like map and reduce. Aetherling maps these to parallel or sequential implementations in hardware compiler transformations that are proven to be optimal.
+1. Auto-scheduled - The user declares high-level operations like map and reduce. Aetherling maps these to parallel or sequential implementations in hardware using compiler transformations that maximize throughput given resource constraints.
 1. Manually-scheduled  - The user creates pipelines using Aetherlings low-level primitives for a hand-crafted, artisanal data pipeline that is parallelized exactly the desired amount.
 
 ## Documentation
