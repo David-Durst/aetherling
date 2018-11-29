@@ -6,6 +6,8 @@ Aetherling is a library for creating statically scheduled, data-parallel pipelin
 1. Auto-scheduled - The user declares high-level operations like map and reduce. Aetherling maps these to parallel or sequential implementations in hardware using compiler transformations that maximize throughput given resource constraints.
 1. Manually-scheduled  - The user creates pipelines using Aetherlings low-level primitives for a hand-crafted, artisanal data pipeline that is parallelized exactly the desired amount.
 
+This repository contains the implementations of the low-level primitives. The [modules folder](https://github.com/David-Durst/aetherling/tree/master/aetherling/modules) contains these implementations.
+
 ## Documentation
 1. Read the [documentation of the stack Aetherling is built on top of](https://github.com/phanrahan/magma/blob/docs/doc/overview.md)
 1. The following document provides a description of how much space on hardware and how much time in clock cycles each operation takes: https://github.com/David-Durst/aetherling/blob/master/applied/spacetime.txt
