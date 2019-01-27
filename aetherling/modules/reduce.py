@@ -83,9 +83,8 @@ def DefineReducePartiallyParallel(
       the ports will be:
       I : In(Array(parallelism, T)
       O : Out(T)
-      WE : In(Bit)
-      C : In(T)
-      V :  Out(Bit)
+      identity : In(T)
+      valid :  Out(Bit)
     """
 
     class _ReducePartiallyParallel(Circuit):
@@ -103,9 +102,8 @@ def DefineReducePartiallyParallel(
 
         IO = ['I', In(Array(parallelism, token_type)),
               'O', Out(token_type),
-              'WE', In(Bit),
-              'C', In(token_type),
-              'V', Out(Bit)] + ClockInterface(False, False)
+              'identity', In(token_type),
+              'valid', Out(Bit)] + ClockInterface(False, False)
 
         @classmethod
         def definition(rpp):
@@ -119,14 +117,14 @@ def DefineReducePartiallyParallel(
 
             # top level input fed to reduce parallel input
             wire(rpp.I, reducePar.I.data)
-            wire(reducePar.I.identity, rpp.C)
+            wire(reducePar.I.identity, rpp.identity)
 
             # reduce parallel output fed to reduce sequential input
             wire(reducePar.out, reduceSeq.I)
 
             # output of reduce sequential fed to top level output
             wire(reduceSeq.out, rpp.O)
-            wire(reduceSeq.valid, rpp.V)
+            wire(reduceSeq.valid, rpp.valid)
 
     return _ReducePartiallyParallel
 
@@ -151,12 +149,12 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     output = getOutputPorts(opDef.IO)
     assert len(inputs) == 2 # must have only 2 inputs
     assert len(output) == 1 # must have only 1 output
-    assert type(inputs[0][1]) == type(inputs[1][1]) # all inputs and outputs must be same type
-    assert type(output[0][1]) == type(inputs[0][1]) # need to do Out instead of in conversion as types reversed here
+    assert inputs[0][1] == inputs[1][1] # all inputs and outputs must be same type
+    assert In(output[0][1]) == inputs[0][1] # need to do Out instead of in conversion as types reversed here
 
     class _RenamedCircuit(Circuit):
         name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
-        IO = ["in0", In(inputs[0][1]), "in1", In(inputs[0][1]), "out", Out(inputs[0][1])]
+        IO = ["in0", In(inputs[0][1]), "in1", In(inputs[1][1]), "out", Out(inputs[0][1])]
 
         @classmethod
         def definition(renamedCircuit):
