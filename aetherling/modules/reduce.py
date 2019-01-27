@@ -99,7 +99,7 @@ def DefineReducePartiallyParallel(
         name = "Reduce_n{}_p{}_op{}".format(str(numInputs), str(parallelism), 
             cleanName(op.name))
         
-        token_type = type(op.in0)
+        token_type = type(renameCircuitForReduce(op).in0)
 
         IO = ['I', In(Array(parallelism, token_type)),
               'O', Out(token_type),
