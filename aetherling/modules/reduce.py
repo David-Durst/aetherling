@@ -1,9 +1,36 @@
 from magma import *
 from magma.circuit import DefineCircuitKind
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule, DefineCircuitFromGeneratorWrapper
 from ..helpers.nameCleanup import cleanName
 from aetherling.helpers.magma_helpers import *
+
+def DefineReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
+    """
+    Reduce multiple numInputs into one in one clock cycle.
+    This uses a reduction tree but can handle numInputs that aren't powers of 2.
+    It does this using the identity element to fill in inputs to the tree that aren't used.
+    Aetherling Type: ({1, T[numInputs]} -> {1, T}, 1)
+
+    :param cirb: The CoreIR backend currently be used
+    :param numInputs: The number of input elements
+    :param op: The operator (the magma circuit) to map over the elements. It should have type T -> T -> T,
+    with input ports in0 and in1.
+    :return: A module with ports:
+    I: In({
+        data: Array(numInputs, T),
+        identity: T
+    })
+    out: Out(T)
+    """
+    if op.is_instance and op.defn.instances.__contains__(op):
+        op.defn.instances.remove(op)
+    name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
+    moduleToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "reduceParallel", name,
+                                                         ["commonlib", "mantle", "coreir", "global"],
+                                                         {"numInputs": numInputs,
+                                                          "operator": GetCoreIRModule(cirb, op)})
+    return moduleToReturn
 
 def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
@@ -32,6 +59,28 @@ def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
                                                           "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
+def DefineReduceSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
+    """
+    Reduce multiple numInputs into one in numInputs clock cycles.
+    Aetherling Type: ({numInputs, T} -> {1, T}, numInputs)
+
+    :param cirb: The CoreIR backend currently be used
+    :param numInputs: The number of input elements
+    :param op: The operator (the magma circuit) to map over the elements. It should have type T -> T -> T,
+    with input ports in0 and in1.
+    :return: A module with ports:
+    I: In(T)
+    out: Out(T)
+    valid: Out(Bit)
+    """
+    if op.is_instance and op.defn.instances.__contains__(op):
+        op.defn.instances.remove(op)
+    name = "ReduceSequentail_n{}_op{}".format(str(numInputs), cleanName(str(op)))
+    moduleToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "reduceSequential", name,
+                                                         ["commonlib", "mantle", "coreir", "global"],
+                                                         {"numInputs": numInputs,
+                                                          "operator": GetCoreIRModule(cirb, op)})
+    return moduleToReturn
 
 def ReduceSequential(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     """
