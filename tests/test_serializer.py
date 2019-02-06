@@ -17,7 +17,7 @@ def test_serializer():
     scope = Scope()
     inType = In(Array(numIn, Array(width, BitIn)))
     outType = Out(Array(width, Bit))
-    args = ['I', inType, 'O', outType, 'ready', Out(Bit)] + ClockInterface(False, False)
+    args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Serializer', *args)
 
@@ -25,6 +25,7 @@ def test_serializer():
     wire(serializer.I, testcircuit.I)
     wire(testcircuit.O, serializer.out)
     wire(testcircuit.ready, serializer.ready)
+    wire(testcircuit.valid, serializer.valid)
 
     EndCircuit()
 
@@ -51,13 +52,14 @@ def test_deserializer():
     scope = Scope()
     inType = In(Array(width, Bit))
     outType = Out(Array(numIn, Array(width, BitIn)))
-    args = ['I', inType, 'O', outType, 'valid', Out(Bit)] + ClockInterface(False, False)
+    args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Deserializer', *args)
 
     deserializer = Deserializer(cirb, inType, numIn)
     wire(deserializer.I, testcircuit.I)
     wire(testcircuit.O, deserializer.out)
+    wire(testcircuit.ready, deserializer.ready)
     wire(testcircuit.valid, deserializer.valid)
 
     EndCircuit()

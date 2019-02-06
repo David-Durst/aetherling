@@ -25,6 +25,7 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
         I : In(Array(N, T))
         out : Out(T)
         ready : Out(Bit)
+        valid : Out(Bit)
         and others depending on has_ arguments
     """
     if N <= 0:
@@ -39,7 +40,8 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
         else:
             count_interface = []
 
-        IO = ["I", In(Array(N, T)), "out", Out(T), "ready", Out(Bit)] + \
+        IO = ["I", In(Array(N, T)), "out", Out(T), "ready", Out(Bit),
+              "valid", Out(Bit)] + \
              ClockInterface(has_ce, has_reset) + count_interface
 
         @classmethod
@@ -61,8 +63,10 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
 
             if has_ce:
                 wire(serializer.CE, coreirSerializer.en)
+                wire(bit(serializer.CE), serializer.valid)
             else:
                 wire(VCC, coreirSerializer.en)
+                wire(1, serializer.valid)
             if has_reset:
                 wire(serializer.RESET, coreirSerializer.reset)
             else:
@@ -91,6 +95,7 @@ def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=Fal
     :return: A module with the following ports:
         I : In(Array(N, T))
         out : Out(T)
+        ready : Out(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
     """
@@ -110,6 +115,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
     :return: A module with the following ports:
         I : In(T)
         out : Out(Array(N, T))
+        ready : Out(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
     """
@@ -119,8 +125,8 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
     class _Deserializer(Circuit):
         name = "serialize_t{}_n{}".format(cleanName(str(T)), str(N))
 
-        IO = ["I", In(T), "out", Out(Array(N, T)), "valid", Out(Bit)] + \
-             ClockInterface(has_ce, has_reset)
+        IO = ["I", In(T), "out", Out(Array(N, T)), "valid", Out(Bit),
+              "ready", Out(Bit)] + ClockInterface(has_ce, has_reset)
 
         @classmethod
         def definition(serializer):
@@ -138,6 +144,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
             wire(coreirDeserializer.out, hydrate.I)
             wire(hydrate.out, serializer.out)
             wire(coreirDeserializer.valid, serializer.valid)
+            wire(serializer.ready, 1)
 
             if has_ce:
                 wire(serializer.CE, coreirDeserializer.en)
@@ -164,6 +171,7 @@ def Deserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=F
     :return: A module with the following ports:
         I : In(T)
         out : Out(Array(N, T))
+        ready : Out(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
     """
