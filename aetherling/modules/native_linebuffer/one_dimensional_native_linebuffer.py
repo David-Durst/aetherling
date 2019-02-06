@@ -124,7 +124,7 @@ def DefineOneDimensionalLineBuffer(
         windows_per_active_clock = max(pixel_per_clock // stride, 1)
         IO = ['I', In(Array(pixel_per_clock, In(pixel_type))),
               'O', Out(Array(windows_per_active_clock, Array(window_width, Out(pixel_type)))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True)
+              'valid', Out(Bit), 'ready', Out(Bit)] + ClockInterface(has_ce=True)
 
         @classmethod
         def definition(cls):
@@ -141,6 +141,7 @@ def DefineOneDimensionalLineBuffer(
             wire(lb.O, cls.O)
             wire(cls.CE, lb.CE)
             wire(lb.valid, cls.valid)
+            wire(cls.ready, 1)
 
     return _LB
 

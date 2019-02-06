@@ -271,7 +271,7 @@ def DefineTwoDimensionalLineBuffer(
 
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
-              'valid', Out(Bit)] + ClockInterface(has_ce=True)
+              'valid', Out(Bit), 'ready', Out(Bit)] + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             lb = AnyDimensionalLineBuffer(
@@ -314,6 +314,7 @@ def DefineTwoDimensionalLineBuffer(
                 wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), db.CE)
 
             wire(cls.CE, lb.CE)
+            wire(cls.ready, 1)
 
     return _LB
 
