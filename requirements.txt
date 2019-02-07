@@ -19,11 +19,8 @@ imagesize==0.7.1
 Jinja2==2.10
 Mako==1.0.7
 MarkupSafe==1.0
-mkl-fft==1.0.10
-mkl-random==1.0.2
 more-itertools==5.0.0
-numpy==1.15.4
-pandas==0.24.1
+numpy==1.14.1
 Pillow==5.0.0
 pluggy==0.8.1
 py==1.7.0
