@@ -1,7 +1,6 @@
 from aetherling.modules.hydrate import Hydrate, Dehydrate
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from magma.backend.coreir_ import CoreIRBackend
-from magma.circuit import definitionCache
 from magma.frontend.coreir_ import GetCoreIRModule
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
