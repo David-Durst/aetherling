@@ -14,7 +14,7 @@ def DefineRegisterAnyType(cirb: CoreIRBackend, t: Kind, init: int = 0,
     """
     Generate register that handles any type.
 
-    I : In(t),  O : Out(Array(n, t))
+    I : In(t),  O : Out(t)
 
     If set:
 

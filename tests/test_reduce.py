@@ -36,7 +36,7 @@ def test_reduce_parallel():
     sim.evaluate()
     assert seq2int(sim.get_value(testcircuit.O, scope)) == sum(range(numIn))
 
-def test_reduce_sequential():
+def test_reduce_sequential_with_ce():
     width = 11
     numIn = 13
     c = coreir.Context()
@@ -44,13 +44,54 @@ def test_reduce_sequential():
     scope = Scope()
     inType = In(Array(width, BitIn))
     outType = Out(Array(width, Bit))
-    args = ['I', inType, 'O', outType, 'valid', Out(Bit)] + ClockInterface(False, False)
+    args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(has_ce=True)
 
-    testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
+    testcircuit = DefineCircuit('Test_Reduce_Sequential_With_CE', *args)
 
-    reduceSeq = ReduceSequential(cirb, numIn, renameCircuitForReduce(DefineAdd(width)))
+    reduceSeq = ReduceSequential(cirb, numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=True)
     wire(reduceSeq.I, testcircuit.I)
     wire(testcircuit.O, reduceSeq.out)
+    wire(testcircuit.ready, reduceSeq.ready)
+    wire(testcircuit.valid, reduceSeq.valid)
+    wire(testcircuit.CE, reduceSeq.CE)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    sim.set_value(testcircuit.CE, 1)
+
+    for i in range(numIn):
+        sim.set_value(testcircuit.I, int2seq(i, width), scope)
+        sim.evaluate()
+        # exit last time of loop without going to next iteration, time to check results then
+        if i < numIn - 1:
+            assert sim.get_value(testcircuit.valid, scope) == False
+            assert sim.get_value(testcircuit.ready, scope) == True
+            sim.advance_cycle()
+            sim.evaluate()
+    assert seq2int(sim.get_value(testcircuit.O, scope)) == sum(range(numIn))
+    assert sim.get_value(testcircuit.valid, scope) == True
+    assert sim.get_value(testcircuit.ready, scope) == True
+
+
+def test_reduce_sequential_without_ce():
+    width = 11
+    numIn = 13
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+    scope = Scope()
+    inType = In(Array(width, BitIn))
+    outType = Out(Array(width, Bit))
+    args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(has_ce=False)
+
+    testcircuit = DefineCircuit('Test_Reduce_Sequential_Without_CE', *args)
+
+    reduceSeq = ReduceSequential(cirb, numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=False)
+    wire(reduceSeq.I, testcircuit.I)
+    wire(testcircuit.O, reduceSeq.out)
+    wire(testcircuit.ready, reduceSeq.ready)
     wire(testcircuit.valid, reduceSeq.valid)
 
     EndCircuit()
@@ -64,11 +105,12 @@ def test_reduce_sequential():
         # exit last time of loop without going to next iteration, time to check results then
         if i < numIn - 1:
             assert sim.get_value(testcircuit.valid, scope) == False
+            assert sim.get_value(testcircuit.ready, scope) == True
             sim.advance_cycle()
             sim.evaluate()
     assert seq2int(sim.get_value(testcircuit.O, scope)) == sum(range(numIn))
     assert sim.get_value(testcircuit.valid, scope) == True
-
+    assert sim.get_value(testcircuit.ready, scope) == True
 
 def test_reduce_partially_parallel():
     width = 11
@@ -79,7 +121,7 @@ def test_reduce_partially_parallel():
     scope = Scope()
     inType = In(Array(width, BitIn))
     outType = Out(Array(width, Bit))
-    args = ['I', Array(parallelism, inType), 'O', outType, 'valid', Out(Bit)] + ClockInterface(False, False)
+    args = ['I', Array(parallelism, inType), 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 
@@ -88,6 +130,7 @@ def test_reduce_partially_parallel():
     wire(testcircuit.O, reduce_op.O)
     coreirConst = DefineCoreirConst(width, 0)()
     wire(reduce_op.identity, coreirConst.O)
+    wire(testcircuit.ready, reduce_op.ready)
     wire(testcircuit.valid, reduce_op.valid)
 
     EndCircuit()
@@ -105,9 +148,11 @@ def test_reduce_partially_parallel():
         # exit last time of loop without going to next iteration, time to check results then
         if i % (numIn // parallelism) == (numIn // parallelism) - 1:
             assert seq2int(sim.get_value(testcircuit.O, scope)) == reduce_result
+            assert sim.get_value(testcircuit.ready, scope) == True
             assert sim.get_value(testcircuit.valid, scope) == True
             reduce_result = 0
         else:
+            assert sim.get_value(testcircuit.ready, scope) == True
             assert sim.get_value(testcircuit.valid, scope) == False
         sim.advance_cycle()
         sim.evaluate()
