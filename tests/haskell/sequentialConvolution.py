@@ -1,5 +1,7 @@
 from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
+from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
+from aetherling.modules.noop import DefineNoop
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
 from coreir.context import *
@@ -47,9 +49,9 @@ wire(magmaInstance7.O, magmaInstance9.I.data[2])
 wire(magmaInstance8.O, magmaInstance9.I.data[3])
 wire(sequentialConvolution.I0, magmaInstance0.I[0][0])
 wire(sequentialConvolution.O0, magmaInstance9.out)
-wire(sequentialConvolution.ready_data_in, sequentialConvolution.ready_data_out)
-wire(sequentialConvolution.valid_data_in & bit(sequentialConvolution.CE), magmaInstance0.CE)
+wire(magmaInstance0.ready, sequentialConvolution.ready_data_in)
 wire(magmaInstance0.valid, sequentialConvolution.valid_data_out)
+wire(sequentialConvolution.valid_data_in & sequentialConvolution.ready_data_out & bit(sequentialConvolution.CE), magmaInstance0.CE)
 ceTerm = TermAnyType(cirb, Enable)
 wire(ceTerm.I, sequentialConvolution.CE)
 EndCircuit()

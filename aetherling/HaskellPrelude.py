@@ -1,6 +1,7 @@
 from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
+from aetherling.modules.noop import DefineNoop
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
 from coreir.context import *

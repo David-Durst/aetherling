@@ -1,5 +1,7 @@
 from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
+from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
+from aetherling.modules.noop import DefineNoop
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
 from coreir.context import *
@@ -159,14 +161,14 @@ magmaInstance98 = DefineReduceParallel(cirb, 4, renameCircuitForReduce(DefineAdd
 magmaInstance99 = DefineReduceParallel(cirb, 4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance100 = DefineReduceParallel(cirb, 4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance93_identityGen = DefineCoreirConst(8, 0)()
-wire(magmaInstance93_identityGen.O, magmaInstance100.I.identity)
-wire(magmaInstance93_identityGen.O, magmaInstance99.I.identity)
-wire(magmaInstance93_identityGen.O, magmaInstance98.I.identity)
-wire(magmaInstance93_identityGen.O, magmaInstance97.I.identity)
-wire(magmaInstance93_identityGen.O, magmaInstance96.I.identity)
-wire(magmaInstance93_identityGen.O, magmaInstance95.I.identity)
-wire(magmaInstance93_identityGen.O, magmaInstance94.I.identity)
 wire(magmaInstance93_identityGen.O, magmaInstance93.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance94.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance95.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance96.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance97.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance98.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance99.I.identity)
+wire(magmaInstance93_identityGen.O, magmaInstance100.I.identity)
 wire(magmaInstance61.O, magmaInstance93.I.data[0])
 wire(magmaInstance62.O, magmaInstance93.I.data[1])
 wire(magmaInstance63.O, magmaInstance93.I.data[2])
@@ -215,9 +217,9 @@ wire(partialParallel8Convolution.O4, magmaInstance97.out)
 wire(partialParallel8Convolution.O5, magmaInstance98.out)
 wire(partialParallel8Convolution.O6, magmaInstance99.out)
 wire(partialParallel8Convolution.O7, magmaInstance100.out)
-wire(partialParallel8Convolution.ready_data_in, partialParallel8Convolution.ready_data_out)
-wire(partialParallel8Convolution.valid_data_in & bit(partialParallel8Convolution.CE), magmaInstance0.CE)
+wire(magmaInstance0.ready, partialParallel8Convolution.ready_data_in)
 wire(magmaInstance0.valid, partialParallel8Convolution.valid_data_out)
+wire(partialParallel8Convolution.valid_data_in & partialParallel8Convolution.ready_data_out & bit(partialParallel8Convolution.CE), magmaInstance0.CE)
 ceTerm = TermAnyType(cirb, Enable)
 wire(ceTerm.I, partialParallel8Convolution.CE)
 EndCircuit()

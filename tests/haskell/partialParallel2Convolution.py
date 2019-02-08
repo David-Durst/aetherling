@@ -1,5 +1,7 @@
 from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
+from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
+from aetherling.modules.noop import DefineNoop
 from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
 from coreir.context import *
@@ -57,8 +59,8 @@ wire(magmaInstance9.O, magmaInstance20.I1)
 magmaInstance21 = DefineReduceParallel(cirb, 4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance22 = DefineReduceParallel(cirb, 4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance21_identityGen = DefineCoreirConst(8, 0)()
-wire(magmaInstance21_identityGen.O, magmaInstance22.I.identity)
 wire(magmaInstance21_identityGen.O, magmaInstance21.I.identity)
+wire(magmaInstance21_identityGen.O, magmaInstance22.I.identity)
 wire(magmaInstance13.O, magmaInstance21.I.data[0])
 wire(magmaInstance14.O, magmaInstance21.I.data[1])
 wire(magmaInstance15.O, magmaInstance21.I.data[2])
@@ -71,9 +73,9 @@ wire(partialParallel2Convolution.I0, magmaInstance0.I[0][0])
 wire(partialParallel2Convolution.I1, magmaInstance0.I[0][1])
 wire(partialParallel2Convolution.O0, magmaInstance21.out)
 wire(partialParallel2Convolution.O1, magmaInstance22.out)
-wire(partialParallel2Convolution.ready_data_in, partialParallel2Convolution.ready_data_out)
-wire(partialParallel2Convolution.valid_data_in & bit(partialParallel2Convolution.CE), magmaInstance0.CE)
+wire(magmaInstance0.ready, partialParallel2Convolution.ready_data_in)
 wire(magmaInstance0.valid, partialParallel2Convolution.valid_data_out)
+wire(partialParallel2Convolution.valid_data_in & partialParallel2Convolution.ready_data_out & bit(partialParallel2Convolution.CE), magmaInstance0.CE)
 ceTerm = TermAnyType(cirb, Enable)
 wire(ceTerm.I, partialParallel2Convolution.CE)
 EndCircuit()
