@@ -249,25 +249,17 @@ def DefineTwoDimensionalLineBuffer(
 
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
+        # A buffer makes sure that windows come out at a constant rate, not more than
+        # one per clock even if the overall rate is not greater than 1
+        windows_per_active_clock = max(
+          (rows_of_pixels_per_clock * pixels_per_row_per_clock) // (stride_rows * stride_cols), 1)
+
+        # buffered cycle is length of time to collect and emit windows to get an
+        # even rate
         windows_per_row_per_clock = max(pixels_per_row_per_clock // stride_cols, 1)
         rows_of_windows_per_clock = max(rows_of_pixels_per_clock // stride_rows, 1)
-        # if stride in y (stride_rows) is greater than parallelism across rows,
-        # then need a buffer, so windows_per_active_clock is for average rate of windows out over time
-        if stride_rows <= rows_of_pixels_per_clock:
-            windows_per_active_clock = windows_per_row_per_clock * rows_of_windows_per_clock
-        else:
-            # average pixels per clock out = (note: if less than 1 window out every clock, then 1 is floor
-            # as will emit 1 sometimes)
-
-            # this division is integer as condition already holds that stride_rows > rows_of_pixels_per_clock
-            # and image_cols must be divisible by parallelism across columns
-
-            time_per_buffered_cycle = ((image_cols * stride_rows) //
-                                       (rows_of_pixels_per_clock * pixels_per_row_per_clock))
-            windows_per_active_clock = max(
-                # input pixels (pixels in first row not dropped) divided by time to complete window
-                (image_cols // stride_cols) // time_per_buffered_cycle, 1
-            )
+        time_per_buffered_cycle = ((image_cols * stride_rows) //
+                                   (rows_of_pixels_per_clock * pixels_per_row_per_clock))
 
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
