@@ -5,12 +5,12 @@ atomicwrites==1.2.1
 attrs==18.2.0
 Babel==2.5.3
 backports.functools-lru-cache==1.5
-bit-vector==0.34a0
+bit-vector==0.42a0
 bitarray==0.8.1
 certifi==2018.11.29
 chardet==3.0.4
 colorlog==3.1.4
-coreir==0.24a0
+coreir==1.0.0
 docutils==0.14
 execnet==1.5.0
 graphviz==0.8.2
