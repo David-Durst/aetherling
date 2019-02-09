@@ -1,4 +1,5 @@
 from aetherling.helpers.nameCleanup import cleanName
+from aetherling.modules.term_any_type import DefineTermAnyType
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.hydrate import DefineDehydrate, Hydrate
@@ -26,18 +27,23 @@ def DefineMuxAnyType(cirb: CoreIRBackend, t: Kind, n: int):
              ]
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t).size
-            mux = CommonlibMuxN(cirb, n, type_size_in_bits)
+            if n > 1:
+                type_size_in_bits = cirb.get_type(t).size
+                mux = CommonlibMuxN(cirb, n, type_size_in_bits)
 
-            type_to_bits = MapParallel(cirb, n, DefineDehydrate(cirb, t))
-            wire(cls.data, type_to_bits.I)
-            wire(type_to_bits.out, mux.I.data)
+                type_to_bits = MapParallel(cirb, n, DefineDehydrate(cirb, t))
+                wire(cls.data, type_to_bits.I)
+                wire(type_to_bits.out, mux.I.data)
 
-            bits_to_type = Hydrate(cirb, t)
-            wire(mux.out, bits_to_type.I)
-            wire(bits_to_type.out, cls.out)
+                bits_to_type = Hydrate(cirb, t)
+                wire(mux.out, bits_to_type.I)
+                wire(bits_to_type.out, cls.out)
 
-            wire(cls.sel, mux.I.sel)
+                wire(cls.sel, mux.I.sel)
+            else:
+                wire(cls.data[0], cls.out)
+                sel_term = DefineTermAnyType(cirb, Bits(cls.addr_width))()
+                wire(cls.sel, sel_term.I)
 
     return _Mux
 
