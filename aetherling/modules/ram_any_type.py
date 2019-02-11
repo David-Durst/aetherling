@@ -23,7 +23,7 @@ def DefineRAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
               'WADDR', In(Bits(addr_width)),
               'WDATA', In(t),
               'WE', In(Bit)
-             ]
+             ] + ClockInterface()
         @classmethod
         def definition(cls):
             type_size_in_bits = cirb.get_type(t).size
