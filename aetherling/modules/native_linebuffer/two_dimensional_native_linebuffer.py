@@ -1,6 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import AnyDimensionalLineBuffer, DefineAnyDimensionalLineBuffer
-from aetherling.modules.delayed_buffer import DelayedBuffer
+from aetherling.modules.delayed_buffer import DelayedBuffer, GetDBDebugInterface
 from mantle.common.countermod import SizedCounterModM
 from mantle import DefineCoreirConst
 from magma import *
@@ -20,7 +20,8 @@ def DefineTwoDimensionalLineBuffer(
         stride_cols: int,
         stride_rows: int,
         origin_cols: int,
-        origin_rows: int) -> Circuit:
+        origin_rows: int,
+        add_debug_interface = False) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
@@ -261,9 +262,15 @@ def DefineTwoDimensionalLineBuffer(
         time_per_buffered_cycle = ((image_cols * stride_rows) //
                                    (rows_of_pixels_per_clock * pixels_per_row_per_clock))
 
+        if add_debug_interface:
+            debug_interface = ['undelayedO', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
+              'dbCE', Out(Bit), 'dbWE', Out(Bit)] + GetDBDebugInterface(cirb,  Array(window_rows, Array(window_cols, pixel_type)), image_cols // stride_cols,
+                                   max(pixels_per_row_per_clock // stride_cols, 1),)
+        else:
+            debug_interface = []
         IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
               'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
-              'valid', Out(Bit), 'ready', Out(Bit)] + ClockInterface(has_ce=True)
+              'valid', Out(Bit), 'ready', Out(Bit)] + debug_interface + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
             lb = AnyDimensionalLineBuffer(
@@ -284,9 +291,14 @@ def DefineTwoDimensionalLineBuffer(
                 wire(cls.valid, lb.valid)
 
             else:
+                if add_debug_interface:
+                    for row_of_windows in range(cls.rows_of_windows_per_clock):
+                        for window_per_row in range(cls.windows_per_row_per_clock):
+                            wire(cls.undelayedO[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
+                                 lb.O[row_of_windows][window_per_row])
                 db = DelayedBuffer(cirb,  Array(window_rows, Array(window_cols, pixel_type)), image_cols // stride_cols,
                                    max(pixels_per_row_per_clock // stride_cols, 1),
-                                   cls.time_per_buffered_cycle)
+                                   cls.time_per_buffered_cycle, add_debug_interface=add_debug_interface)
                 for row_of_windows in range(cls.rows_of_windows_per_clock):
                     for window_per_row in range(cls.windows_per_row_per_clock):
                         wire(db.I[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
@@ -304,6 +316,14 @@ def DefineTwoDimensionalLineBuffer(
                 # need lb.valid or counter as lb.valid will be 1 on first clock where valid
                 # while counter will still be 0
                 wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), db.CE)
+                if add_debug_interface:
+                    wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), cls.dbCE)
+                    wire(lb.valid, cls.dbWE)
+                    wire(db.WDATA, cls.WDATA)
+                    wire(db.RDATA, cls.RDATA)
+                    wire(db.WADDR, cls.WADDR)
+                    wire(db.RADDR, cls.RADDR)
+                    wire(db.RAMWE, cls.RAMWE)
 
             wire(cls.CE, lb.CE)
             wire(cls.ready, 1)
