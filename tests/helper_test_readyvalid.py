@@ -14,6 +14,7 @@ from aetherling.modules.native_linebuffer.one_dimensional_native_linebuffer impo
 from aetherling.modules.delayed_buffer import DefineDelayedBuffer
 from mantle.coreir.memory import DefineRAM, getRAMAddrWidth
 from aetherling.modules.ram_any_type import DefineRAMAnyType
+import fault
 
 def test_2dlb_flicker_ce_with_2x2_stride():
     scope = Scope()
@@ -207,4 +208,30 @@ def test_any_type_ram_flicker_we():
     sim.advance_cycle()
     sim.evaluate()
     print("RDATA: " + str([seq2int(sim.get_value(testcircuit.RDATA, scope)[r]) for r in range(4)]))
+
+def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
+    scope = Scope()
+    c = coreir.Context()
+    cirb = CoreIRBackend(c)
+
+    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
+
+    tester = fault.tester(testcircuit, testcircuit.CLK)
+
+    for i in range(30):
+        if i % 2 == 0:
+            tester.circuit.I[0][0] = int2seq(1, 8)
+            tester.circuit.CE = 1
+        else:
+            tester.circuit.I[0][0] = int2seq(2, 8)
+            tester.circuit.CE = 0
+
+        tester.eval()
+
+        # for some reason, lb going to 0 when flickering valid on and off for ce
+        for r in range(2):
+            for c in range(2):
+                if i >= 21:
+                    tester.circuit.O[0][r][c].expect(1)
+    tester.compile_and_run("coreir")
 
