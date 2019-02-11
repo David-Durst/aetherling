@@ -210,13 +210,12 @@ def test_any_type_ram_flicker_we():
     print("RDATA: " + str([seq2int(sim.get_value(testcircuit.RDATA, scope)[r]) for r in range(4)]))
 
 def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
-    scope = Scope()
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
     testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
-    tester = fault.tester(testcircuit, testcircuit.CLK)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
 
     for i in range(30):
         if i % 2 == 0:
