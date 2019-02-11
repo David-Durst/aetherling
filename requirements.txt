@@ -26,8 +26,6 @@ pluggy==0.8.1
 py==1.7.0
 Pygments==2.2.0
 pytest==4.2.0
-pytest-forked==0.2
-pytest-xdist==1.22.5
 python-dateutil==2.7.5
 pytz==2018.9
 pyverilog==1.1.1
