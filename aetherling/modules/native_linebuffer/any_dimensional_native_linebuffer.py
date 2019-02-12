@@ -280,7 +280,7 @@ def DefineAnyDimensionalLineBuffer(
                     )
 
                     # only increment stride if trying to emit data this clock cycle
-                    wire(valid_counter.O == valid_counter_max_instance.O, stride_counter.CE)
+                    wire((valid_counter.O == valid_counter_max_instance.O) & bit(cls.CE), stride_counter.CE)
 
             wire(enable(stride_counters_valid &
                         (valid_counter.O == valid_counter_max_instance.O)),
