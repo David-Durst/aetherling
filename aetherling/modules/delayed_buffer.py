@@ -2,7 +2,7 @@ from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from mantle import DefineCoreirConst
 from magma.backend.coreir_ import CoreIRBackend
-from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel
+from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel, DefineNativeMapParallel
 from aetherling.modules.ram_any_type import DefineRAMAnyType
 from aetherling.modules.mux_any_type import MuxAnyType
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
@@ -69,19 +69,20 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
               'valid', Out(Bit)] + debug_interface + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
-            rams = MapParallel(cirb, k, DefineRAMAnyType(cirb, t, n // k))
+            rams = DefineNativeMapParallel(cirb, k, DefineRAMAnyType(cirb, t, n // k))()
 
             # each clock WE is set, write to the RAMs and increment the address
             writing_location_per_bank = SizedCounterModM(n // k, has_ce=True)
             wire(cls.I, rams.WDATA)
+            ramEnableWire = cls.WE & bit(cls.CE)
             if add_debug_interface:
                 wire(cls.I, cls.WDATA)
-                wire(cls.WE & bit(cls.CE), cls.RAMWE)
+                wire(ramEnableWire, cls.RAMWE)
             for i in range(k):
                 wire(writing_location_per_bank.O, rams.WADDR[i])
                 if add_debug_interface:
                     wire(writing_location_per_bank.O, cls.WADDR[i])
-                wire(cls.WE & bit(cls.CE), rams.WE[i])
+                wire(ramEnableWire, rams.WE[i])
             wire(cls.WE & bit(cls.CE), writing_location_per_bank.CE)
 
             if initial_emitting_delay > 0:
