@@ -50,7 +50,23 @@ def test_downsample_stencil_1_per_64():
     lb1EverBeenValid = False
     lb2EverBeenValid = False
     successfully_checked_all_valid_outputs = False
-    for row in range(num_rows+3):
+    def print_all_helpers():
+        print("lb0Ready: " + str(sim.get_value(downsampleStencilChain1Per64.lb0Ready, scope)))
+        print("lb0Valid: " + str(sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope)))
+        print("lb0CE: " + str(sim.get_value(downsampleStencilChain1Per64.lb0CE, scope)))
+        print("lb1Ready: " + str(sim.get_value(downsampleStencilChain1Per64.lb1Ready, scope)))
+        print("lb1Valid: " + str(sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope)))
+        print("lb1CE: " + str(sim.get_value(downsampleStencilChain1Per64.lb1CE, scope)))
+        print("lb2Ready: " + str(sim.get_value(downsampleStencilChain1Per64.lb2Ready, scope)))
+        print("lb2Valid: " + str(sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope)))
+        print("lb2CE: " + str(sim.get_value(downsampleStencilChain1Per64.lb2CE, scope)))
+        print("")
+        print("lb0Out: " + str([seq2int(sim.get_value(downsampleStencilChain1Per64.lb0Out[0][r][c], scope)) for r in range(2) for c in range(2)]))
+        print("lb1In: " + str(seq2int(sim.get_value(downsampleStencilChain1Per64.lb1In[0][0], scope))))
+        print("lb1Out: " + str([seq2int(sim.get_value(downsampleStencilChain1Per64.lb1Out[0][r][c], scope)) for r in range(2) for c in range(2)]))
+        print("lb2In: " + str(seq2int(sim.get_value(downsampleStencilChain1Per64.lb2In[0][0], scope))))
+        print("O0: " + str(seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope))))
+    for row in range(num_rows+6):
         for col in range(num_cols):
             # a necessary adjustment as running tests for multiple clocks after inputting full image
             # to get rest of the outputs
@@ -58,65 +74,24 @@ def test_downsample_stencil_1_per_64():
                 sim.set_value(downsampleStencilChain1Per64.I0, int2seq(image_matrix[row][col], int_width))
             sim.evaluate()
             assert sim.get_value(downsampleStencilChain1Per64.ready_data_in, scope) == 1
+            print("starting row {}, col {}".format(row, col))
             if sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope) == 1 and \
                     sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 0 and \
                     sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
                 print("lb 0 is valid, happened {} times before".format(numLb0Valid))
-                print("row {}, col {}".format(row, col))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0CE, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1CE, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2CE, scope))
-                print("")
-                print([seq2int(sim.get_value(downsampleStencilChain1Per64.lb0Out[0][r][c], scope)) for r in range(2) for c in range(2)])
-                print(seq2int(sim.get_value(downsampleStencilChain1Per64.lb1In[0][0], scope)))
-                print([seq2int(sim.get_value(downsampleStencilChain1Per64.lb1Out[0][r][c], scope)) for r in range(2) for c in range(2)])
-                print(seq2int(sim.get_value(downsampleStencilChain1Per64.lb2In[0][0], scope)))
-                print("done printing current 0 is valid")
+                print_all_helpers()
             elif sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 1 and \
                 sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
                 print("lb 1 is valid, happened {} times before".format(numLb1Valid))
-                print("row {}, col {}".format(row, col))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0CE, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1CE, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2CE, scope))
-                print("")
-                print([seq2int(sim.get_value(downsampleStencilChain1Per64.lb0Out[0][r][c], scope)) for r in range(2) for c in range(2)])
-                print(seq2int(sim.get_value(downsampleStencilChain1Per64.lb1In[0][0], scope)))
-                print([seq2int(sim.get_value(downsampleStencilChain1Per64.lb1Out[0][r][c], scope)) for r in range(2) for c in range(2)])
-                print(seq2int(sim.get_value(downsampleStencilChain1Per64.lb2In[0][0], scope)))
+                print_all_helpers()
                 lb1EverBeenValid = True
-                print("done printing current 1 is valid")
             elif sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 1:
                 print("lb 2 is valid, happened {} times before".format(numLb2Valid))
                 print("row {}, col {}".format(row, col))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb0CE, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb1CE, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2Ready, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope))
-                print(sim.get_value(downsampleStencilChain1Per64.lb2CE, scope))
-                print("")
-                print([seq2int(sim.get_value(downsampleStencilChain1Per64.lb0Out[0][r][c], scope)) for r in range(2) for c in range(2)])
-                print(seq2int(sim.get_value(downsampleStencilChain1Per64.lb1In[0][0], scope)))
-                print([seq2int(sim.get_value(downsampleStencilChain1Per64.lb1Out[0][r][c], scope)) for r in range(2) for c in range(2)])
-                print(seq2int(sim.get_value(downsampleStencilChain1Per64.lb2In[0][0], scope)))
+                print_all_helpers()
                 lb2EverBeenValid = True
-                print("done printing current 2 is valid")
+            else:
+                print_all_helpers()
             #elif lb1EverBeenValid is False and row > 3:
             #    print("lb1 not going valid at right time")
             #elif lb2EverBeenValid is False and row > 7:
@@ -131,6 +106,8 @@ def test_downsample_stencil_1_per_64():
                 if cur_row_to_check in valid_out_rows and cur_col_to_check in valid_out_cols:
                     if seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope)) != thirdResults[cur_row_to_check][cur_col_to_check]:
                         print(cur_col_to_check)
+                    print("Overall row and col : ({}, {})".format(row, col))
+                    print("Current output row and col : ({}, {})".format(cur_row_to_check, cur_col_to_check))
                     assert seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope)) == thirdResults[cur_row_to_check][cur_col_to_check]
                 if not cur_row_to_check in valid_out_rows and not cur_col_to_check in valid_out_cols:
                     successfully_checked_all_valid_outputs = True
@@ -141,6 +118,8 @@ def test_downsample_stencil_1_per_64():
                     cur_row_to_check += 1
                     cur_row_to_check = cur_row_to_check % num_rows
             sim.advance_cycle()
+            print("done row {}, col {}".format(row, col))
+            print("")
         if successfully_checked_all_valid_outputs:
             break
     assert successfully_checked_all_valid_outputs
