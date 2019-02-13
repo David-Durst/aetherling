@@ -1,6 +1,7 @@
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import AnyDimensionalLineBuffer, DefineAnyDimensionalLineBuffer
 from aetherling.modules.delayed_buffer import DelayedBuffer, GetDBDebugInterface
+from aetherling.modules.register_any_type import DefineRegisterAnyType
 from mantle.common.countermod import SizedCounterModM
 from mantle import DefineCoreirConst
 from magma import *
@@ -313,11 +314,17 @@ def DefineTwoDimensionalLineBuffer(
                 zero_const = DefineCoreirConst(1, 0)()
                 wire(lb.valid & (zero_const.O == first_valid_counter.O),
                      first_valid_counter.CE)
+                # delay the CE of the delayed buffer as the LB output will hit the
+                # DB one later, so give the DB that CE
+                # this ensure sthat when using CE for a ready-valid chain, don't have to wait until
+                delayed_ce_for_db_valid = DefineRegisterAnyType(cirb, Bit)()
+                wire(bit(cls.CE), delayed_ce_for_db_valid.I)
+                #ce_or_last_valid = bit(cls.CE) | (lb.valid & ~last_clock_lb_valid.O)
                 # need lb.valid or counter as lb.valid will be 1 on first clock where valid
                 # while counter will still be 0
-                wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), db.CE)
+                wire((lb.valid | first_valid_counter.O[0]) & delayed_ce_for_db_valid.O, db.CE)
                 if add_debug_interface:
-                    wire((lb.valid | first_valid_counter.O[0]) & bit(cls.CE), cls.dbCE)
+                    wire((lb.valid | first_valid_counter.O[0]) & delayed_ce_for_db_valid.O, cls.dbCE)
                     wire(lb.valid, cls.dbWE)
                     wire(db.WDATA, cls.WDATA)
                     wire(db.RDATA, cls.RDATA)
