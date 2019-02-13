@@ -31,6 +31,9 @@ thirdResults = [[do_convolution_at_point(row,col, secondResults) for col in vali
 valid_out_rows = [x for x in range(len(thirdResults))]
 valid_out_cols = [x for x in range(len(thirdResults[0]))]
 
+num_valid_out_rows = len(valid_out_rows)
+num_valid_out_cols = len(valid_out_rows)
+
 def test_downsample_stencil_1_per_64():
     from .downsampleStencilChain1Per64 import cirb as downsampleStencilChain1Per64Cirb, downsampleStencilChain1Per64
     scope = Scope()
@@ -109,14 +112,14 @@ def test_downsample_stencil_1_per_64():
                     print("Overall row and col : ({}, {})".format(row, col))
                     print("Current output row and col : ({}, {})".format(cur_row_to_check, cur_col_to_check))
                     assert seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope)) == thirdResults[cur_row_to_check][cur_col_to_check]
-                if not cur_row_to_check in valid_out_rows and not cur_col_to_check in valid_out_cols:
-                    successfully_checked_all_valid_outputs = True
-                    break
                 cur_col_to_check += 1
-                cur_col_to_check = cur_col_to_check % num_cols
+                cur_col_to_check = cur_col_to_check % num_valid_out_cols
                 if cur_col_to_check == 0:
                     cur_row_to_check += 1
-                    cur_row_to_check = cur_row_to_check % num_rows
+                    cur_row_to_check = cur_row_to_check
+                if not cur_row_to_check in valid_out_rows:
+                    successfully_checked_all_valid_outputs = True
+                    break
             sim.advance_cycle()
             print("done row {}, col {}".format(row, col))
             print("")
