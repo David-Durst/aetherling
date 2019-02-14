@@ -13,10 +13,14 @@ def test_parallel_simple_add():
     sim = CoreIRSimulator(parallelSimpleAdd, parallelSimpleAdd.CLK, context=parallelSimpleAddCirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
+    sim.set_value(parallelSimpleAdd.I0, int2seq(1, 8))
+    sim.set_value(parallelSimpleAdd.I1, int2seq(2, 8))
+    sim.set_value(parallelSimpleAdd.I2, int2seq(3, 8))
+    sim.set_value(parallelSimpleAdd.I3, int2seq(4, 8))
     sim.evaluate()
-    assert seq2int(sim.get_value(parallelSimpleAdd.O0)) == 5
-    assert seq2int(sim.get_value(parallelSimpleAdd.O1)) == 5
-    assert seq2int(sim.get_value(parallelSimpleAdd.O2)) == 5
+    assert seq2int(sim.get_value(parallelSimpleAdd.O0)) == 2
+    assert seq2int(sim.get_value(parallelSimpleAdd.O1)) == 3
+    assert seq2int(sim.get_value(parallelSimpleAdd.O2)) == 4
     assert seq2int(sim.get_value(parallelSimpleAdd.O3)) == 5
 
 def test_partial_parallel_simple_add():
@@ -24,8 +28,10 @@ def test_partial_parallel_simple_add():
     sim = CoreIRSimulator(partialParallelSimpleAdd, partialParallelSimpleAdd.CLK, context=partialParallelSimpleAddCirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
+    sim.set_value(partialParallelSimpleAdd.I0, int2seq(3, 8))
+    sim.set_value(partialParallelSimpleAdd.I1, int2seq(4, 8))
     sim.evaluate()
-    assert seq2int(sim.get_value(partialParallelSimpleAdd.O0)) == 5
+    assert seq2int(sim.get_value(partialParallelSimpleAdd.O0)) == 4
     assert seq2int(sim.get_value(partialParallelSimpleAdd.O1)) == 5
 
 def test_sequential_simple_add():
@@ -33,5 +39,6 @@ def test_sequential_simple_add():
     sim = CoreIRSimulator(sequentialSimpleAdd, sequentialSimpleAdd.CLK, context=sequentialSimpleAddCirb.context,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
+    sim.set_value(sequentialSimpleAdd.I0, int2seq(9, 8))
     sim.evaluate()
-    assert seq2int(sim.get_value(sequentialSimpleAdd.O0)) == 5
+    assert seq2int(sim.get_value(sequentialSimpleAdd.O0)) == 10
