@@ -82,19 +82,19 @@ def test_downsample_stencil_1_per_64():
                     sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 0 and \
                     sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
                 print("lb 0 is valid, happened {} times before".format(numLb0Valid))
-                print_all_helpers()
+                #print_all_helpers()
             elif sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 1 and \
                 sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
                 print("lb 1 is valid, happened {} times before".format(numLb1Valid))
-                print_all_helpers()
+                #print_all_helpers()
                 lb1EverBeenValid = True
             elif sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 1:
                 print("lb 2 is valid, happened {} times before".format(numLb2Valid))
                 print("row {}, col {}".format(row, col))
-                print_all_helpers()
+                #print_all_helpers()
                 lb2EverBeenValid = True
-            else:
-                print_all_helpers()
+            #else:
+            #    print_all_helpers()
             #elif lb1EverBeenValid is False and row > 3:
             #    print("lb1 not going valid at right time")
             #elif lb2EverBeenValid is False and row > 7:
@@ -143,7 +143,7 @@ def test_downsample_stencil_1_per_32():
     cur_col_to_check = 0
     successfully_checked_all_valid_outputs = False
     for row in range(num_rows+6):
-        for col in range(num_cols):
+        for col in range(0,num_cols,2):
             # a necessary adjustment as running tests for multiple clocks after inputting full image
             # to get rest of the outputs
             if row < num_rows:
@@ -157,8 +157,7 @@ def test_downsample_stencil_1_per_32():
                         print(cur_col_to_check)
                     print("Overall row and col : ({}, {})".format(row, col))
                     assert seq2int(sim.get_value(downsampleStencilChain1Per32.O0, scope)) == thirdResults[cur_row_to_check][cur_col_to_check]
-                    assert seq2int(sim.get_value(downsampleStencilChain1Per32.O1, scope)) == thirdResults[cur_row_to_check][cur_col_to_check+1]
-                cur_col_to_check += 2
+                cur_col_to_check += 1
                 cur_col_to_check = cur_col_to_check % num_valid_out_cols
                 if cur_col_to_check == 0:
                     cur_row_to_check += 1
