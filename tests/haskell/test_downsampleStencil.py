@@ -126,3 +126,47 @@ def test_downsample_stencil_1_per_64():
         if successfully_checked_all_valid_outputs:
             break
     assert successfully_checked_all_valid_outputs
+
+
+def test_downsample_stencil_1_per_32():
+    from .downsampleStencilChain1Per32 import cirb as downsampleStencilChain1Per32Cirb, downsampleStencilChain1Per32
+    scope = Scope()
+    sim = CoreIRSimulator(downsampleStencilChain1Per32, downsampleStencilChain1Per32.CLK, context=downsampleStencilChain1Per32Cirb.context,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    sim.set_value(downsampleStencilChain1Per32.valid_data_in, 1, scope)
+    sim.set_value(downsampleStencilChain1Per32.ready_data_out, 1, scope)
+    sim.set_value(downsampleStencilChain1Per32.CE, 1, scope)
+
+    # these check the outputs, as there is a delay between feeding inputs in and getting the results back
+    cur_row_to_check = 0
+    cur_col_to_check = 0
+    successfully_checked_all_valid_outputs = False
+    for row in range(num_rows+6):
+        for col in range(num_cols):
+            # a necessary adjustment as running tests for multiple clocks after inputting full image
+            # to get rest of the outputs
+            if row < num_rows:
+                sim.set_value(downsampleStencilChain1Per32.I0, int2seq(image_matrix[row][col], int_width))
+                sim.set_value(downsampleStencilChain1Per32.I1, int2seq(image_matrix[row][col+1], int_width))
+            sim.evaluate()
+            assert sim.get_value(downsampleStencilChain1Per32.ready_data_in, scope) == 1
+            if sim.get_value(downsampleStencilChain1Per32.valid_data_out, scope) == 1:
+                if cur_row_to_check in valid_out_rows and cur_col_to_check in valid_out_cols:
+                    if seq2int(sim.get_value(downsampleStencilChain1Per32.O0, scope)) != thirdResults[cur_row_to_check][cur_col_to_check]:
+                        print(cur_col_to_check)
+                    print("Overall row and col : ({}, {})".format(row, col))
+                    assert seq2int(sim.get_value(downsampleStencilChain1Per32.O0, scope)) == thirdResults[cur_row_to_check][cur_col_to_check]
+                    assert seq2int(sim.get_value(downsampleStencilChain1Per32.O1, scope)) == thirdResults[cur_row_to_check][cur_col_to_check+1]
+                cur_col_to_check += 2
+                cur_col_to_check = cur_col_to_check % num_valid_out_cols
+                if cur_col_to_check == 0:
+                    cur_row_to_check += 1
+                    cur_row_to_check = cur_row_to_check
+                if not cur_row_to_check in valid_out_rows:
+                    successfully_checked_all_valid_outputs = True
+                    break
+            sim.advance_cycle()
+        if successfully_checked_all_valid_outputs:
+            break
+    assert successfully_checked_all_valid_outputs
