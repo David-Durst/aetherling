@@ -78,33 +78,34 @@ def test_downsample_stencil_1_per_64():
             sim.evaluate()
             assert sim.get_value(downsampleStencilChain1Per64.ready_data_in, scope) == 1
             print("starting row {}, col {}".format(row, col))
-            if sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope) == 1 and \
-                    sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 0 and \
+            if False:
+                if sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope) == 1 and \
+                        sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 0 and \
+                        sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
+                    print("lb 0 is valid, happened {} times before".format(numLb0Valid))
+                    #print_all_helpers()
+                elif sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 1 and \
                     sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
-                print("lb 0 is valid, happened {} times before".format(numLb0Valid))
-                #print_all_helpers()
-            elif sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 1 and \
-                sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 0:
-                print("lb 1 is valid, happened {} times before".format(numLb1Valid))
-                #print_all_helpers()
-                lb1EverBeenValid = True
-            elif sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 1:
-                print("lb 2 is valid, happened {} times before".format(numLb2Valid))
-                print("row {}, col {}".format(row, col))
-                #print_all_helpers()
-                lb2EverBeenValid = True
+                    print("lb 1 is valid, happened {} times before".format(numLb1Valid))
+                    #print_all_helpers()
+                    lb1EverBeenValid = True
+                elif sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 1:
+                    print("lb 2 is valid, happened {} times before".format(numLb2Valid))
+                    print("row {}, col {}".format(row, col))
+                    #print_all_helpers()
+                    lb2EverBeenValid = True
             #else:
             #    print_all_helpers()
             #elif lb1EverBeenValid is False and row > 3:
             #    print("lb1 not going valid at right time")
             #elif lb2EverBeenValid is False and row > 7:
             #    print("lb2 not going valid at right time")
-            if sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope) == 1:
-                numLb0Valid += 1
-            if sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 1:
-                numLb1Valid += 1
-            if sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 1:
-                numLb2Valid += 1
+                if sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope) == 1:
+                    numLb0Valid += 1
+                if sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 1:
+                    numLb1Valid += 1
+                if sim.get_value(downsampleStencilChain1Per64.lb2Valid, scope) == 1:
+                    numLb2Valid += 1
             if sim.get_value(downsampleStencilChain1Per64.valid_data_out, scope) == 1:
                 if cur_row_to_check in valid_out_rows and cur_col_to_check in valid_out_cols:
                     if seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope)) != thirdResults[cur_row_to_check][cur_col_to_check]:
