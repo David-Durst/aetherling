@@ -77,7 +77,7 @@ def test_downsample_stencil_1_per_64():
                 sim.set_value(downsampleStencilChain1Per64.I0, int2seq(image_matrix[row][col], int_width))
             sim.evaluate()
             assert sim.get_value(downsampleStencilChain1Per64.ready_data_in, scope) == 1
-            print("starting row {}, col {}".format(row, col))
+            #print("starting row {}, col {}".format(row, col))
             if False:
                 if sim.get_value(downsampleStencilChain1Per64.lb0Valid, scope) == 1 and \
                         sim.get_value(downsampleStencilChain1Per64.lb1Valid, scope) == 0 and \
@@ -110,8 +110,8 @@ def test_downsample_stencil_1_per_64():
                 if cur_row_to_check in valid_out_rows and cur_col_to_check in valid_out_cols:
                     if seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope)) != thirdResults[cur_row_to_check][cur_col_to_check]:
                         print(cur_col_to_check)
-                    print("Overall row and col : ({}, {})".format(row, col))
-                    print("Current output row and col : ({}, {})".format(cur_row_to_check, cur_col_to_check))
+                    #print("Overall row and col : ({}, {})".format(row, col))
+                    #print("Current output row and col : ({}, {})".format(cur_row_to_check, cur_col_to_check))
                     assert seq2int(sim.get_value(downsampleStencilChain1Per64.O0, scope)) == thirdResults[cur_row_to_check][cur_col_to_check]
                 cur_col_to_check += 1
                 cur_col_to_check = cur_col_to_check % num_valid_out_cols
@@ -122,8 +122,8 @@ def test_downsample_stencil_1_per_64():
                     successfully_checked_all_valid_outputs = True
                     break
             sim.advance_cycle()
-            print("done row {}, col {}".format(row, col))
-            print("")
+            #print("done row {}, col {}".format(row, col))
+            #print("")
         if successfully_checked_all_valid_outputs:
             break
     assert successfully_checked_all_valid_outputs
