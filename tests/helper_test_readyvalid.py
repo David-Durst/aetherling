@@ -231,11 +231,11 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
 
     for i in range(30):
         if i % 2 == 0:
-            tester.circuit.I[0][0] = int2seq(1, 8)
-            tester.circuit.CE = 1
+            tester.poke(testcircuit.I[0][0], 1)
+            tester.poke(testcircuit.CE, 1)
         else:
-            tester.circuit.I[0][0] = int2seq(2, 8)
-            tester.circuit.CE = 0
+            tester.poke(testcircuit.I[0][0], 2)
+            tester.poke(testcircuit.CE, 0)
 
         tester.eval()
 
@@ -243,8 +243,9 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
         for r in range(2):
             for c in range(2):
                 if i >= 21:
-                    tester.circuit.O[0][r][c].expect(1)
-    tester.compile_and_run("coreir")
+                    tester.expect(testcircuit.O[0][r][c], 1)
+                    # tester.circuit.O[0][r][c].expect(1)
+    tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
 
 
 def test_2dlb_flicker_ce_with_2x2_stride_ross_clock_instructions():
