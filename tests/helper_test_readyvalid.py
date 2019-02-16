@@ -244,14 +244,77 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
         tester.step(2)
         tester.eval()
 
+        print_start_clock(tester, testcircuit.valid)
+        print_nd_bit_array_port(tester, testcircuit.valid, testcircuit.valid, name="valid")
+        print_nd_int_array_port(tester, testcircuit.O, testcircuit.valid, name="O")
+        print_end_clock(tester, testcircuit.valid)
+        #tester.print(testcircuit.O, f"{i}: %x \\n")
+        # tester.print(testcircuit.I, f"{start_string} {i} Input:  %x\\n")
         # for some reason, lb going to 0 when flickering valid on and off for ce
         for r in range(2):
             for c in range(2):
-                if i >= 21:
-                    tester.expect(testcircuit.O[0][r][c], 1)
-                    tester.print(testcircuit._instances[0].I, f"i={i} Input:  %x")
-                    # tester.circuit.O[0][r][c].expect(1)
+                if r == 0 and c == 0:
+                    inner_start_string = "[["
+                    inner_end_string = ", "
+                elif c == 0:
+                    inner_start_string = "["
+                    inner_end_string = ", "
+                elif r == 1 and c == 1:
+                    inner_start_string = ""
+                    inner_end_string = "]], "
+                elif c == 1:
+                    inner_start_string = ""
+                    inner_end_string = "], "
+                #tester.print(testcircuit.O[0][r][c], f"{inner_start_string}%x{inner_end_string}")
+                #tester.expect(testcircuit.O[0][r][c], 1)
+                # tester.circuit.O[0][r][c].expect(1)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
+    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+        results = eval("[" + file.read() + "]")
+        print(len(results))
+        print(results[0])
+
+def print_start_clock(tester, ignored):
+    tester.print(ignored, "{")
+
+def print_end_clock(tester, ignored):
+    tester.print(ignored, "}, ")
+
+def print_nd_bit_array_port(tester, port, ignored, name = None):
+    """
+    Iterate an n-dimensional array and print its contents using my custom fault
+    :param tester: the tester to print on
+    :param port: the port to print
+    """
+    if name is not None:
+        tester.print(ignored, f'\\"{name}\\": ')
+    if hasattr(port, "N"):
+        for i in range(len(port)):
+            if i == 0:
+                tester.print(ignored, "[")
+            print_nd_bit_array_port(tester, port[i], ignored)
+            if i == len(port) - 1:
+                tester.print(ignored, "], ")
+    else:
+        tester.print(port, f"%x, ")
+
+def print_nd_int_array_port(tester, port, ignored, name = None):
+    """
+    Iterate an n-dimensional array and print its contents using my custom fault
+    :param tester: the tester to print on
+    :param port: the port to print
+    """
+    if name is not None:
+        tester.print(ignored, f'\\"{name}\\": ')
+    if hasattr(port[0], "N"):
+        for i in range(len(port)):
+            if i == 0:
+                tester.print(ignored, "[")
+            print_nd_int_array_port(tester, port[i], ignored)
+            if i == len(port) - 1:
+                tester.print(ignored, "], ")
+    else:
+        tester.print(port, f"%x, ")
 
 
 def test_2dlb_flicker_ce_with_2x2_stride_ross_clock_instructions():
