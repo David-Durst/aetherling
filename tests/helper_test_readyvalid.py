@@ -227,6 +227,9 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
 
     testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+                  passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
     for i in range(30):
