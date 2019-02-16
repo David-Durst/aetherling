@@ -241,12 +241,15 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
             tester.poke(testcircuit.CE, 0)
 
         tester.eval()
+        tester.step(2)
+        tester.eval()
 
         # for some reason, lb going to 0 when flickering valid on and off for ce
         for r in range(2):
             for c in range(2):
                 if i >= 21:
                     tester.expect(testcircuit.O[0][r][c], 1)
+                    tester.print(testcircuit._instances[0].I, f"i={i} Input:  %x")
                     # tester.circuit.O[0][r][c].expect(1)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
 
