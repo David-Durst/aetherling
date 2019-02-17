@@ -29,50 +29,7 @@ def do_convolution_at_point(row, col):
 results = [[do_convolution_at_point(row,col) for col in valid_cols] for row in valid_rows]
 flattenedResults = [element for sublist in results for element in sublist]
 
-def test_sequential_convolution():
-    from .sequentialConvolution import cirb as sequentialConvolutionCirb, sequentialConvolution
-    scope = Scope()
-    sim = CoreIRSimulator(sequentialConvolution, sequentialConvolution.CLK, context=sequentialConvolutionCirb.context,
-                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-
-    sim.set_value(sequentialConvolution.valid_data_in, 1, scope)
-    sim.set_value(sequentialConvolution.ready_data_out, 1, scope)
-    sim.set_value(sequentialConvolution.CE, 1, scope)
-
-    # these check the outputs, as there is a delay between feeding inputs in and getting the results back
-    cur_row_to_check = 0
-    cur_col_to_check = 0
-    successfully_checked_all_valid_outputs = False
-    for row in range(num_rows+3):
-        for col in range(num_cols):
-            # a necessary adjustment as running tests for multiple clocks after inputting full image
-            # to get rest of the outputs
-            if row < num_rows:
-                sim.set_value(sequentialConvolution.I0, int2seq(image_matrix[row][col], int_width))
-            sim.evaluate()
-            assert sim.get_value(sequentialConvolution.ready_data_in, scope) == 1
-            if sim.get_value(sequentialConvolution.valid_data_out, scope) == 1:
-                if cur_row_to_check in valid_rows and cur_col_to_check in valid_cols:
-                    if seq2int(sim.get_value(sequentialConvolution.O0, scope)) != results[cur_row_to_check][cur_col_to_check]:
-                        print(cur_col_to_check)
-                    assert seq2int(sim.get_value(sequentialConvolution.O0, scope)) == results[cur_row_to_check][cur_col_to_check]
-                if not cur_row_to_check in valid_rows and not cur_col_to_check in valid_cols:
-                    successfully_checked_all_valid_outputs = True
-                    break
-                cur_col_to_check += 1
-                cur_col_to_check = cur_col_to_check % num_cols
-                if cur_col_to_check == 0:
-                    cur_row_to_check += 1
-                    cur_row_to_check = cur_row_to_check % num_rows
-            sim.advance_cycle()
-        if successfully_checked_all_valid_outputs:
-            break
-    assert successfully_checked_all_valid_outputs
-
-def test_convolution_32x32Im_2x2Win_1px_in_per_clk():
-    from .convolution_32x32Im_2x2Win_1px_in_per_clk import c, convolution_32x32Im_2x2Win_1px_in_per_clk as testcircuit
-    parallelism = 1
-
+def run_conv_test(testcircuit, c, parallelism):
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
@@ -96,7 +53,8 @@ def test_convolution_32x32Im_2x2Win_1px_in_per_clk():
             tester.eval()
             print_start_clock(tester, testcircuit.O0)
             print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
+            for i in range(parallelism):
+                print_nd_int_array_port(tester, getattr(testcircuit, "O" + str(i)), testcircuit.O0, "O" + str(i))
             print_end_clock(tester, testcircuit.O0)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
@@ -105,13 +63,30 @@ def test_convolution_32x32Im_2x2Win_1px_in_per_clk():
         current_output = 0
         for clk_result in results:
             if clk_result['valid'] == 1:
-                current_output_row = current_output % num_rows
-                current_output_column = current_output // num_rows
-                current_output += 1
-                if current_output_row in valid_rows and current_output_column in valid_cols:
-                    for i in range(parallelism):
+                current_output_row = current_output // num_rows
+                current_output_column = current_output % num_rows
+                for i in range(parallelism):
+                    if current_output_row in valid_rows and current_output_column + i in valid_cols:
                         filtered_results.append(clk_result["O" + str(i)])
+                current_output += parallelism
         if len(filtered_results) >= len(flattenedResults):
             assert filtered_results[0:len(flattenedResults)] == flattenedResults
         else:
             assert filtered_results == flattenedResults
+
+def test_convolution_32x32Im_2x2Win_1px_in_per_clk():
+    from .convolution_32x32Im_2x2Win_1px_in_per_clk import c, convolution_32x32Im_2x2Win_1px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, c, 1)
+
+def test_convolution_32x32Im_2x2Win_2px_in_per_clk():
+    from .convolution_32x32Im_2x2Win_2px_in_per_clk import c, convolution_32x32Im_2x2Win_2px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, c, 2)
+
+def test_convolution_32x32Im_2x2Win_4px_in_per_clk():
+    from .convolution_32x32Im_2x2Win_4px_in_per_clk import c, convolution_32x32Im_2x2Win_4px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, c, 4)
+
+def test_convolution_32x32Im_2x2Win_8px_in_per_clk():
+    from .convolution_32x32Im_2x2Win_8px_in_per_clk import c, convolution_32x32Im_2x2Win_8px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, c, 8)
+
