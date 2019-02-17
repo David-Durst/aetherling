@@ -41,7 +41,9 @@ valid_out_cols = [x for x in range(len(thirdResults[0]))]
 num_valid_out_rows = len(valid_out_rows)
 num_valid_out_cols = len(valid_out_rows)
 
-
+# note: the reason these tests don't have to worr about extra invalid values at end of output that are marked as valid
+# is that, for a 2x2 window, only the last window is invalid. Since downsampleing by 2 in x dimension, that never
+# gets emitted and only valid outputs are emitted.
 def test_downsample_256x256_to_32x32_1px_in_per_clk():
     from .downsample_256x256_to_32x32_1px_in_per_clk import c, downsample_256x256_to_32x32_1px_in_per_clk as testcircuit
 
