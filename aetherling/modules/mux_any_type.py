@@ -3,7 +3,7 @@ from aetherling.modules.term_any_type import DefineTermAnyType
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.hydrate import DefineDehydrate, Hydrate
-from aetherling.modules.map_fully_parallel_sequential import MapParallel
+from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
 from mantle.coreir.memory import getRAMAddrWidth
 from mantle.coreir.MUX import CommonlibMuxN
 
@@ -31,7 +31,7 @@ def DefineMuxAnyType(cirb: CoreIRBackend, t: Kind, n: int):
                 type_size_in_bits = cirb.get_type(t).size
                 mux = CommonlibMuxN(cirb, n, type_size_in_bits)
 
-                type_to_bits = MapParallel(cirb, n, DefineDehydrate(cirb, t))
+                type_to_bits = DefineNativeMapParallel(cirb, n, DefineDehydrate(cirb, t))()
                 wire(cls.data, type_to_bits.I)
                 wire(type_to_bits.out, mux.I.data)
 
