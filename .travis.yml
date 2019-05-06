@@ -7,6 +7,7 @@ env:
 sudo: true  # Needed for coreir-dev branch building coreir from source (installing g++-4.9 through apt)
 
 before_install:
+    - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
     - git clone https://github.com/phanrahan/magma.git
     - pip install -e magma
     - source magma/.travis/install_coreir.sh
@@ -28,3 +29,4 @@ addons:
       - ubuntu-toolchain-r-test
     packages:
       - g++-4.9
+      - gcc-4.9
