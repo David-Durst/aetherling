@@ -1,6 +1,6 @@
 language: python
 python:
-    - "3.6"
+    - "3.7"
 env:
     - export MANTLE=coreir
 
@@ -8,6 +8,7 @@ sudo: true  # Needed for coreir-dev branch building coreir from source (installi
 
 before_install:
     - export CXX="g++-4.9"
+    - export CC="gcc-4.9"
     - git clone https://github.com/phanrahan/magma.git
     - pip install -e magma
     - source magma/.travis/install_coreir.sh
