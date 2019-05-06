@@ -15,7 +15,7 @@ before_install:
     - source magma/.travis/install_coreir.sh
     - git clone https://github.com/phanrahan/mantle.git
     - pip install pytest-cov
-    - pip install fabricate delegator.py
+    - pip install delegator.py
     - pip install -e mantle
 
 install:
