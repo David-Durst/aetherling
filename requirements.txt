@@ -16,7 +16,7 @@ execnet==1.5.0
 graphviz==0.8.2
 idna==2.6
 imagesize==0.7.1
-Jinja2==2.10
+Jinja2==2.10.1
 Mako==1.0.7
 MarkupSafe==1.0
 more-itertools==5.0.0
@@ -34,4 +34,4 @@ six==1.12.0
 snowballstemmer==1.2.1
 Sphinx==1.6.6
 sphinxcontrib-websupport==1.0.1
-urllib3==1.24.1
+urllib3==1.24.2
