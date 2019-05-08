@@ -1,6 +1,7 @@
 import math
 
-from mantle import Register, SizedCounterModM, Decode
+from mantle import Register, Decode
+from mantle.common.countermod import SizedCounterModM
 from mantle.common.operator import *
 from mantle.coreir.type_helpers import Term
 from magma import *
@@ -17,12 +18,12 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
     Downsample an array of T's to a single T in one clock cycle.
     Aetherling Type: {1, T[n]} -> {1, T}
 
-    I : In(Array(n, T))
+    I : In(Array[n, T])
     O : Out(T)
     """
     class DownsampleParallel(Circuit):
         name = "DownsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
-        IO = ['I', In(Array(n, T)), 'O', Out(T)]
+        IO = ['I', In(Array[n, T]), 'O', Out(T)]
         @classmethod
         def definition(downsampleParallel):
             one_input_dehydrate = Dehydrate(cirb, T)

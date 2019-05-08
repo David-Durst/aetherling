@@ -3,7 +3,7 @@ from magma import *
 from .hydrate import Hydrate, Dehydrate
 from .map_fully_parallel_sequential import MapParallel
 from mantle.coreir.MUX import CommonlibMuxN
-from mantle import SizedCounterModM
+from mantle.common.countermod import SizedCounterModM
 from ..helpers.nameCleanup import cleanName
 
 def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
@@ -29,7 +29,7 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
         name = "Partition" + "".join([ c if c.isalnum() else "_" for c in \
                                        str(cleanName(str(arrayType)))]) + "_" + str(subsetSize)
         elementType = arrayType.T
-        IO = ['I', In(arrayType), 'O', Out(Array(subsetSize, elementType))] + \
+        IO = ['I', In(arrayType), 'O', Out(Array[subsetSize, elementType])] + \
             ClockInterface(has_ce=has_ce)
         @classmethod
         def definition(partition):

@@ -18,7 +18,7 @@ def get_nested_type(pixel_type: Kind, dimensions: list):
     if len(dimensions) == 0:
         return pixel_type
     else:
-        return Array(dimensions[0], get_nested_type(pixel_type, dimensions[1:]))
+        return Array[dimensions[0], get_nested_type(pixel_type, dimensions[1:])]
 
 def DefineAnyDimensionalLineBuffer(
         cirb: CoreIRBackend,

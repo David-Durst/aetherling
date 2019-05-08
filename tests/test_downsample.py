@@ -17,8 +17,8 @@ def test_downsample_parallel():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    outType = Array(width, Out(BitIn))
-    inType = Array(numIn, In(outType))
+    outType = Array[width, Out(BitIn)]
+    inType = Array[numIn, In(outType)]
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Downsample_Parallel', *args)
@@ -44,7 +44,7 @@ def test_downsample_sequential():
     testVal = 3
     c = coreir.Context()
     scope = Scope()
-    outType = Array(width, Out(BitIn))
+    outType = Array[width, Out(BitIn)]
     inType = In(outType)
     args = ['I', inType, 'O', outType, 'VALID', Out(Bit)] + ClockInterface(False, False)
 

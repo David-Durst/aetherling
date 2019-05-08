@@ -26,7 +26,7 @@ def run_test_updown_npxPerClock(pxPerClock):
     testcircuit = DefineCircuit('Test_UpsampleDownsample_{}PxPerClock'.format(pxPerClock), *args)
 
     imgData = loadImage(imgSrc, pxPerClock)
-    pixelType = Array(imgData.bitsPerPixel, Bit)
+    pixelType = Array[imgData.bitsPerPixel, Bit]
     bitsToPixelHydrate = MapParallel(cirb, pxPerClock, Hydrate(cirb, pixelType))
     upParallel = MapParallel(cirb, pxPerClock, UpsampleParallel(upsampleAmount, pixelType))
     downParallel = MapParallel(cirb, pxPerClock, DownsampleParallel(cirb, upsampleAmount, pixelType))

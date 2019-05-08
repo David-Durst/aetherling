@@ -21,7 +21,7 @@ from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer impo
 c = coreir.Context()
 cirb = CoreIRBackend(c)
 
-args = ['I0', Array(8, In(Bit)), 'O0', Array(8, Out(Bit)), 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
+args = ['I0', Array[8, In(Bit)], 'O0', Array[8, Out(Bit)], 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
 sequentialSimpleAdd = DefineCircuit('sequentialSimpleAdd_Circuit', *args)
 magmaInstance0 = DefineNoop(DefineCoreirConst(8, 1))()
 magmaInstance1 = DefineCoreirConst(8, 1)()

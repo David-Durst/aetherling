@@ -28,7 +28,7 @@ def test_basic_native_linebuffer():
 
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
-    lb = OneDimensionalLineBuffer(cirb, Array(3, Bit), 1, 3, 100, 1, 0)
+    lb = OneDimensionalLineBuffer(cirb, Array[3, Bit], 1, 3, 100, 1, 0)
 
     EndCircuit()
 
@@ -40,7 +40,7 @@ def test_basic_native_any_d_linebuffer():
 
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
-    lb = AnyDimensionalLineBuffer(cirb, Array(7, Bit), [1, 4], [3,3], [30, 30], [1,1], [0,0])
+    lb = AnyDimensionalLineBuffer(cirb, Array[7, Bit], [1, 4], [3,3], [30, 30], [1,1], [0,0])
 
     EndCircuit()
 
@@ -49,7 +49,7 @@ def test_multiple_sipo():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ['I', In(Bit), 'O', Out(Array(4, Bit))] + ClockInterface(False, False)
+    args = ['I', In(Bit), 'O', Out(Array[4, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('multiple_sipo_test', *args)
 
@@ -74,7 +74,7 @@ def test_double_nested_sipo():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ['I', In(Bit), 'O', Out(Array(1,Array(1, Array(4, Bit))))] + ClockInterface(False, False)
+    args = ['I', In(Bit), 'O', Out(Array[1,Array[1, Array[4, Bit]]])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('multiple_sipo_test', *args)
 
@@ -99,7 +99,7 @@ def test_sipo():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ['I', In(Bit), 'O', Out(Array(4, Bit))] + ClockInterface(False, False)
+    args = ['I', In(Bit), 'O', Out(Array[4, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('sipo_test', *args)
 
@@ -117,7 +117,7 @@ def test_sized_counter_modm():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ['O', Out(Array(2, Bit))] + ClockInterface(False, False)
+    args = ['O', Out(Array[2, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('sized_counter_modm_test', *args)
 
@@ -134,7 +134,7 @@ def test_sipo_and_counter():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ['I', In(Bit), 'O_sipo', Out(Array(4, Bit))] + ['O_counter', Out(Array(2, Bit))] + ClockInterface(False, False)
+    args = ['I', In(Bit), 'O_sipo', Out(Array[4, Bit])] + ['O_counter', Out(Array[2, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('sipo_and_counter_test', *args)
 
@@ -157,7 +157,7 @@ def test_multiple_sipo_and_counter():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    args = ['I', In(Bit), 'O_sipo', Out(Array(4, Bit))] + ['O_counter', Out(Array(2, Bit))] + ClockInterface(False, False)
+    args = ['I', In(Bit), 'O_sipo', Out(Array[4, Bit])] + ['O_counter', Out(Array[2, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('multiple_sipo_and_counter_test', *args)
 
@@ -253,61 +253,61 @@ def test_1D_bit_line_buffer_2_3_14_2_1():
 
 
 def test_1D_int4_line_buffer_1_3_9_1_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 9, 1, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 3, 9, 1, 0)
 
 def test_1D_int4_line_buffer_1_3_9_1_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 9, 1, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 3, 9, 1, -1)
 
 def test_1D_int4_line_buffer_2_3_10_1_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 2, 3, 10, 1, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 2, 3, 10, 1, 0)
 
 def test_1D_int4_line_buffer_1_3_9_2_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 10, 2, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 3, 10, 2, 0)
 
 def test_1D_int4_line_buffer_2_3_10_1_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 2, 3, 10, 1, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 2, 3, 10, 1, -1)
 
 def test_1D_int4_line_buffer_1_3_36_1_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 36, 1, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 3, 36, 1, 0)
 
 def test_1D_int4_line_buffer_3_3_36_1_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 3, 3, 36, 1, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 3, 3, 36, 1, 0)
 
 def test_1D_int4_line_buffer_3_3_36_1_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 3, 3, 36, 1, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 3, 3, 36, 1, -1)
 
 def test_1D_int4_line_buffer_1_4_32_2_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 4, 32, 2, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 4, 32, 2, -1)
 
 def test_1D_int4_line_buffer_4_8_32_2_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 4, 8, 32, 2, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 4, 8, 32, 2, -1)
 
 def test_1D_int4_line_buffer_1_3_26_2_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 26, 2, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 3, 26, 2, 0)
 
 def test_1D_int4_line_buffer_1_3_30_1_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 3, 30, 1, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 3, 30, 1, -1)
 
 def test_1D_int4_line_buffer_16_4_64_2_1():
-    impl_test_1D_line_buffer(Array(4, Bit), 16, 4, 64, 2, -1)
+    impl_test_1D_line_buffer(Array[4, Bit], 16, 4, 64, 2, -1)
 
 def test_1D_int4_line_buffer_1_2_18_2_0():
-    impl_test_1D_line_buffer(Array(4, Bit), 1, 2, 18, 2, 0)
+    impl_test_1D_line_buffer(Array[4, Bit], 1, 2, 18, 2, 0)
 
 def test_1D_int4_line_buffer_4_8_24_4_2():
-    impl_test_1D_line_buffer(Array(4, Bit), 4, 8, 24, 4, -2)
+    impl_test_1D_line_buffer(Array[4, Bit], 4, 8, 24, 4, -2)
 
 def test_1D_int4_line_buffer_4_8_20_2_3():
-    impl_test_1D_line_buffer(Array(4, Bit), 4, 8, 20, 2, -3)
+    impl_test_1D_line_buffer(Array[4, Bit], 4, 8, 20, 2, -3)
 
 def test_1D_int8_line_buffer_13_5_39_1_0():
-    impl_test_1D_line_buffer(Array(8, Bit), 13, 5, 39, 1, 0)
+    impl_test_1D_line_buffer(Array[8, Bit], 13, 5, 39, 1, 0)
 
 def test_1D_int8_line_buffer_1_15_39_13_1():
-    impl_test_1D_line_buffer(Array(8, Bit), 1, 15, 39, 13, -1)
+    impl_test_1D_line_buffer(Array[8, Bit], 1, 15, 39, 13, -1)
 
 def test_1D_int8_line_buffer_2_3_14_2_1():
-    impl_test_1D_line_buffer(Array(8, Bit), 2, 3, 14, 2, -1)
+    impl_test_1D_line_buffer(Array[8, Bit], 2, 3, 14, 2, -1)
 
 
 def a_1D_line_buffer_test(

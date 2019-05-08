@@ -20,8 +20,8 @@ def test_partition():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = Array(width, In(BitIn))
-    outType = Array(parallelism, Out(Bit))
+    inType = Array[width, In(BitIn)]
+    outType = Array[parallelism, Out(Bit)]
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('test_partition', *args)

@@ -19,8 +19,8 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
      of original type. Input ports will be of length numInputs, output ports will be of length
       numInputs/parallelism. For example, if op has one input port I and one output O, the ports
       will be:
-      I : In(Array(numInputs, T)
-      O : Out(Array(numInputs/parallelism, S))
+      I : In(Array[numInputs, T]
+      O : Out(Array[numInputs/parallelism, S)])
     """
     
     assert numInputs/parallelism % 1 == 0, "Parallelism must divide into numInputs with no " \
@@ -30,9 +30,9 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
         name = "Map_n{}_p{}_op{}".format(str(numInputs), str(parallelism), cleanName(str(op)))
         # extend each input to length of numInputs, each output to parallelism length
         # getting output ports for inputs and vice versa since
-        inputs = [nameOrPort if type(nameOrPort) == str else Array(numInputs, nameOrPort)
+        inputs = [nameOrPort if type(nameOrPort) == str else Array[numInputs, nameOrPort]
                   for nameAndPort in getInputPorts(op.IO) for nameOrPort in nameAndPort]
-        outputs = [nameOrPort if type(nameOrPort) == str else Array(parallelism, nameOrPort)
+        outputs = [nameOrPort if type(nameOrPort) == str else Array[parallelism, nameOrPort]
                    for nameAndPort in getOutputPorts(op.IO) for nameOrPort in nameAndPort]
         IO = inputs + outputs + ClockInterface(has_ce=has_ce)
 

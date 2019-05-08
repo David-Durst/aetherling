@@ -29,7 +29,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     testcircuit = DefineCircuit('Test_UpsampleDownsample_{}PxPerClock_{}Parallelism'.format(pxPerClock, parallelism), *args)
 
     imgData = loadImage(imgSrc, pxPerClock)
-    pixelType = Array(imgData.bandsPerPixel, Array(imgData.bitsPerBand, Bit))
+    pixelType = Array[imgData.bandsPerPixel, Array[imgData.bitsPerBand, Bit]]
     bitsToPixelHydrate = MapParallel(cirb, pxPerClock, DefineHydrate(cirb, pixelType))
     # do an add constant for each band, for each pixel
     addConstants = DefineNativeMapParallel(cirb, pxPerClock,

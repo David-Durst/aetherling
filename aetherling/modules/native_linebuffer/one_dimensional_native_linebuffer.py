@@ -17,7 +17,7 @@ def DefineOneDimensionalLineBuffer(
         origin: int) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
-    :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
+    :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
     linebuffer receives as input each clock.
@@ -122,8 +122,8 @@ def DefineOneDimensionalLineBuffer(
         # if pixel_per_clock greater than stride, emitting that many new windows per clock
         # else just emit one per clock when have enough pixels to do so
         windows_per_active_clock = max(pixel_per_clock // stride, 1)
-        IO = ['I', In(Array(pixel_per_clock, In(pixel_type))),
-              'O', Out(Array(windows_per_active_clock, Array(window_width, Out(pixel_type)))),
+        IO = ['I', In(Array[pixel_per_clock, In(pixel_type)]),
+              'O', Out(Array[windows_per_active_clock, Array[window_width, Out(pixel_type)]]),
               'valid', Out(Bit), 'ready', Out(Bit)] + ClockInterface(has_ce=True)
 
         @classmethod
@@ -158,7 +158,7 @@ def OneDimensionalLineBuffer(
         last_row: bool = True) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
-    :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
+    :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
     linebuffer receives as input each clock.

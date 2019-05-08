@@ -15,13 +15,13 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
     """
     Generate Serial-In, Parallel-Out shift register that handles any type.
 
-    I : In(t),  O : Out(Array(n, t))
+    I : In(t),  O : Out(Array[n, t])
     """
 
     class _SIPO(Circuit):
         name = 'SIPO_{}t_{}n_{}init_{}CE_RESET'.format(
             cleanName(str(t)), str(n), str(init), str(has_ce), str(has_reset))
-        IO = ['I', In(t), 'O', Out(Array(n, t))] + \
+        IO = ['I', In(t), 'O', Out(Array[n, t])] + \
                 ClockInterface(has_ce,has_reset)
         @classmethod
         def definition(cls):

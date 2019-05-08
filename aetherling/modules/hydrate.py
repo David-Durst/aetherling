@@ -16,7 +16,7 @@ def DefineDehydrate(cirb: CoreIRBackend, T: Kind):
     Returns:
         A module with the following ports:
         I : In(T)
-        out : Out(Array(width(T), Bit))
+        out : Out(Array[width(T), Bit])
 
         The module also has the following data:
         size: width(T)
@@ -43,7 +43,7 @@ def Dehydrate(cirb: CoreIRBackend, T: Kind):
     Returns:
         A module with the following ports:
         I : In(T)
-        out : Out(Array(width(T), Bit))
+        out : Out(Array[width(T), Bit])
 
         The module also has the following data:
         size: width(T)
@@ -65,7 +65,7 @@ def DefineHydrate(cirb: CoreIRBackend, T):
 
     Returns:
         A module with the following ports:
-        I : In(Array(width(T), BitIn))
+        I : In(Array[width(T), BitIn])
         out : Out(T)
         The module also has the following data:
         size: width(T)
@@ -90,7 +90,7 @@ def Hydrate(cirb: CoreIRBackend, T):
 
     Returns:
         A module with the following ports:
-        I : In(Array(width(T), BitIn))
+        I : In(Array[width(T), BitIn])
         out : Out(T)
         The module also has the following data:
         size: width(T)

@@ -25,8 +25,8 @@ def DefineMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind
     :return: A module with all the ports of op, except that they will be converted to arrays
      of original type, with each array of length numInputs. For example, if op has
      one input port I and one output O, the ports will be:
-    I : In(Array(numInputs, T))
-    O : Out(Array(numInputs, S))
+    I : In(Array[numInputs, T])
+    O : Out(Array[numInputs, S])
     """
     if hasattr(op, 'is_instance') and op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
@@ -49,8 +49,8 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> C
     :return: A module with all the ports of op, except that they will be converted to arrays
      of original type, with each array of length numInputs. For example, if op has
      one input port I and one output O, the ports will be:
-    I : In(Array(numInputs, T))
-    O : Out(Array(numInputs, S))
+    I : In(Array[numInputs, T])
+    O : Out(Array[numInputs, S])
     """
     return DefineMapParallel(cirb, numInputs, op)()
 
@@ -59,7 +59,7 @@ def DefineNativeMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircu
         name = "NativeMapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
         IO = []
         for i in range(len(op.IO.Decl) // 2):
-            IO += [op.IO.Decl[i*2], Array(numInputs, op.IO.Decl[i*2+1])]
+            IO += [op.IO.Decl[i*2], Array[numInputs, op.IO.Decl[i*2+1]]]
         @classmethod
         def definition(cls):
             for i in range(numInputs):
@@ -85,8 +85,8 @@ def DefineMapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKi
     :return: A module with all the ports of op, except that they will be converted to arrays
      of original type, with each array of length numInputs. For example, if op has
      one input port I and one output O, the ports will be:
-     I : In(Array(numInputs, T)
-     O : Out(Array(numInputs, S))
+     I : In(Array[numInputs, T]
+     O : Out(Array[numInputs, S])
     """
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
@@ -114,8 +114,8 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) ->
     :return: A module with all the ports of op, except that they will be converted to arrays
      of original type, with each array of length numInputs. For example, if op has
      one input port I and one output O, the ports will be:
-     I : In(Array(numInputs, T)
-     O : Out(Array(numInputs, S))
+     I : In(Array[numInputs, T]
+     O : Out(Array[numInputs, S])
     """
     return DefineMapSequential(cirb, numInputs, op)()
 

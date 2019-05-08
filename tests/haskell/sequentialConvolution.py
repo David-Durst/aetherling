@@ -21,9 +21,9 @@ from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer impo
 c = coreir.Context()
 cirb = CoreIRBackend(c)
 
-args = ['I0', Array(8, In(Bit)), 'O0', Array(8, Out(Bit)), 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
+args = ['I0', Array[8, In(Bit)], 'O0', Array[8, Out(Bit)], 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
 sequentialConvolution = DefineCircuit('sequentialConvolution_Circuit', *args)
-magmaInstance0 = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 1, 1, 0, 0)()
+magmaInstance0 = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 1, 1, 0, 0)()
 magmaInstance1 = DefineCoreirConst(8, 1)()
 magmaInstance2 = DefineCoreirConst(8, 2)()
 magmaInstance3 = DefineCoreirConst(8, 2)()

@@ -13,8 +13,8 @@ from mantle.common.countermod import CounterModM, Decode
 def test_noop():
     testVal = 21
     scope = Scope()
-    inType = Array(8, In(Bit))
-    outType = Array(8, Out(Bit))
+    inType = Array[8, In(Bit)]
+    outType = Array[8, Out(Bit)]
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test', *args)

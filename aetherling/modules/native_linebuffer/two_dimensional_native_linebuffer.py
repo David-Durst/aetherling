@@ -25,7 +25,7 @@ def DefineTwoDimensionalLineBuffer(
         add_debug_interface = False) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
-    :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
+    :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixels_per_row_per_clock: The number of pixels per row of the image the linebuffer
     receives as input each clock.
@@ -264,13 +264,13 @@ def DefineTwoDimensionalLineBuffer(
                                    (rows_of_pixels_per_clock * pixels_per_row_per_clock))
 
         if add_debug_interface:
-            debug_interface = ['undelayedO', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
-              'dbCE', Out(Bit), 'dbWE', Out(Bit)] + GetDBDebugInterface(cirb,  Array(window_rows, Array(window_cols, pixel_type)), image_cols // stride_cols,
+            debug_interface = ['undelayedO', Out(Array[windows_per_active_clock, Array[window_rows, Array[window_cols, Out(pixel_type)]]]),
+              'dbCE', Out(Bit), 'dbWE', Out(Bit)] + GetDBDebugInterface(cirb,  Array[window_rows, Array[window_cols, pixel_type]], image_cols // stride_cols,
                                    max(pixels_per_row_per_clock // stride_cols, 1),)
         else:
             debug_interface = []
-        IO = ['I', In(Array(rows_of_pixels_per_clock, Array(pixels_per_row_per_clock, In(pixel_type)))),
-              'O', Out(Array(windows_per_active_clock, Array(window_rows, Array(window_cols, Out(pixel_type))))),
+        IO = ['I', In(Array[rows_of_pixels_per_clock, Array[pixels_per_row_per_clock, In(pixel_type)]]),
+              'O', Out(Array[windows_per_active_clock, Array[window_rows, Array[window_cols, Out(pixel_type)]]]),
               'valid', Out(Bit), 'ready', Out(Bit)] + debug_interface + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
@@ -297,7 +297,7 @@ def DefineTwoDimensionalLineBuffer(
                         for window_per_row in range(cls.windows_per_row_per_clock):
                             wire(cls.undelayedO[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
                                  lb.O[row_of_windows][window_per_row])
-                db = DelayedBuffer(cirb,  Array(window_rows, Array(window_cols, pixel_type)), image_cols // stride_cols,
+                db = DelayedBuffer(cirb,  Array[window_rows, Array[window_cols, pixel_type]], image_cols // stride_cols,
                                    max(pixels_per_row_per_clock // stride_cols, 1),
                                    cls.time_per_buffered_cycle, add_debug_interface=add_debug_interface)
                 for row_of_windows in range(cls.rows_of_windows_per_clock):
@@ -352,7 +352,7 @@ def TwoDimensionalLineBuffer(
         origin_rows: int) -> Circuit:
     """
     :param cirb: The CoreIR backend currently be used
-    :param pixel_type: the type of each pixel. A type of Array(3, Array(8, Bit)) is for
+    :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixels_per_row_per_clock: The number of pixels per row of the image the linebuffer
     receives as input each clock.

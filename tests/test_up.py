@@ -15,8 +15,8 @@ def test_up_parallel():
     testVal = 3
     c = coreir.Context()
     scope = Scope()
-    inType = Array(width, In(BitIn))
-    outType = Array(numOut, Out(inType))
+    inType = Array[width, In(BitIn)]
+    outType = Array[numOut, Out(inType)]
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test', *args)
@@ -63,7 +63,7 @@ def test_up_sequential():
     testVal = 3
     c = coreir.Context()
     scope = Scope()
-    inType = Array(width, In(BitIn))
+    inType = Array[width, In(BitIn)]
     outType = Out(inType)
     args = ['I', inType, 'O', outType, 'READY', Out(Bit)] + ClockInterface(False, False)
 
@@ -101,10 +101,10 @@ numElements = 1
 testVal = 3
 c = coreir.Context()
 scope = Scope()
-inType = Array(width, In(BitIn))
-#outType = Array(width, Out(BitIn)) #uncomment this line
-#outType = Array(numElements, Out(inType))
-outType = Array(numElements, Out(Array(width, Bit))) #comment this line
+inType = Array[width, In(BitIn)]
+#outType = Array[width, Out(BitIn)] #uncomment this line
+#outType = Array[numElements, Out(inType)]
+outType = Array[numElements, Out(Array[width, Bit])] #comment this line
 args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
 testcircuit = DefineCircuit('Test', *args)

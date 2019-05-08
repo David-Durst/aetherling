@@ -14,8 +14,8 @@ def test_reduce_parallel():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = In(Array(numIn, Array(width, BitIn)))
-    outType = Out(Array(width, Bit))
+    inType = In(Array[numIn, Array[width, BitIn]])
+    outType = Out(Array[width, Bit])
     args = ['I', inType, 'O', outType] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
@@ -42,8 +42,8 @@ def test_reduce_sequential_with_ce():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = In(Array(width, BitIn))
-    outType = Out(Array(width, Bit))
+    inType = In(Array[width, BitIn])
+    outType = Out(Array[width, Bit])
     args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(has_ce=True)
 
     testcircuit = DefineCircuit('Test_Reduce_Sequential_With_CE', *args)
@@ -82,8 +82,8 @@ def test_reduce_sequential_without_ce():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = In(Array(width, BitIn))
-    outType = Out(Array(width, Bit))
+    inType = In(Array[width, BitIn])
+    outType = Out(Array[width, Bit])
     args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(has_ce=False)
 
     testcircuit = DefineCircuit('Test_Reduce_Sequential_Without_CE', *args)
@@ -119,9 +119,9 @@ def test_reduce_partially_parallel():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = In(Array(width, BitIn))
-    outType = Out(Array(width, Bit))
-    args = ['I', Array(parallelism, inType), 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
+    inType = In(Array[width, BitIn])
+    outType = Out(Array[width, Bit])
+    args = ['I', Array[parallelism, inType], 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 

@@ -23,7 +23,7 @@ def test_2dlb_flicker_ce_with_2x2_stride():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
+    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
     #magma.compile("2dlbflicker_1001pm_2_11_19_unflattened", testcircuit, output="verilog",
     #              passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "verifyconnectivity --noclkrst", "deletedeadinstances"],
@@ -73,7 +73,7 @@ def test_1dlb_flicker_ce_with_2_stride():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineOneDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 2, 8, 2, 0, True)
+    testcircuit = DefineOneDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 2, 8, 2, 0, True)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=c,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
@@ -99,7 +99,7 @@ def test_2dlb_flicker_ce_with_no_stride():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 1, 1, 0, 0, True)
+    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 1, 1, 0, 0, True)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=c,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
@@ -126,7 +126,7 @@ def test_db_flicker_ce():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineDelayedBuffer(cirb, Array(8, Bit), 4, 1, 16, 1)
+    testcircuit = DefineDelayedBuffer(cirb, Array[8, Bit], 4, 1, 16, 1)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=c,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
@@ -180,7 +180,7 @@ def test_any_type_ram_flicker_we():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineRAMAnyType(cirb, Array(4, Array(8, Bit)), 4) #DefineRAM(8, 1)
+    testcircuit = DefineRAMAnyType(cirb, Array[4, Array[8, Bit]], 4) #DefineRAM(8, 1)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=c,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
@@ -226,7 +226,7 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
+    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
@@ -280,7 +280,7 @@ def test_2dlb_flicker_ce_with_2x2_stride_ross_clock_instructions():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
 
-    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
+    testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=c,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])

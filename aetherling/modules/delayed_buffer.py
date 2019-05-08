@@ -32,7 +32,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
      initial_emitting_delay 6. Input would be provided on clock 0 and 4. Before the first input is emitted on
      clock 5, it would be overwitten with the second input.
 
-    I: In(Array(k, t)), O: Out(t), WE: In(Bit), CE: In(Enable)
+    I: In(Array[k, t]), O: Out(t), WE: In(Bit), CE: In(Enable)
 
     Restrictions:
 
@@ -65,7 +65,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             debug_interface = GetDBDebugInterface(cirb, t, n, k)
         else:
             debug_interface = []
-        IO = ['I', In(Array(k, t)), 'O', Out(Array(out_per_clock, t)), 'WE', In(Bit),
+        IO = ['I', In(Array[k, t]), 'O', Out(Array[out_per_clock, t]), 'WE', In(Bit),
               'valid', Out(Bit)] + debug_interface + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
@@ -139,7 +139,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                 wire(ce_with_delay & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
                      mux_bank_selector_counter.CE)
 
-            ram_bank_selector = MuxAnyType(cirb, Array(cls.out_per_clock, t), k // cls.out_per_clock)
+            ram_bank_selector = MuxAnyType(cirb, Array[cls.out_per_clock, t], k // cls.out_per_clock)
             for i in range(k):
                 wire(rams.RDATA[i], ram_bank_selector.data[i // cls.out_per_clock][i % cls.out_per_clock])
                 if add_debug_interface:
@@ -149,7 +149,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             # if not delaying,
             # remove latency of RAMs of by emitting first input on first clock immediately
             if initial_emitting_delay == 0:
-                first_input_or_rams = MuxAnyType(cirb, Array(cls.out_per_clock, t), 2)
+                first_input_or_rams = MuxAnyType(cirb, Array[cls.out_per_clock, t], 2)
                 wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[1])
                 wire(ram_bank_selector.out, first_input_or_rams.data[0])
 

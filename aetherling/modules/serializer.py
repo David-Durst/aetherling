@@ -11,7 +11,7 @@ from .map_fully_parallel_sequential import MapParallel
 def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=False, has_reset=False) -> DefineCircuitKind:
     """
     Serializer converts an array to a stream and emit the stream over multiple clocks
-    Aetherling Type: ({1, Array(N, T)} -> {N, T}, N)
+    Aetherling Type: ({1, Array[N, T]} -> {N, T}, N)
     This returns a circuit definition.
 
     :param cirb: The CoreIR backend currently be used
@@ -22,7 +22,7 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
     :param has_ce: Whether to have a CE port on serializer
     :param has_reset: Whether to have a reset port on serializer
     :return: A module with the following ports:
-        I : In(Array(N, T))
+        I : In(Array[N, T])
         out : Out(T)
         ready : Out(Bit)
         valid : Out(Bit)
@@ -36,11 +36,11 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
 
         if has_count:
             cirType = cirb.get_type(T)
-            count_interface = ["count", Out(Array(T.size, Bit))]
+            count_interface = ["count", Out(Array[T.size, Bit])]
         else:
             count_interface = []
 
-        IO = ["I", In(Array(N, T)), "out", Out(T), "ready", Out(Bit),
+        IO = ["I", In(Array[N, T]), "out", Out(T), "ready", Out(Bit),
               "valid", Out(Bit)] + \
              ClockInterface(has_ce, has_reset) + count_interface
 
@@ -82,7 +82,7 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
 def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=False, has_reset=False) -> Circuit:
     """
     Serializer converts an array to a stream and emit the stream over multiple clocks
-    Aetherling Type: ({1, Array(N, T)} -> {N, T}, N)
+    Aetherling Type: ({1, Array[N, T]} -> {N, T}, N)
     This returns a circuit instance, an instance of a circuit definition
 
     :param cirb: The CoreIR backend currently be used
@@ -93,7 +93,7 @@ def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=Fal
     :param has_ce: Whether to have a CE port on serializer
     :param has_reset: Whether to have a reset port on serializer
     :return: A module with the following ports:
-        I : In(Array(N, T))
+        I : In(Array[N, T])
         out : Out(T)
         ready : Out(Bit)
         valid : Out(Bit)
@@ -104,7 +104,7 @@ def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=Fal
 def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=False) -> DefineCircuitKind:
     """
     Deserializer converts a stream to an array over multiple clocks
-    Aetherling Type: ({N, T} -> {1, Array(N, T)}, N)
+    Aetherling Type: ({N, T} -> {1, Array[N, T]}, N)
     This returns a circuit definition.
 
     :param cirb: The CoreIR backend currently be used
@@ -114,7 +114,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
     :param has_reset: Whether to have a reset port on deserializer
     :return: A module with the following ports:
         I : In(T)
-        out : Out(Array(N, T))
+        out : Out(Array[N, T])
         ready : Out(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments
@@ -125,7 +125,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
     class _Deserializer(Circuit):
         name = "serialize_t{}_n{}".format(cleanName(str(T)), str(N))
 
-        IO = ["I", In(T), "out", Out(Array(N, T)), "valid", Out(Bit),
+        IO = ["I", In(T), "out", Out(Array[N, T]), "valid", Out(Bit),
               "ready", Out(Bit)] + ClockInterface(has_ce, has_reset)
 
         @classmethod
@@ -160,7 +160,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
 def Deserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=False) -> Circuit:
     """
     Deserializer converts a stream to an array over multiple clocks
-    Aetherling Type: ({N, T} -> {1, Array(N, T)}, N)
+    Aetherling Type: ({N, T} -> {1, Array[N, T]}, N)
     This returns a circuit instance, an instance of a circuit definition
 
     :param cirb: The CoreIR backend currently be used
@@ -170,7 +170,7 @@ def Deserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=F
     :param has_reset: Whether to have a reset port on deserializer
     :return: A module with the following ports:
         I : In(T)
-        out : Out(Array(N, T))
+        out : Out(Array[N, T])
         ready : Out(Bit)
         valid : Out(Bit)
         and others depending on has_ arguments

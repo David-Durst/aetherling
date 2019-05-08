@@ -12,7 +12,7 @@ def DefineTermAnyType(cirb: CoreIRBackend, t: Kind):
     """
     Generate Serial-In, Parallel-Out shift register that handles any type.
 
-    I : In(t),  O : Out(Array(n, t))
+    I : In(t),  O : Out(Array[n, t])
     """
 
     class _SIPO(Circuit):

@@ -1,6 +1,7 @@
 import math
 
-from mantle import Register, SizedCounterModM, Decode, Mux
+from mantle import Register, Decode, Mux
+from mantle.common.countermod import SizedCounterModM
 from mantle.common.operator import *
 from magma import *
 from magma.backend.coreir_ import CoreIRBackend
@@ -15,11 +16,11 @@ def DefineUpsampleParallel(n, T):
     Aetherling Type: {1, T} -> {1, T[n]}
 
     I : In(T)
-    O : Out(Array(n, T))
+    O : Out(Array[n, T])
     """
     class UpParallel(Circuit):
         name = "UpsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
-        IO = ['I', In(T), 'O', Out(Array(n, T))]
+        IO = ['I', In(T), 'O', Out(Array[n, T])]
         @classmethod
         def definition(upsampleParallel):
             for i in range(n):
@@ -88,8 +89,8 @@ from magma.coreirModuleWrapper import ModuleFromGeneratorWrapper
 from magma import *
 c = Context()
 cirb = CoreIRBackend(c)
-x = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate", {"hydratedType": cirb.get_type(Array(3, Array(5, BitIn)), True)})
-dehydrate = cirb.context.import_generator("aetherlinglib", "dehydrate")(hydratedType = cirb.get_type(Array(3, Array(5, BitIn)), True))
+x = ModuleFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate", {"hydratedType": cirb.get_type(Array[3, Array[5, BitIn])], True)})
+dehydrate = cirb.context.import_generator("aetherlinglib", "dehydrate")(hydratedType = cirb.get_type(Array[3, Array[5, BitIn])], True))
 cirb.context.give_coreir_module_definition(dehydrate)
 
 """

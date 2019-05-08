@@ -15,14 +15,14 @@ def DefineMuxAnyType(cirb: CoreIRBackend, t: Kind, n: int):
     """
     Generate a Mux that handles n of any type.
 
-    data : In(Array(n, t)), sel : In(Array(log_2(n), Bit)), out : Out(t)
+    data : In(Array[n, t]), sel : In(Array[log_2(n), Bit]), out : Out(t)
     """
 
     class _Mux(Circuit):
         name = 'Mux_{}t_{}n'.format(cleanName(str(t)), n)
         addr_width = getRAMAddrWidth(n)
-        IO = ['data', In(Array(n, t)),
-              'sel', In(Bits(addr_width)),
+        IO = ['data', In(Array[n, t]),
+              'sel', In(Bits[addr_width]),
               'out', Out(t)
              ]
         @classmethod
@@ -42,7 +42,7 @@ def DefineMuxAnyType(cirb: CoreIRBackend, t: Kind, n: int):
                 wire(cls.sel, mux.I.sel)
             else:
                 wire(cls.data[0], cls.out)
-                sel_term = DefineTermAnyType(cirb, Bits(cls.addr_width))()
+                sel_term = DefineTermAnyType(cirb, Bits[cls.addr_width])()
                 wire(cls.sel, sel_term.I)
 
     return _Mux

@@ -12,15 +12,15 @@ def DefineRAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
     """
     Generate a RAM that handles n of any type.
 
-    RADDR : In(Array(log_2(n), Bit)), RDATA : Out(t), WADDR : In(Array(log_2(n), Bit)), WDATA : In(t), WE: In(Bit)
+    RADDR : In(Array[log_2(n), Bit)], RDATA : Out(t), WADDR : In(Array(log_2(n), Bit)), WDATA : In(t), WE: In(Bit)
     """
 
     class _RAM(Circuit):
         name = 'RAM_{}t_{}n'.format(cleanName(str(t)), n)
         addr_width = getRAMAddrWidth(n)
-        IO = ['RADDR', In(Bits(addr_width)),
+        IO = ['RADDR', In(Bits[addr_width]),
               'RDATA', Out(t),
-              'WADDR', In(Bits(addr_width)),
+              'WADDR', In(Bits[addr_width]),
               'WDATA', In(t),
               'WE', In(Bit)
              ] + ClockInterface()

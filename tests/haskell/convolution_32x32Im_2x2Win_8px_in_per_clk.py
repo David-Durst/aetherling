@@ -21,9 +21,9 @@ from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer impo
 c = coreir.Context()
 cirb = CoreIRBackend(c)
 
-args = ['I0', Array(8, In(Bit)), 'I1', Array(8, In(Bit)), 'I2', Array(8, In(Bit)), 'I3', Array(8, In(Bit)), 'I4', Array(8, In(Bit)), 'I5', Array(8, In(Bit)), 'I6', Array(8, In(Bit)), 'I7', Array(8, In(Bit)), 'O0', Array(8, Out(Bit)), 'O1', Array(8, Out(Bit)), 'O2', Array(8, Out(Bit)), 'O3', Array(8, Out(Bit)), 'O4', Array(8, Out(Bit)), 'O5', Array(8, Out(Bit)), 'O6', Array(8, Out(Bit)), 'O7', Array(8, Out(Bit)), 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
+args = ['I0', Array[8, In(Bit)], 'I1', Array[8, In(Bit)], 'I2', Array[8, In(Bit)], 'I3', Array[8, In(Bit)], 'I4', Array[8, In(Bit)], 'I5', Array[8, In(Bit)], 'I6', Array[8, In(Bit)], 'I7', Array[8, In(Bit)], 'O0', Array[8, Out(Bit)], 'O1', Array[8, Out(Bit)], 'O2', Array[8, Out(Bit)], 'O3', Array[8, Out(Bit)], 'O4', Array[8, Out(Bit)], 'O5', Array[8, Out(Bit)], 'O6', Array[8, Out(Bit)], 'O7', Array[8, Out(Bit)], 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
 convolution_32x32Im_2x2Win_8px_in_per_clk = DefineCircuit('convolution_32x32Im_2x2Win_8px_in_per_clk_Circuit', *args)
-magmaInstance0 = DefineTwoDimensionalLineBuffer(cirb, Array(8, In(Bit)), 8, 1, 2, 2, 32, 32, 1, 1, 0, 0)()
+magmaInstance0 = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 8, 1, 2, 2, 32, 32, 1, 1, 0, 0)()
 magmaInstance1 = DefineCoreirConst(8, 1)()
 magmaInstance2 = DefineCoreirConst(8, 1)()
 magmaInstance3 = DefineCoreirConst(8, 1)()

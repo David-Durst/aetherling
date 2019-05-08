@@ -16,7 +16,7 @@ def Flatten(cirb: CoreIRBackend, inputType: Kind, singleElementOutputType: Kind)
     :return: A list with elements of type singleElementOutputType that is of the appropriate length
     for the flatteneing.
     I : In(inputType)
-    O : Out(Array(singleElementOutputType, k*...*s))
+    O : Out(Array[singleElementOutputType, k*...*s)])
     """
     cirInputType = cirb.get_type(inputType)
     cirSingleEleementOutputType = cirb.get_type(singleElementOutputType)

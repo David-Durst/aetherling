@@ -13,7 +13,7 @@ def test_delayed_buffer_serial():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    testcircuit = DefineDelayedBuffer(cirb, Array(8, Bit), 3, 1, 12)
+    testcircuit = DefineDelayedBuffer(cirb, Array[8, Bit], 3, 1, 12)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context)
 
@@ -44,7 +44,7 @@ def test_delayed_buffer_parallel():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    testcircuit = DefineDelayedBuffer(cirb, Array(8, Bit), 4, 2, 16)
+    testcircuit = DefineDelayedBuffer(cirb, Array[8, Bit], 4, 2, 16)
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context)
 

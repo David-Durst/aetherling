@@ -37,10 +37,10 @@ def RAMInterface(imgSrc, memoryInput, memoryOutput, pxPerClock, parallelism = No
     imgData = loadImage(imgSrc, pxPerClock)
     returnedInterface = []
     if memoryInput:
-        returnedInterface += ["input_wdata", In(Bits(imgData.bitsPerRow)),
+        returnedInterface += ["input_wdata", In(Bits[imgData.bitsPerRow]),
                               "input_wen", In(Bit), "input_ren", In(Bit)]
     if memoryOutput:
-        returnedInterface += ["output_rdata", Out(Bits(int(parallelism * imgData.bitsPerPixel))),
+        returnedInterface += ["output_rdata", Out(Bits[int(parallelism * imgData.bitsPerPixel)]),
                               "output_ren", In(Bit)]
     return returnedInterface
 

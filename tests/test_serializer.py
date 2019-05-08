@@ -15,8 +15,8 @@ def test_serializer():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = In(Array(numIn, Array(width, BitIn)))
-    outType = Out(Array(width, Bit))
+    inType = In(Array[numIn, Array[width, BitIn]])
+    outType = Out(Array[width, Bit])
     args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Serializer', *args)
@@ -50,8 +50,8 @@ def test_deserializer():
     c = coreir.Context()
     cirb = CoreIRBackend(c)
     scope = Scope()
-    inType = In(Array(width, Bit))
-    outType = Out(Array(numIn, Array(width, BitIn)))
+    inType = In(Array[width, Bit])
+    outType = Out(Array[numIn, Array[width, BitIn]])
     args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('Test_Deserializer', *args)

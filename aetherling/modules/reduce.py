@@ -23,7 +23,7 @@ def DefineReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Ci
     with input ports in0 and in1.
     :return: A module with ports:
     I: In({
-        data: Array(numInputs, T),
+        data: Array[numInputs, T],
         identity: T
     })
     out: Out(T)
@@ -50,7 +50,7 @@ def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     with input ports in0 and in1.
     :return: A module with ports:
     I: In({
-        data: Array(numInputs, T),
+        data: Array[numInputs, T],
         identity: T
     })
     out: Out(T)
@@ -163,7 +163,7 @@ def DefineReducePartiallyParallel(
       op (e.g. 0 for Add, 1 for Multiply) formatted as a CoreirConstant, and includes a write enable 
       port on the input and a valid bit for the output. For an op with input port I and output O, 
       the ports will be:
-      I : In(Array(parallelism, T)
+      I : In(Array[parallelism, T]
       O : Out(T)
       identity : In(T)
       ready :  Out(Bit)
@@ -186,7 +186,7 @@ def DefineReducePartiallyParallel(
         
         token_type = type(renameCircuitForReduce(op).in0)
 
-        IO = ['I', In(Array(parallelism, token_type)),
+        IO = ['I', In(Array[parallelism, token_type]),
               'O', Out(token_type),
               'identity', In(token_type),
               'ready', Out(Bit),
