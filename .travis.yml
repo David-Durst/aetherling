@@ -32,3 +32,4 @@ addons:
     packages:
       - g++-4.9
       - gcc-4.9
+      - verilator
