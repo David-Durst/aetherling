@@ -47,7 +47,7 @@ num_valid_out_cols = len(valid_out_rows)
 def test_downsample_256x256_to_32x32_1px_in_per_clk():
     from .downsample_256x256_to_32x32_1px_in_per_clk import c, downsample_256x256_to_32x32_1px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -67,10 +67,10 @@ def test_downsample_256x256_to_32x32_1px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
@@ -83,7 +83,7 @@ def test_downsample_256x256_to_32x32_1px_in_per_clk():
 def test_downsample_256x256_to_32x32_2px_in_per_clk():
     from .downsample_256x256_to_32x32_2px_in_per_clk import c, downsample_256x256_to_32x32_2px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -104,10 +104,10 @@ def test_downsample_256x256_to_32x32_2px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
@@ -121,7 +121,7 @@ def test_downsample_256x256_to_32x32_2px_in_per_clk():
 def test_downsample_256x256_to_32x32_4px_in_per_clk():
     from .downsample_256x256_to_32x32_4px_in_per_clk import c, downsample_256x256_to_32x32_4px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -144,10 +144,10 @@ def test_downsample_256x256_to_32x32_4px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
@@ -161,7 +161,7 @@ def test_downsample_256x256_to_32x32_4px_in_per_clk():
 def test_downsample_256x256_to_32x32_8px_in_per_clk():
     from .downsample_256x256_to_32x32_8px_in_per_clk import c, downsample_256x256_to_32x32_8px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -188,10 +188,10 @@ def test_downsample_256x256_to_32x32_8px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
@@ -205,7 +205,7 @@ def test_downsample_256x256_to_32x32_8px_in_per_clk():
 def test_downsample_256x256_to_32x32_16px_in_per_clk():
     from .downsample_256x256_to_32x32_16px_in_per_clk import c, downsample_256x256_to_32x32_16px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -240,10 +240,10 @@ def test_downsample_256x256_to_32x32_16px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
@@ -257,7 +257,7 @@ def test_downsample_256x256_to_32x32_16px_in_per_clk():
 def test_downsample_256x256_to_32x32_32px_in_per_clk():
     from .downsample_256x256_to_32x32_32px_in_per_clk import c, downsample_256x256_to_32x32_32px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -308,10 +308,10 @@ def test_downsample_256x256_to_32x32_32px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
@@ -326,7 +326,7 @@ def test_downsample_256x256_to_32x32_32px_in_per_clk():
 def test_downsample_256x256_to_32x32_64px_in_per_clk():
     from .downsample_256x256_to_32x32_64px_in_per_clk import c, downsample_256x256_to_32x32_64px_in_per_clk as testcircuit
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -409,10 +409,10 @@ def test_downsample_256x256_to_32x32_64px_in_per_clk():
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
-            print_nd_int_array_port(tester, testcircuit.O0, testcircuit.O0, "O0")
-            print_end_clock(tester, testcircuit.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
+            print_nd_int_array_port(tester, testcircuit.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")

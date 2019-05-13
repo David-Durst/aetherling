@@ -176,7 +176,7 @@ def test_downsample_stencil_1_per_32():
 def test_downsample_stencil_1_per_32_fault():
     from .downsampleStencilChain1Per32 import c, downsampleStencilChain1Per32
 
-    magma.compile("vBuild/" + downsampleStencilChain1Per32.name, downsampleStencilChain1Per32, output="verilog",
+    magma.compile("vBuild/" + downsampleStencilChain1Per32.name, downsampleStencilChain1Per32, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -201,10 +201,10 @@ def test_downsample_stencil_1_per_32_fault():
             #tester.expect(downsampleStencilChain1Per32.ready_data_in, 1)
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, downsampleStencilChain1Per32.O0)
-            print_nd_bit_array_port(tester, downsampleStencilChain1Per32.valid_data_out, downsampleStencilChain1Per32.O0, "valid")
-            print_nd_int_array_port(tester, downsampleStencilChain1Per32.O0, downsampleStencilChain1Per32.O0, "O0")
-            print_end_clock(tester, downsampleStencilChain1Per32.O0)
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, downsampleStencilChain1Per32.valid_data_out, "valid")
+            print_nd_int_array_port(tester, downsampleStencilChain1Per32.O0, "O0")
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{downsampleStencilChain1Per32.name}.log") as file:
         results = eval("[" + file.read() + "]")

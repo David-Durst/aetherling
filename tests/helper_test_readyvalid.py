@@ -1,3 +1,6 @@
+# These are helpers for debugging.
+# They aren't real tests.
+# They may break and/or stop working without concern.
 from aetherling.modules.noop import DefineNoop
 from magma import *
 from mantle.coreir import DefineCoreirConst
@@ -25,10 +28,10 @@ def test_2dlb_flicker_ce_with_2x2_stride():
 
     testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
-    #magma.compile("2dlbflicker_1001pm_2_11_19_unflattened", testcircuit, output="verilog",
+    #magma.compile("2dlbflicker_1001pm_2_11_19_unflattened", testcircuit, output="coreir-verilog",
     #              passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "verifyconnectivity --noclkrst", "deletedeadinstances"],
     #              namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
-    #magma.compile("2dlbflicker_912pm_2_11_19_flattened", testcircuit, output="verilog",
+    #magma.compile("2dlbflicker_912pm_2_11_19_flattened", testcircuit, output="coreir-verilog",
     #              passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
     #              namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
     #tcm = GetCoreIRModule(cirb, testcircuit)
@@ -228,7 +231,7 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
 
     testcircuit = DefineTwoDimensionalLineBuffer(cirb, Array[8, In(Bit)], 1, 1, 2, 2, 8, 8, 2, 2, 0, 0, True)
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
@@ -245,10 +248,10 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
         tester.step(2)
         tester.eval()
 
-        print_start_clock(tester, testcircuit.valid)
-        print_nd_bit_array_port(tester, testcircuit.valid, testcircuit.valid, name="valid")
-        print_nd_int_array_port(tester, testcircuit.O, testcircuit.valid, name="O")
-        print_end_clock(tester, testcircuit.valid)
+        print_start_clock(tester)
+        print_nd_bit_array_port(tester, testcircuit.valid, name="valid")
+        print_nd_int_array_port(tester, testcircuit.O, name="O")
+        print_end_clock(tester)
         #tester.print(testcircuit.O, f"{i}: %x \\n")
         # tester.print(testcircuit.I, f"{start_string} {i} Input:  %x\\n")
         # for some reason, lb going to 0 when flickering valid on and off for ce

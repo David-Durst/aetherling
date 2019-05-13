@@ -30,7 +30,7 @@ results = [[do_convolution_at_point(row,col) for col in valid_cols] for row in v
 flattenedResults = [element for sublist in results for element in sublist]
 
 def run_conv_test(testcircuit, c, parallelism):
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="verilog",
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
 
@@ -51,11 +51,11 @@ def run_conv_test(testcircuit, c, parallelism):
             tester.eval()
             tester.step(2)
             tester.eval()
-            print_start_clock(tester, testcircuit.O0)
-            print_nd_bit_array_port(tester, testcircuit.valid_data_out, testcircuit.O0, "valid")
+            print_start_clock(tester)
+            print_nd_bit_array_port(tester, testcircuit.valid_data_out, "valid")
             for i in range(parallelism):
-                print_nd_int_array_port(tester, getattr(testcircuit, "O" + str(i)), testcircuit.O0, "O" + str(i))
-            print_end_clock(tester, testcircuit.O0)
+                print_nd_int_array_port(tester, getattr(testcircuit, "O" + str(i)), "O" + str(i))
+            print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
     with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
         results = eval("[" + file.read() + "]")
