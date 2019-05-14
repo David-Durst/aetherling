@@ -8,7 +8,8 @@ from magma.scope import Scope
 from mantle.coreir.arith import *
 from mantle.coreir import DefineCoreirConst
 import fault
-from aetherling.helpers.fault_helpers import print_start_clock, print_end_clock, print_nd_int_array_port, print_nd_bit_array_port
+from aetherling.helpers.fault_helpers import print_start_clock, print_end_clock, \
+    print_nd_int_array_port, print_nd_bit_array_port, get_fault_log
 
 int_width = 8
 # this computes the convlution that is computed at different throughputs by the
@@ -72,7 +73,7 @@ def test_downsample_256x256_to_32x32_1px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):
@@ -109,7 +110,7 @@ def test_downsample_256x256_to_32x32_2px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):
@@ -149,7 +150,7 @@ def test_downsample_256x256_to_32x32_4px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):
@@ -193,7 +194,7 @@ def test_downsample_256x256_to_32x32_8px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):
@@ -245,7 +246,7 @@ def test_downsample_256x256_to_32x32_16px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):
@@ -313,7 +314,7 @@ def test_downsample_256x256_to_32x32_32px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):
@@ -414,7 +415,7 @@ def test_downsample_256x256_to_32x32_64px_in_per_clk():
             print_nd_int_array_port(tester, testcircuit.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         if len(filtered_results) >= len(flattenedThirdResults):

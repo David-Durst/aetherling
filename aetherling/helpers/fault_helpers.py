@@ -1,5 +1,9 @@
-# ignored - an argument that won't be used because the string to print doesn't
-# use any format strings like %s
+import os
+
+def get_fault_log(callee_file, circuit_name):
+    dirname = os.path.dirname(callee_file)
+    return f"{dirname}/vBuild/obj_dir/{circuit_name}.log"
+
 def print_start_clock(tester):
     tester.print("{")
 

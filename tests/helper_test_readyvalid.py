@@ -273,7 +273,7 @@ def test_clock_adjusted_2dlb_flicker_ce_with_2x2_stride():
                 #tester.expect(testcircuit.O[0][r][c], 1)
                 # tester.circuit.O[0][r][c].expect(1)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         print(len(results))
         print(results[0])

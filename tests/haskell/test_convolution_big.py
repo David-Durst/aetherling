@@ -57,7 +57,7 @@ def run_conv_test(testcircuit, c, parallelism):
                 print_nd_int_array_port(tester, getattr(testcircuit, "O" + str(i)), "O" + str(i))
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{testcircuit.name}.log") as file:
+    with open(get_fault_log(__file__, testcircuit.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = []
         current_output = 0

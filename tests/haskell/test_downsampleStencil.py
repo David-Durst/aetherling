@@ -8,7 +8,8 @@ from magma.scope import Scope
 from mantle.coreir.arith import *
 from mantle.coreir import DefineCoreirConst
 import fault
-from aetherling.helpers.fault_helpers import print_start_clock, print_end_clock, print_nd_int_array_port, print_nd_bit_array_port
+from aetherling.helpers.fault_helpers import print_start_clock, print_end_clock, print_nd_int_array_port, \
+    print_nd_bit_array_port, get_fault_log
 
 int_width = 8
 # this computes the convlution that is computed at different throughputs by the
@@ -179,7 +180,6 @@ def test_downsample_stencil_1_per_32_fault():
     magma.compile("vBuild/" + downsampleStencilChain1Per32.name, downsampleStencilChain1Per32, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
-
     tester = fault.Tester(downsampleStencilChain1Per32, downsampleStencilChain1Per32.CLK)
 
     tester.poke(downsampleStencilChain1Per32.valid_data_in, 1)
@@ -206,7 +206,7 @@ def test_downsample_stencil_1_per_32_fault():
             print_nd_int_array_port(tester, downsampleStencilChain1Per32.O0, "O0")
             print_end_clock(tester)
     tester.compile_and_run(target="verilator", skip_compile=True, directory="vBuild/")
-    with open(f"vBuild/obj_dir/{downsampleStencilChain1Per32.name}.log") as file:
+    with open(get_fault_log(__file__, downsampleStencilChain1Per32.name)) as file:
         results = eval("[" + file.read() + "]")
         filtered_results = [x['O0'] for x in results if x['valid'] == 1]
         assert filtered_results == [element for sublist in thirdResults for element in sublist]
