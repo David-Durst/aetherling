@@ -13,6 +13,8 @@ before_install:
     - git clone https://github.com/phanrahan/magma.git
     - pip install -e magma
     - source magma/.travis/install_coreir.sh
+    - git clone git@github.com:leonardt/fault.git
+    - pip install -e fault
     - git clone https://github.com/phanrahan/mantle.git
     - pip install pytest-cov
     - pip install delegator.py
