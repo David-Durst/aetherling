@@ -25,7 +25,7 @@ install:
     - pip install -e .
 
 script:
-    - pytest -s tests
+    - pytest -x -s tests
 
 addons:
   apt:
