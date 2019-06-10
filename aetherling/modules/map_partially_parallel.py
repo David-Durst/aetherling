@@ -1,12 +1,11 @@
 from .map_fully_parallel_sequential import MapParallel
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
 from .partition import Partition
 from ..helpers.nameCleanup import cleanName
 from aetherling.helpers.magma_helpers import getOutputPorts, getInputPorts
 
 @cache_definition
-def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: float,
+def DefineMapPartiallyParallel(numInputs: int, parallelism: float,
                          op: Circuit, has_ce=False) -> Circuit:
     """
     Map an operation over numInputs inputs in numInputs/parallelism clock cycles
@@ -40,10 +39,10 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
         def definition(mapPartiallyParallel):
             inputNames = [name for name in mapPartiallyParallel.inputs[::2]]
             outputNames = [name for name in mapPartiallyParallel.outputs[::2]]
-            ops = MapParallel(cirb, parallelism, op)
+            ops = MapParallel(parallelism, op)
             # wire each input (which has been partitioned into subsets) into each operation
             for inputName in inputNames:
-                inputPartition = Partition(cirb, type(getattr(mapPartiallyParallel, inputName)),
+                inputPartition = Partition(type(getattr(mapPartiallyParallel, inputName)),
                                            parallelism, has_ce=has_ce)
                 wire(getattr(mapPartiallyParallel, inputName), inputPartition.I)
                 wire(inputPartition.O, getattr(ops, inputName))
@@ -55,6 +54,5 @@ def DefineMapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism:
     return _MapPartiallyParallel
 
 
-def MapPartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
-                         op: Circuit, has_ce=False):
-    return DefineMapPartiallyParallel(cirb, numInputs, parallelism, op, has_ce)()
+def MapPartiallyParallel(numInputs: int, parallelism: int, op: Circuit, has_ce=False):
+    return DefineMapPartiallyParallel(numInputs, parallelism, op, has_ce)()

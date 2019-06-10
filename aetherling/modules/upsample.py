@@ -10,6 +10,7 @@ from ..helpers.nameCleanup import cleanName
 
 __all__ = ['DefineUpsampleParallel', 'UpsampleParallel', 'DefineUpsampleSequential', 'UpsampleSequential']
 
+@cache_definition
 def DefineUpsampleParallel(n, T):
     """
     Upsample a single T to an array of T's in one clock cycle.
@@ -33,7 +34,8 @@ def UpsampleParallel(n, T):
     y = x()
     return y
 
-def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
+@cache_definition
+def DefineUpsampleSequential(n, T, has_ce=False, has_reset=False):
     """
     Upsample a single T to a stream of T's over n clock cycles.
     Ready is asserted on the clock cycle when a new input is accepted
@@ -49,8 +51,8 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
         IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(upsampleSequential):
-            dehydrate = Dehydrate(cirb, T)
-            hydrate = Hydrate(cirb, T)
+            dehydrate = Dehydrate(T)
+            hydrate = Hydrate(T)
             valueStoreReg = Register(dehydrate.size, has_ce=has_ce, has_reset=has_reset)
             mux = Mux(width=dehydrate.size)
             counter = SizedCounterModM(n, has_ce=has_ce or has_reset)
@@ -79,8 +81,8 @@ def DefineUpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=
 
     return UpSequential
 
-def UpsampleSequential(cirb: CoreIRBackend, n, T, has_ce=False, has_reset=False):
-    return DefineUpsampleSequential(cirb, n, T, has_ce, has_reset)()
+def UpsampleSequential(n, T, has_ce=False, has_reset=False):
+    return DefineUpsampleSequential(n, T, has_ce, has_reset)()
 
 """
 from coreir.context import *

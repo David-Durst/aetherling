@@ -2,13 +2,11 @@ from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
-from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.native_linebuffer.any_dimensional_native_linebuffer import AnyDimensionalLineBuffer
 from math import ceil
 
-
+@cache_definition
 def DefineOneDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixel_per_clock: int,
         window_width: int,
@@ -16,7 +14,6 @@ def DefineOneDimensionalLineBuffer(
         stride: int,
         origin: int) -> Circuit:
     """
-    :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
@@ -129,7 +126,6 @@ def DefineOneDimensionalLineBuffer(
         @classmethod
         def definition(cls):
             lb = AnyDimensionalLineBuffer(
-                cirb,
                 pixel_type,
                 [pixel_per_clock],
                 [window_width],
@@ -147,7 +143,6 @@ def DefineOneDimensionalLineBuffer(
 
 
 def OneDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixel_per_clock: int,
         window_width: int,
@@ -157,7 +152,6 @@ def OneDimensionalLineBuffer(
         first_row: bool = True,
         last_row: bool = True) -> Circuit:
     """
-    :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
@@ -187,7 +181,6 @@ def OneDimensionalLineBuffer(
     :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
     return DefineOneDimensionalLineBuffer(
-        cirb,
         pixel_type,
         pixel_per_clock,
         window_width,

@@ -1,6 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRBackend
 from aetherling.modules.hydrate import Dehydrate, Hydrate
 from mantle.coreir.memory import DefineRAM, getRAMAddrWidth
 
@@ -8,7 +8,7 @@ from mantle.coreir.memory import DefineRAM, getRAMAddrWidth
 __all__ = ['DefineRAMAnyType', 'RAMAnyType']
 
 @cache_definition
-def DefineRAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
+def DefineRAMAnyType(t: Kind, n: int):
     """
     Generate a RAM that handles n of any type.
 
@@ -26,14 +26,14 @@ def DefineRAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
              ] + ClockInterface()
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t).size
+            type_size_in_bits = GetCoreIRBackend().get_type(t).size
             ram = DefineRAM(n, type_size_in_bits)()
 
-            type_to_bits = Dehydrate(cirb, t)
+            type_to_bits = Dehydrate(t)
             wire(cls.WDATA, type_to_bits.I)
             wire(type_to_bits.out, ram.WDATA)
 
-            bits_to_type = Hydrate(cirb, t)
+            bits_to_type = Hydrate(t)
             wire(ram.RDATA, bits_to_type.I)
             wire(bits_to_type.out, cls.RDATA)
 
@@ -44,5 +44,5 @@ def DefineRAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
 
     return _RAM
 
-def RAMAnyType(cirb: CoreIRBackend, t: Kind, n: int):
-    return DefineRAMAnyType(cirb, t, n)()
+def RAMAnyType(t: Kind, n: int):
+    return DefineRAMAnyType(t, n)()

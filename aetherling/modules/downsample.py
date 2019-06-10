@@ -5,7 +5,6 @@ from mantle.common.countermod import SizedCounterModM
 from mantle.common.operator import *
 from mantle.coreir.type_helpers import Term
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
 from .hydrate import Dehydrate, Hydrate
 from .map_fully_parallel_sequential import MapParallel
 from ..helpers.nameCleanup import cleanName
@@ -13,7 +12,8 @@ from ..helpers.nameCleanup import cleanName
 __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
            'DefineDownsampleSequential', 'DownsampleSequential']
 
-def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
+@cache_definition
+def DefineDownsampleParallel(n, T):
     """
     Downsample an array of T's to a single T in one clock cycle.
     Aetherling Type: {1, T[n]} -> {1, T}
@@ -26,11 +26,11 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
         IO = ['I', In(Array[n, T]), 'O', Out(T)]
         @classmethod
         def definition(downsampleParallel):
-            one_input_dehydrate = Dehydrate(cirb, T)
+            one_input_dehydrate = Dehydrate(T)
             # dehydrate all but the first, that one is passed through
-            inputs_dehydrate = MapParallel(cirb, n - 1, one_input_dehydrate)
-            term = Term(cirb, one_input_dehydrate.size)
-            inputs_term = MapParallel(cirb, n - 1, term)
+            inputs_dehydrate = MapParallel(n - 1, one_input_dehydrate)
+            term = Term(one_input_dehydrate.size)
+            inputs_term = MapParallel(n - 1, term)
             wire(downsampleParallel.I[0], downsampleParallel.O)
             wire(downsampleParallel.I[1:], inputs_dehydrate.I)
             wire(inputs_dehydrate.out, inputs_term.I)
@@ -39,9 +39,10 @@ def DefineDownsampleParallel(cirb: CoreIRBackend, n, T):
             #wire(one_input_dehydrate.O, term.I)
     return DownsampleParallel
 
-def DownsampleParallel(cirb: CoreIRBackend, n, T):
-    return DefineDownsampleParallel(cirb, n, T)()
+def DownsampleParallel(n, T):
+    return DefineDownsampleParallel(n, T)()
 
+@cache_definition
 def DefineDownsampleSequential(n, T, has_ce=False, has_reset=False):
     """
     Downsample a stream of T's to a single T over n clock cycles.

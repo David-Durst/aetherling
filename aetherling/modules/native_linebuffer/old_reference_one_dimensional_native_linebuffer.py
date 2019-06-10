@@ -7,7 +7,6 @@ from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
-from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
 from aetherling.modules.sipo_any_type import SIPOAnyType
 from aetherling.modules.term_any_type import TermAnyType
@@ -15,7 +14,6 @@ from math import ceil
 
 
 def DefineOneDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixel_per_clock: int,
         window_width: int,
@@ -25,7 +23,6 @@ def DefineOneDimensionalLineBuffer(
         first_row: bool = True,
         last_row: bool = True) -> Circuit:
     """
-    :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
@@ -146,8 +143,8 @@ def DefineOneDimensionalLineBuffer(
         @classmethod
         def definition(cls):
 
-            shift_register = MapParallel(cirb, pixel_per_clock,
-                                         SIPOAnyType(cirb, image_size // pixel_per_clock,
+            shift_register = MapParallel(pixel_per_clock,
+                                         SIPOAnyType(image_size // pixel_per_clock,
                                                      pixel_type, 0, has_ce=True))
 
             # reverse the pixels per clock. Since greater index_in_shift_register
@@ -268,7 +265,7 @@ def DefineOneDimensionalLineBuffer(
                 for sr_index in range(image_size // pixel_per_clock):
                     if (sr_index, sr) in used_coordinates:
                         continue
-                    term = TermAnyType(cirb, pixel_type)
+                    term = TermAnyType(pixel_type)
                     wire(shift_register.O[sr][sr_index], term.I)
 
             # valid when the maximum coordinate used (minus origin, as origin can in
@@ -313,7 +310,6 @@ def DefineOneDimensionalLineBuffer(
 
 
 def OneDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixel_per_clock: int,
         window_width: int,
@@ -323,7 +319,6 @@ def OneDimensionalLineBuffer(
         first_row: bool = True,
         last_row: bool = True) -> Circuit:
     """
-    :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixel_per_clock: The number of pixels (bits in this case) that the
@@ -353,7 +348,6 @@ def OneDimensionalLineBuffer(
     :return: A 1D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
     return DefineOneDimensionalLineBuffer(
-        cirb,
         pixel_type,
         pixel_per_clock,
         window_width,

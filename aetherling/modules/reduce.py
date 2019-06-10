@@ -1,7 +1,7 @@
 from magma import *
 from magma.circuit import DefineCircuitKind
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule, DefineCircuitFromGeneratorWrapper
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule, DefineCircuitFromGeneratorWrapper, \
+    GetCoreIRBackend
 from mantle.coreir import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
 from ..helpers.nameCleanup import cleanName
@@ -10,7 +10,8 @@ from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.mux_any_type import DefineMuxAnyType
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
 
-def DefineReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
+@cache_definition
+def DefineReduceParallel(numInputs: int, op: Circuit) -> Circuit:
     """
     Reduce multiple numInputs into one in one clock cycle.
     This uses a reduction tree but can handle numInputs that aren't powers of 2.
@@ -28,6 +29,7 @@ def DefineReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Ci
     })
     out: Out(T)
     """
+    cirb = GetCoreIRBackend()
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
     name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
@@ -37,7 +39,7 @@ def DefineReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Ci
                                                           "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
-def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
+def ReduceParallel(numInputs: int, op: Circuit) -> Circuit:
     """
     Reduce multiple numInputs into one in one clock cycle.
     This uses a reduction tree but can handle numInputs that aren't powers of 2.
@@ -55,21 +57,14 @@ def ReduceParallel(cirb: CoreIRBackend, numInputs: int, op: Circuit) -> Circuit:
     })
     out: Out(T)
     """
-    if op.is_instance and op.defn.instances.__contains__(op):
-        op.defn.instances.remove(op)
-    name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
-    moduleToReturn = CircuitInstanceFromGeneratorWrapper(cirb, "aetherlinglib", "reduceParallel", name,
-                                                         ["commonlib", "mantle", "coreir", "global"],
-                                                         {"numInputs": numInputs,
-                                                          "operator": GetCoreIRModule(cirb, op)})
-    return moduleToReturn
+    return DefineReduceParallel(numInputs, op)
 
-def DefineReduceSequential(cirb: CoreIRBackend, numInputs: int, opDef: Circuit, has_ce=False) -> Circuit:
+@cache_definition
+def DefineReduceSequential(numInputs: int, opDef: Circuit, has_ce=False) -> Circuit:
     """
     Reduce multiple numInputs into one in numInputs clock cycles.
     Aetherling Type: ({numInputs, T} -> {1, T}, numInputs)
 
-    :param cirb: The CoreIR backend currently be used
     :param numInputs: The number of input elements
     :param op: The operator definition (the magma circuit) to map over the elements. It should have type T -> T -> T,
     with input ports in0 and in1 and output port out. Use renameCircuitForReduce to do the renaming.
@@ -92,9 +87,9 @@ def DefineReduceSequential(cirb: CoreIRBackend, numInputs: int, opDef: Circuit, 
         @classmethod
         def definition(cls):
             length_counter = SizedCounterModM(numInputs, has_ce=has_ce, cout=True)
-            reg_input_mux = DefineMuxAnyType(cirb, cls.token_type, 2)()
+            reg_input_mux = DefineMuxAnyType(cls.token_type, 2)()
             op_instance = opDef()
-            accumulatorRegister = DefineRegisterAnyType(cirb, cls.token_type, has_ce=has_ce)()
+            accumulatorRegister = DefineRegisterAnyType(cls.token_type, has_ce=has_ce)()
             if has_ce:
                 wire(cls.CE, accumulatorRegister.CE)
                 wire(cls.CE, length_counter.CE)
@@ -117,12 +112,11 @@ def DefineReduceSequential(cirb: CoreIRBackend, numInputs: int, opDef: Circuit, 
 
     return _ReduceSequential
 
-def ReduceSequential(cirb: CoreIRBackend, numInputs: int, opDef: Circuit, has_ce = False) -> Circuit:
+def ReduceSequential(numInputs: int, opDef: Circuit, has_ce = False) -> Circuit:
     """
     Reduce multiple numInputs into one in numInputs clock cycles.
     Aetherling Type: ({numInputs, T} -> {1, T}, numInputs)
 
-    :param cirb: The CoreIR backend currently be used
     :param numInputs: The number of input elements
     :param op: The operator definition (the magma circuit) to map over the elements. It should have type T -> T -> T,
     with input ports in0 and in1 and output port out. Use renameCircuitForReduce to do the renaming
@@ -135,12 +129,11 @@ def ReduceSequential(cirb: CoreIRBackend, numInputs: int, opDef: Circuit, has_ce
     if has_ce == True:
     CE : In(Enable)
     """
-    return DefineReduceSequential(cirb, numInputs, opDef, has_ce)()
+    return DefineReduceSequential(numInputs, opDef, has_ce)()
 
 @cache_definition
 def DefineReducePartiallyParallel(
-        cirb: CoreIRBackend, 
-        numInputs: int, 
+        numInputs: int,
         parallelism: int,
         op: Circuit,
         has_ce = False) -> Circuit:
@@ -148,7 +141,6 @@ def DefineReducePartiallyParallel(
     Reduce multiple numInputs into one over numInputs/parallelism clock cycles, parallelism per clock cycle
     Aetherling Type: {1, T[numInputs]} -> {numInputs/parallelism, S[parallelism]}
 
-    :param cirb: The CoreIR backend currently be used
     :param numInputs: The total number of input elements
     :param numInputs: The number of input elements to process each clock cycle
     :param op: The operator definition (the magma circuit) to map over the elements. It should have type T -> T -> T,
@@ -197,10 +189,10 @@ def DefineReducePartiallyParallel(
             num_clocks = numInputs // parallelism
 
             # reduce Parallel
-            reducePar = ReduceParallel(cirb, parallelism, renameCircuitForReduce(op))
+            reducePar = ReduceParallel(parallelism, renameCircuitForReduce(op))
 
             # reduce sequential
-            reduceSeq = ReduceSequential(cirb, num_clocks, renameCircuitForReduce(op))
+            reduceSeq = ReduceSequential(num_clocks, renameCircuitForReduce(op))
 
             # top level input fed to reduce parallel input
             wire(rpp.I, reducePar.I.data)
@@ -218,9 +210,9 @@ def DefineReducePartiallyParallel(
 
     return _ReducePartiallyParallel
 
-def ReducePartiallyParallel(cirb: CoreIRBackend, numInputs: int, parallelism: int,
+def ReducePartiallyParallel(numInputs: int, parallelism: int,
                          op: Circuit, has_ce=False):
-    return DefineReducePartiallyParallel(cirb, numInputs, parallelism, op)()
+    return DefineReducePartiallyParallel(numInputs, parallelism, op)()
 
 @cache_definition
 def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:

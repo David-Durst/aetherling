@@ -1,7 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from mantle import DefineCoreirConst
-from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel, DefineNativeMapParallel
 from aetherling.modules.ram_any_type import DefineRAMAnyType
 from aetherling.modules.mux_any_type import MuxAnyType
@@ -12,15 +11,15 @@ import math
 
 __all__ = ['DefineDelayedBuffer', 'DelayedBuffer', 'GetDBDebugInterface']
 
-def GetDBDebugInterface(cirb, t, n, k):
-    test_ram = DefineMapParallel(cirb, k, DefineRAMAnyType(cirb, t, n // k))
+def GetDBDebugInterface(t, n, k):
+    test_ram = DefineMapParallel(k, DefineRAMAnyType(t, n // k))
     debug_interface = ['WDATA', Out(type(test_ram.WDATA)), 'RDATA', Out(type(test_ram.WDATA)),
                        'WADDR', Out(type(test_ram.WADDR)), 'RADDR', Out(type(test_ram.WADDR)),
                        'RAMWE', Out(Bit)]
     return debug_interface
 
 @cache_definition
-def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int,
+def DefineDelayedBuffer(t: Kind, n: int, k: int, total_emitting_period: int,
                         initial_emitting_delay: int = 0, add_debug_interface = False):
     """
     Generate a buffer that accepts n items, k at a time, emtting them evenly spaced over a total_emitting_period
@@ -62,14 +61,14 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
         name = 'DelayedBuffer_{}t_{}n_{}k_{}emittingPeriod_{}initialDelay'.format(cleanName(str(t)), n, k,
                                                                                  total_emitting_period, initial_emitting_delay)
         if add_debug_interface:
-            debug_interface = GetDBDebugInterface(cirb, t, n, k)
+            debug_interface = GetDBDebugInterface(t, n, k)
         else:
             debug_interface = []
         IO = ['I', In(Array[k, t]), 'O', Out(Array[out_per_clock, t]), 'WE', In(Bit),
               'valid', Out(Bit)] + debug_interface + ClockInterface(has_ce=True)
         @classmethod
         def definition(cls):
-            rams = DefineNativeMapParallel(cirb, k, DefineRAMAnyType(cirb, t, n // k))()
+            rams = DefineNativeMapParallel(k, DefineRAMAnyType(t, n // k))()
 
             # each clock WE is set, write to the RAMs and increment the address
             writing_location_per_bank = SizedCounterModM(n // k, has_ce=True)
@@ -139,7 +138,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
                 wire(ce_with_delay & (ticks_per_mux_counter.O == ticks_per_mux_output_const.O),
                      mux_bank_selector_counter.CE)
 
-            ram_bank_selector = MuxAnyType(cirb, Array[cls.out_per_clock, t], k // cls.out_per_clock)
+            ram_bank_selector = MuxAnyType(Array[cls.out_per_clock, t], k // cls.out_per_clock)
             for i in range(k):
                 wire(rams.RDATA[i], ram_bank_selector.data[i // cls.out_per_clock][i % cls.out_per_clock])
                 if add_debug_interface:
@@ -149,7 +148,7 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
             # if not delaying,
             # remove latency of RAMs of by emitting first input on first clock immediately
             if initial_emitting_delay == 0:
-                first_input_or_rams = MuxAnyType(cirb, Array[cls.out_per_clock, t], 2)
+                first_input_or_rams = MuxAnyType(Array[cls.out_per_clock, t], 2)
                 wire(cls.I[0:cls.out_per_clock], first_input_or_rams.data[1])
                 wire(ram_bank_selector.out, first_input_or_rams.data[0])
 
@@ -174,6 +173,6 @@ def DefineDelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emit
 
     return _DelayedBuffer
 
-def DelayedBuffer(cirb: CoreIRBackend, t: Kind, n: int, k: int, total_emitting_period: int,
+def DelayedBuffer(t: Kind, n: int, k: int, total_emitting_period: int,
                   initial_emitting_delay: int = 0, add_debug_interface = False):
-    return DefineDelayedBuffer(cirb, t, n, k, total_emitting_period, initial_emitting_delay, add_debug_interface)()
+    return DefineDelayedBuffer(t, n, k, total_emitting_period, initial_emitting_delay, add_debug_interface)()

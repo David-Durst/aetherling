@@ -1,9 +1,9 @@
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule, GetCoreIRBackend
 from ..helpers.nameCleanup import cleanName
 
-def Flatten(cirb: CoreIRBackend, inputType: Kind, singleElementOutputType: Kind) -> Circuit:
+@cache_definition
+def Flatten(inputType: Kind, singleElementOutputType: Kind) -> Circuit:
     """
     Flatten a nested list to a single list. The nested list can be flattened across multiple dimensions
     with a single flatten node. The output list can be nested, but if so must be flatter than the input list.
@@ -18,6 +18,7 @@ def Flatten(cirb: CoreIRBackend, inputType: Kind, singleElementOutputType: Kind)
     I : In(inputType)
     O : Out(Array[singleElementOutputType, k*...*s)])
     """
+    cirb = GetCoreIRBackend()
     cirInputType = cirb.get_type(inputType)
     cirSingleEleementOutputType = cirb.get_type(singleElementOutputType)
     name = "dehydrate_tin{}_tout".format(cleanName(str(cirInputType)), cleanName(str(singleElementOutputType)))

@@ -1,4 +1,3 @@
-from magma.backend.coreir_ import CoreIRBackend
 from magma import *
 from .hydrate import Hydrate, Dehydrate
 from .map_fully_parallel_sequential import MapParallel
@@ -6,8 +5,7 @@ from mantle.coreir.MUX import CommonlibMuxN
 from mantle.common.countermod import SizedCounterModM
 from ..helpers.nameCleanup import cleanName
 
-def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
-              has_ce=False):
+def DefinePartition(arrayType: ArrayKind, subsetSize: int, has_ce=False):
     """
     Split an array of elements in arrayLength/subsetSize elements of size subsetSize each.
     Aetherling Type: {1, T[k]} -> {k/s, T[s]}
@@ -33,13 +31,12 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
             ClockInterface(has_ce=has_ce)
         @classmethod
         def definition(partition):
-            dehydrate = MapParallel(cirb, arrayType.N, Dehydrate(cirb, partition.elementType))
+            dehydrate = MapParallel(arrayType.N, Dehydrate(partition.elementType))
             # each mux emits 1 element of the subset that is emitted every clock
             # each mux needs to handle k/s inputs, so it can output one element every clock
-            muxes = MapParallel(cirb, subsetSize,
-                                CommonlibMuxN(cirb, int(arrayType.N / subsetSize),
+            muxes = MapParallel(subsetSize, CommonlibMuxN(int(arrayType.N / subsetSize),
                                               len(dehydrate.out[0])))
-            hydrate = MapParallel(cirb, subsetSize, Hydrate(cirb, partition.elementType))
+            hydrate = MapParallel(subsetSize, Hydrate(partition.elementType))
             counter = SizedCounterModM(int(arrayType.N/subsetSize), has_ce=has_ce)
 
             wire(partition.I, dehydrate.I)
@@ -55,5 +52,5 @@ def DefinePartition(cirb: CoreIRBackend, arrayType: ArrayKind, subsetSize: int,
                 wire(partition.CE, counter.CE)
     return Partition
 
-def Partition(cirb: CoreIRBackend, arrayType: Type, subsetSize: int, has_ce=False):
-    return DefinePartition(cirb, arrayType, subsetSize, has_ce)()
+def Partition(arrayType: Type, subsetSize: int, has_ce=False):
+    return DefinePartition(arrayType, subsetSize, has_ce)()

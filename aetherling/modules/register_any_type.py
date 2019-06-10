@@ -1,6 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRBackend
 from mantle.common.register import DefineRegister
 from aetherling.modules.hydrate import Dehydrate, Hydrate
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
@@ -9,8 +9,7 @@ from aetherling.modules.map_fully_parallel_sequential import MapParallel
 __all__ = ['DefineRegisterAnyType', 'RegisterAnyType']
 
 @cache_definition
-def DefineRegisterAnyType(cirb: CoreIRBackend, t: Kind, init: int = 0,
-                      has_ce: bool = False, has_reset: bool = False):
+def DefineRegisterAnyType(t: Kind, init: int = 0, has_ce: bool = False, has_reset: bool = False):
     """
     Generate register that handles any type.
 
@@ -28,10 +27,10 @@ def DefineRegisterAnyType(cirb: CoreIRBackend, t: Kind, init: int = 0,
                 ClockInterface(has_ce,has_reset)
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t).size
-            type_to_bits = Dehydrate(cirb, t)
+            type_size_in_bits = GetCoreIRBackend().get_type(t).size
+            type_to_bits = Dehydrate(t)
             registers = DefineRegister(type_size_in_bits, has_ce=has_ce, has_reset=has_reset)()
-            bits_to_type = Hydrate(cirb, t)
+            bits_to_type = Hydrate(t)
 
             #for bit_in_type in range(type_size_in_bits):
             #    wire(type_to_bits.out[bit_in_type], sipos.I[bit_in_type])
@@ -55,6 +54,5 @@ def DefineRegisterAnyType(cirb: CoreIRBackend, t: Kind, init: int = 0,
 
     return _Register
 
-def RegisterAnyType(cirb: CoreIRBackend, t: Kind, init: int = 0,
-                      has_ce: bool = False, has_reset: bool = False):
-    return DefineRegisterAnyType(cirb, t, init, has_ce, has_reset)()
+def RegisterAnyType(t: Kind, init: int = 0, has_ce: bool = False, has_reset: bool = False):
+    return DefineRegisterAnyType(t, init, has_ce, has_reset)()

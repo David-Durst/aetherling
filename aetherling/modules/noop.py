@@ -1,7 +1,4 @@
 from magma import *
-from magma.circuit import DefineCircuitKind
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule, DefineCircuitFromGeneratorWrapper
 from ..helpers.nameCleanup import cleanName
 
 

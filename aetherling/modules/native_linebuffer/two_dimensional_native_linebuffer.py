@@ -5,12 +5,10 @@ from aetherling.modules.register_any_type import DefineRegisterAnyType
 from mantle.common.countermod import SizedCounterModM
 from mantle import DefineCoreirConst
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
 
 
-
+@cache_definition
 def DefineTwoDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixels_per_row_per_clock: int,
         rows_of_pixels_per_clock: int,
@@ -24,7 +22,6 @@ def DefineTwoDimensionalLineBuffer(
         origin_rows: int,
         add_debug_interface = False) -> Circuit:
     """
-    :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixels_per_row_per_clock: The number of pixels per row of the image the linebuffer
@@ -265,7 +262,7 @@ def DefineTwoDimensionalLineBuffer(
 
         if add_debug_interface:
             debug_interface = ['undelayedO', Out(Array[windows_per_active_clock, Array[window_rows, Array[window_cols, Out(pixel_type)]]]),
-              'dbCE', Out(Bit), 'dbWE', Out(Bit)] + GetDBDebugInterface(cirb,  Array[window_rows, Array[window_cols, pixel_type]], image_cols // stride_cols,
+              'dbCE', Out(Bit), 'dbWE', Out(Bit)] + GetDBDebugInterface(Array[window_rows, Array[window_cols, pixel_type]], image_cols // stride_cols,
                                    max(pixels_per_row_per_clock // stride_cols, 1),)
         else:
             debug_interface = []
@@ -275,7 +272,6 @@ def DefineTwoDimensionalLineBuffer(
         @classmethod
         def definition(cls):
             lb = AnyDimensionalLineBuffer(
-                cirb,
                 pixel_type,
                 [rows_of_pixels_per_clock, pixels_per_row_per_clock],
                 [window_rows, window_cols],
@@ -297,7 +293,7 @@ def DefineTwoDimensionalLineBuffer(
                         for window_per_row in range(cls.windows_per_row_per_clock):
                             wire(cls.undelayedO[row_of_windows * cls.windows_per_row_per_clock + window_per_row],
                                  lb.O[row_of_windows][window_per_row])
-                db = DelayedBuffer(cirb,  Array[window_rows, Array[window_cols, pixel_type]], image_cols // stride_cols,
+                db = DelayedBuffer(Array[window_rows, Array[window_cols, pixel_type]], image_cols // stride_cols,
                                    max(pixels_per_row_per_clock // stride_cols, 1),
                                    cls.time_per_buffered_cycle, add_debug_interface=add_debug_interface)
                 for row_of_windows in range(cls.rows_of_windows_per_clock):
@@ -317,7 +313,7 @@ def DefineTwoDimensionalLineBuffer(
                 # delay the CE of the delayed buffer as the LB output will hit the
                 # DB one later, so give the DB that CE
                 # this ensure sthat when using CE for a ready-valid chain, don't have to wait until
-                delayed_ce_for_db_valid = DefineRegisterAnyType(cirb, Bit)()
+                delayed_ce_for_db_valid = DefineRegisterAnyType(Bit)()
                 wire(bit(cls.CE), delayed_ce_for_db_valid.I)
                 #ce_or_last_valid = bit(cls.CE) | (lb.valid & ~last_clock_lb_valid.O)
                 # need lb.valid or counter as lb.valid will be 1 on first clock where valid
@@ -338,7 +334,6 @@ def DefineTwoDimensionalLineBuffer(
     return _LB
 
 def TwoDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixels_per_row_per_clock: int,
         rows_of_pixels_per_clock: int,
@@ -351,7 +346,6 @@ def TwoDimensionalLineBuffer(
         origin_cols: int,
         origin_rows: int) -> Circuit:
     """
-    :param cirb: The CoreIR backend currently be used
     :param pixel_type: the type of each pixel. A type of Array[3, Array[8, Bit])] is for
     3 color channel, 8 bits per channel.
     :param pixels_per_row_per_clock: The number of pixels per row of the image the linebuffer
@@ -394,7 +388,6 @@ def TwoDimensionalLineBuffer(
     :return: A 2D Linebuffer with ports I, O, valid, CE, and next_row (if last_row false)
     """
     DefineTwoDimensionalLineBuffer(
-        cirb,
         pixel_type,
         pixels_per_row_per_clock,
         rows_of_pixels_per_clock,

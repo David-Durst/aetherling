@@ -1,6 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRBackend
 from mantle.common.sipo import DefineSIPO
 from mantle.common.register import _RegisterName
 from aetherling.modules.hydrate import Dehydrate, DefineHydrate
@@ -10,7 +10,7 @@ from aetherling.modules.map_fully_parallel_sequential import MapParallel
 __all__ = ['DefineSIPOAnyType', 'SIPOAnyType']
 
 @cache_definition
-def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
+def DefineSIPOAnyType(n: int, t: Kind, init: int = 0,
                       has_ce: bool = False, has_reset: bool = False):
     """
     Generate Serial-In, Parallel-Out shift register that handles any type.
@@ -25,10 +25,10 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
                 ClockInterface(has_ce,has_reset)
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t).size
-            type_to_bits = Dehydrate(cirb, t)
-            sipos = MapParallel(cirb, type_size_in_bits, DefineSIPO(n, init, has_ce, has_reset))
-            bits_to_type = MapParallel(cirb, n, DefineHydrate(cirb, t))
+            type_size_in_bits = GetCoreIRBackend().get_type(t).size
+            type_to_bits = Dehydrate(t)
+            sipos = MapParallel(type_size_in_bits, DefineSIPO(n, init, has_ce, has_reset))
+            bits_to_type = MapParallel(n, DefineHydrate(t))
 
             for bit_in_type in range(type_size_in_bits):
                 wire(type_to_bits.out[bit_in_type], sipos.I[bit_in_type])
@@ -46,6 +46,6 @@ def DefineSIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
 
     return _SIPO
 
-def SIPOAnyType(cirb: CoreIRBackend, n: int, t: Kind, init: int = 0,
+def SIPOAnyType(n: int, t: Kind, init: int = 0,
                       has_ce: bool = False, has_reset: bool = False):
-    return DefineSIPOAnyType(cirb, n, t, init, has_ce, has_reset)()
+    return DefineSIPOAnyType(n, t, init, has_ce, has_reset)()

@@ -1,14 +1,14 @@
 from magma import *
 from magma.circuit import DefineCircuitKind
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper
+from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRBackend
 from ..helpers.nameCleanup import cleanName
 from magma.t import Kind
 from mantle.coreir.type_helpers import Term
 from .hydrate import DefineDehydrate, Dehydrate, DefineHydrate, Hydrate
 from .map_fully_parallel_sequential import MapParallel
 
-def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=False, has_reset=False) -> DefineCircuitKind:
+@cache_definition
+def DefineSerializer(T: Kind, N: int, has_count=False, has_ce=False, has_reset=False) -> DefineCircuitKind:
     """
     Serializer converts an array to a stream and emit the stream over multiple clocks
     Aetherling Type: ({1, Array[N, T]} -> {N, T}, N)
@@ -35,7 +35,7 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
         name = "serialize_t{}_n{}".format(cleanName(str(T)), str(N))
 
         if has_count:
-            cirType = cirb.get_type(T)
+            cirType = GetCoreIRBackend().get_type(T)
             count_interface = ["count", Out(Array[T.size, Bit])]
         else:
             count_interface = []
@@ -48,9 +48,9 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
         def definition(serializer):
             # CoreIR serializer works on arrays of arrays of bits, where each T is an array of bits
             # so need to hydrate and dehydrate
-            dehydrate = MapParallel(cirb, N, DefineDehydrate(cirb, T))
-            hydrate = Hydrate(cirb, T)
-            coreirSerializer = CircuitInstanceFromGeneratorWrapper(cirb, "commonlib", "serializer",
+            dehydrate = MapParallel(N, DefineDehydrate(T))
+            hydrate = Hydrate(T)
+            coreirSerializer = CircuitInstanceFromGeneratorWrapper(GetCoreIRBackend(), "commonlib", "serializer",
                                                                    "dehydrated_" + serializer.name,
                                                                    ["mantle", "coreir", "global"],
                                                                    {"width": hydrate.size, "rate": N})
@@ -74,12 +74,12 @@ def DefineSerializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_
             if has_count:
                 wire(coreirSerializer.count, serializer.count)
             else:
-                countTerm = Term(cirb, hydrate.size)
+                countTerm = Term(hydrate.size)
                 wire(coreirSerializer.count, countTerm.I)
 
     return _Serializer
 
-def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=False, has_reset=False) -> Circuit:
+def Serializer(T: Kind, N: int, has_count=False, has_ce=False, has_reset=False) -> Circuit:
     """
     Serializer converts an array to a stream and emit the stream over multiple clocks
     Aetherling Type: ({1, Array[N, T]} -> {N, T}, N)
@@ -99,9 +99,10 @@ def Serializer(cirb: CoreIRBackend, T: Kind, N: int, has_count=False, has_ce=Fal
         valid : Out(Bit)
         and others depending on has_ arguments
     """
-    return DefineSerializer(cirb, T, N, has_count, has_ce, has_reset)()
+    return DefineSerializer(T, N, has_count, has_ce, has_reset)()
 
-def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=False) -> DefineCircuitKind:
+@cache_definition
+def DefineDeserializer(T: Kind, N: int, has_ce=False, has_reset=False) -> DefineCircuitKind:
     """
     Deserializer converts a stream to an array over multiple clocks
     Aetherling Type: ({N, T} -> {1, Array[N, T]}, N)
@@ -132,9 +133,9 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
         def definition(serializer):
             # CoreIR serializer works on arrays of arrays of bits, where each T is an array of bits
             # so need to hydrate and dehydrate
-            dehydrate = Dehydrate(cirb, T)
-            hydrate = MapParallel(cirb, N, DefineHydrate(cirb, T))
-            coreirDeserializer = CircuitInstanceFromGeneratorWrapper(cirb, "commonlib", "deserializer",
+            dehydrate = Dehydrate(T)
+            hydrate = MapParallel(N, DefineHydrate(T))
+            coreirDeserializer = CircuitInstanceFromGeneratorWrapper(GetCoreIRBackend(), "commonlib", "deserializer",
                                                                      "dehydrated_" + serializer.name,
                                                                      ["mantle", "coreir", "global"],
                                                                      {"width": dehydrate.size, "rate": N})
@@ -157,7 +158,7 @@ def DefineDeserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_r
 
     return _Deserializer
 
-def Deserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=False) -> Circuit:
+def Deserializer(T: Kind, N: int, has_ce=False, has_reset=False) -> Circuit:
     """
     Deserializer converts a stream to an array over multiple clocks
     Aetherling Type: ({N, T} -> {1, Array[N, T]}, N)
@@ -175,4 +176,4 @@ def Deserializer(cirb: CoreIRBackend, T: Kind, N: int, has_ce=False, has_reset=F
         valid : Out(Bit)
         and others depending on has_ arguments
     """
-    return DefineDeserializer(cirb, T, N, has_ce, has_reset)()
+    return DefineDeserializer(T, N, has_ce, has_reset)()

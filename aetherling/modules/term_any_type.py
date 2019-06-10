@@ -1,6 +1,6 @@
 from aetherling.helpers.nameCleanup import cleanName
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
+from magma.frontend.coreir_ import GetCoreIRBackend
 from aetherling.modules.hydrate import Dehydrate
 from mantle.coreir.type_helpers import Term
 
@@ -8,7 +8,7 @@ from mantle.coreir.type_helpers import Term
 __all__ = ['DefineTermAnyType', 'TermAnyType']
 
 @cache_definition
-def DefineTermAnyType(cirb: CoreIRBackend, t: Kind):
+def DefineTermAnyType(t: Kind):
     """
     Generate Serial-In, Parallel-Out shift register that handles any type.
 
@@ -20,13 +20,13 @@ def DefineTermAnyType(cirb: CoreIRBackend, t: Kind):
         IO = ['I', In(t)]
         @classmethod
         def definition(cls):
-            type_size_in_bits = cirb.get_type(t).size
-            type_to_bits = Dehydrate(cirb, t)
-            term = Term(cirb, type_size_in_bits)
+            type_size_in_bits = GetCoreIRBackend().get_type(t).size
+            type_to_bits = Dehydrate(t)
+            term = Term(type_size_in_bits)
             wire(cls.I, type_to_bits.I)
             wire(type_to_bits.out, term.I)
 
     return _SIPO
 
-def TermAnyType(cirb: CoreIRBackend, t: Kind):
-    return DefineTermAnyType(cirb, t)()
+def TermAnyType(t: Kind):
+    return DefineTermAnyType(t)()

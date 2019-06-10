@@ -1,19 +1,10 @@
 from magma import *
 from magma.circuit import DefineCircuitKind
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper, GetCoreIRModule
+from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper, GetCoreIRModule, GetCoreIRBackend
 from ..helpers.nameCleanup import cleanName
 
-def DefineSDFMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
-    """
-    Creates a MapParallel circuit defintion wrapped in an SDF
-    :param cirb:
-    :param numInputs:
-    :param op:
-    :return:
-    """
-
-def DefineMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
+@cache_definition
+def DefineMapParallel(numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
     """
     Map an operation over numInputs inputs in one clock cycle
     Aetherling Type: {1, T[numInputs]} -> {1, S[numInputs]}
@@ -28,6 +19,7 @@ def DefineMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind
     I : In(Array[numInputs, T])
     O : Out(Array[numInputs, S])
     """
+    cirb = GetCoreIRBackend()
     if hasattr(op, 'is_instance') and op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
     name = "MapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
@@ -37,7 +29,7 @@ def DefineMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind
                                                           "operator": GetCoreIRModule(cirb, op)})
     return definitionToReturn
 
-def MapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> Circuit:
+def MapParallel(numInputs: int, op: DefineCircuitKind) -> Circuit:
     """
     Map an operation over numInputs inputs in one clock cycle
     Aetherling Type: {1, T[numInputs]} -> {1, S[numInputs]}
@@ -52,9 +44,10 @@ def MapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> C
     I : In(Array[numInputs, T])
     O : Out(Array[numInputs, S])
     """
-    return DefineMapParallel(cirb, numInputs, op)()
+    return DefineMapParallel(numInputs, op)()
 
-def DefineNativeMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
+@cache_definition
+def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
     class _Map(Circuit):
         name = "NativeMapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
         IO = []
@@ -69,7 +62,8 @@ def DefineNativeMapParallel(cirb: CoreIRBackend, numInputs: int, op: DefineCircu
                     wire(getattr(cls, port_name)[i], getattr(op_instance, port_name))
     return _Map
 
-def DefineMapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
+@cache_definition
+def DefineMapSequential(numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
     """
     Map an operation over numInputs inputs over numInputs cycles.
     Note: the entire inputs must be delivered on the first cycle.
@@ -88,6 +82,7 @@ def DefineMapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKi
      I : In(Array[numInputs, T]
      O : Out(Array[numInputs, S])
     """
+    cirb = GetCoreIRBackend()
     if op.is_instance and op.defn.instances.__contains__(op):
         op.defn.instances.remove(op)
     name = "MapSequential_n{}_op{}".format(str(numInputs), cleanName(str(op)))
@@ -98,7 +93,7 @@ def DefineMapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKi
     return definitionToReturn
 
 
-def MapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) -> Circuit:
+def MapSequential(numInputs: int, op: DefineCircuitKind) -> Circuit:
     """
     Map an operation over numInputs inputs over numInputs cycles.
     Note: the entire inputs must be delivered on the first cycle.
@@ -117,5 +112,5 @@ def MapSequential(cirb: CoreIRBackend, numInputs: int, op: DefineCircuitKind) ->
      I : In(Array[numInputs, T]
      O : Out(Array[numInputs, S])
     """
-    return DefineMapSequential(cirb, numInputs, op)()
+    return DefineMapSequential(numInputs, op)()
 

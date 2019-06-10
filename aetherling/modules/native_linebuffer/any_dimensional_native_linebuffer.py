@@ -2,7 +2,6 @@ from aetherling.helpers.nameCleanup import cleanName
 from magma import *
 from mantle import DefineCoreirConst
 from mantle.common.countermod import SizedCounterModM
-from magma.backend.coreir_ import CoreIRBackend
 from aetherling.modules.map_fully_parallel_sequential import DefineMapParallel, DefineNativeMapParallel
 from aetherling.modules.sipo_any_type import SIPOAnyType
 from aetherling.modules.term_any_type import TermAnyType
@@ -21,7 +20,6 @@ def get_nested_type(pixel_type: Kind, dimensions: list):
         return Array[dimensions[0], get_nested_type(pixel_type, dimensions[1:])]
 
 def DefineAnyDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixels_per_clock: list,
         window_widths: list,
@@ -174,7 +172,7 @@ def DefineAnyDimensionalLineBuffer(
 
             # 2 times num_dimenions as those are ND dimensions and this is for 2ND dimensions
             needed_2ND_coordinates = get_need_size_for_each_dimension(used_coordinates, 2 * num_dimensions)
-            shift_registers = create_parallel_shift_registers(cirb, cls.name, pixel_type,
+            shift_registers = create_parallel_shift_registers(cls.name, pixel_type,
                                             pixels_per_clock, image_sizes, needed_2ND_coordinates)
 
 
@@ -218,7 +216,7 @@ def DefineAnyDimensionalLineBuffer(
             for c in possibly_used_coordinates:
                 if c in used_coordinates:
                     continue
-                term = TermAnyType(cirb, pixel_type)
+                term = TermAnyType(pixel_type)
                 wire(multidimensionalLookup(shift_registers.O, c), term.I)
 
             # will be valid when go through all but last needed for each dimension
@@ -290,7 +288,6 @@ def DefineAnyDimensionalLineBuffer(
 
 
 def AnyDimensionalLineBuffer(
-        cirb: CoreIRBackend,
         pixel_type: Kind,
         pixel_per_clock: list,
         window_width: list,
@@ -299,7 +296,6 @@ def AnyDimensionalLineBuffer(
         origin: list) -> Circuit:
 
     return DefineAnyDimensionalLineBuffer(
-        cirb,
         pixel_type,
         pixel_per_clock,
         window_width,
@@ -322,7 +318,6 @@ def get_need_size_for_each_dimension(used_coordinates: list, num_dimensions) -> 
     return max_coordinates
 
 def create_parallel_shift_registers(
-        cirb: CoreIRBackend,
         parent_name: str,
         pixel_type: Kind,
         pixels_per_clock: list,
@@ -335,7 +330,6 @@ def create_parallel_shift_registers(
 
 
     parallelized_shift_registers_list = [define_n_dimensional_shift_registers(
-        cirb,
         parent_name,
         pixel_type,
         pixels_per_clock,
@@ -348,7 +342,7 @@ def create_parallel_shift_registers(
     # wrapped the deepest
     for pixel_per_clock in pixels_per_clock[::-1]:
         parallelized_shift_registers_list.append(
-            DefineNativeMapParallel(cirb, pixel_per_clock, parallelized_shift_registers_list[-1])
+            DefineNativeMapParallel(pixel_per_clock, parallelized_shift_registers_list[-1])
         )
 
     parallelized_shift_registers = parallelized_shift_registers_list[-1]()
@@ -356,7 +350,6 @@ def create_parallel_shift_registers(
     return parallelized_shift_registers
 
 def define_n_dimensional_shift_registers(
-        cirb: CoreIRBackend,
         parent_name: str,
         pixel_type: Kind,
         pixels_per_clock: list,
@@ -402,9 +395,9 @@ def define_n_dimensional_shift_registers(
                 # otherwise use an SRAM
                 rest_of_row_buffer_size = cls.lengths_per_shift_register_per_dimension[0] - head_needed_2ND_coordinates
                 if rest_of_row_buffer_size == 1 and not last_in_dimension:
-                    sipos = SIPOAnyType(cirb, head_needed_2ND_coordinates + 1, pixel_type, 0, has_ce=True)
+                    sipos = SIPOAnyType(head_needed_2ND_coordinates + 1, pixel_type, 0, has_ce=True)
                 else:
-                    sipos = SIPOAnyType(cirb, head_needed_2ND_coordinates, pixel_type, 0, has_ce=True)
+                    sipos = SIPOAnyType(head_needed_2ND_coordinates, pixel_type, 0, has_ce=True)
                 wire(cls.I, sipos.I)
                 wire(cls.CE, sipos.CE)
                 wire(sipos.O[0:head_needed_2ND_coordinates], cls.O)
@@ -413,11 +406,11 @@ def define_n_dimensional_shift_registers(
                     if rest_of_row_buffer_size < 2:
                         wire(sipos.O[-1], cls.next)
                     else:
-                        rowbuffer = DelayedBuffer(cirb, pixel_type, rest_of_row_buffer_size, 1,
+                        rowbuffer = DelayedBuffer(pixel_type, rest_of_row_buffer_size, 1,
                                                   rest_of_row_buffer_size, rest_of_row_buffer_size)
                         wire(sipos.O[-1], rowbuffer.I[0])
                         wire(rowbuffer.O[0], cls.next)
-                        valid_term = TermAnyType(cirb, Bit)
+                        valid_term = TermAnyType(Bit)
                         wire(rowbuffer.valid, valid_term.I)
                         wire(cls.CE, rowbuffer.CE)
                         wire(cls.CE, rowbuffer.WE)
@@ -430,7 +423,6 @@ def define_n_dimensional_shift_registers(
                 # and only make enough of them to fill the output ports. Otherwise, make enough to fill this
                 # dimension
                 one_dimensional_lower_shift_register_def_not_last_in_dimension = define_n_dimensional_shift_registers(
-                    cirb,
                     cls.name,
                     pixel_type,
                     tail_pixels_per_clock,
@@ -440,7 +432,6 @@ def define_n_dimensional_shift_registers(
                 )
 
                 one_dimensional_lower_shift_register_def_last_in_dimension = define_n_dimensional_shift_registers(
-                    cirb,
                     cls.name,
                     pixel_type,
                     tail_pixels_per_clock,

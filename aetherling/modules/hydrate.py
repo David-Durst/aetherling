@@ -1,10 +1,10 @@
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper
+from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper, GetCoreIRBackend
 from ..helpers.nameCleanup import cleanName
 from magma.t import Kind
-from magma import In
+from magma import In, cache_definition
 
-def DefineDehydrate(cirb: CoreIRBackend, T: Kind):
+@cache_definition
+def DefineDehydrate(T: Kind):
     """
     Convert a nested type to a flat array of bits
     Aetherling Type: {1, T} -> {1, Bit[width(T)]}
@@ -22,6 +22,7 @@ def DefineDehydrate(cirb: CoreIRBackend, T: Kind):
         The module also has the following data:
         size: width(T)
     """
+    cirb = GetCoreIRBackend()
     cirType = cirb.get_type(In(T))
     name = "dehydrate_t{}".format(cleanName(str(T)))
     defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate", name,
@@ -31,7 +32,7 @@ def DefineDehydrate(cirb: CoreIRBackend, T: Kind):
     return defToReturn
 
 
-def Dehydrate(cirb: CoreIRBackend, T: Kind):
+def Dehydrate(T: Kind):
     """
     Convert a nested type to a flat array of bits
     Aetherling Type: {1, T} -> {1, Bit[width(T)]}
@@ -49,12 +50,13 @@ def Dehydrate(cirb: CoreIRBackend, T: Kind):
         The module also has the following data:
         size: width(T)
     """
-    dehydrateDef = DefineDehydrate(cirb, T)
+    dehydrateDef = DefineDehydrate(T)
     dehydrateInstance = dehydrateDef()
     dehydrateInstance.size = dehydrateDef.size
     return dehydrateInstance
 
-def DefineHydrate(cirb: CoreIRBackend, T):
+@cache_definition
+def DefineHydrate(T):
     """
     Convert a flat array of bits to a nested type
     Aetherling Type: {1, Bit[width(T)]} -> {1, T}
@@ -71,6 +73,7 @@ def DefineHydrate(cirb: CoreIRBackend, T):
         The module also has the following data:
         size: width(T)
     """
+    cirb = GetCoreIRBackend()
     cirType = cirb.get_type(In(T))
     name = "hydrate_t{}".format(cleanName(str(T)))
     defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "hydrate", name,
@@ -79,7 +82,7 @@ def DefineHydrate(cirb: CoreIRBackend, T):
     defToReturn.size = cirType.size
     return defToReturn
 
-def Hydrate(cirb: CoreIRBackend, T):
+def Hydrate(T):
     """
     Convert a flat array of bits to a nested type
     Aetherling Type: {1, Bit[width(T)]} -> {1, T}
@@ -96,7 +99,7 @@ def Hydrate(cirb: CoreIRBackend, T):
         The module also has the following data:
         size: width(T)
     """
-    hydrateDef = DefineHydrate(cirb, T)
+    hydrateDef = DefineHydrate(T)
     hydrateInstance = hydrateDef()
     hydrateInstance.size = hydrateDef.size
     return hydrateInstance
