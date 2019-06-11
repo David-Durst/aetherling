@@ -14,6 +14,5 @@ def mantle_test():
     import magma.config
     magma.config.set_compile_dir('callee_file_dir')
     fault.config.set_test_dir('callee_file_dir')
-    print('mantle_test_resetting')
     CoreIRContextSingleton().reset_instance()
     clear_cachedFunctions()
