@@ -57,7 +57,7 @@ def ReduceParallel(numInputs: int, op: Circuit) -> Circuit:
     })
     out: Out(T)
     """
-    return DefineReduceParallel(numInputs, op)
+    return DefineReduceParallel(numInputs, op)()
 
 @cache_definition
 def DefineReduceSequential(numInputs: int, opDef: Circuit, has_ce=False) -> Circuit:

@@ -14,8 +14,6 @@ def test_downsample_parallel():
     width = 5
     numIn = 2
     testVal = 3
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     outType = Array[width, Out(BitIn)]
     inType = Array[numIn, In(outType)]
@@ -23,13 +21,13 @@ def test_downsample_parallel():
 
     testcircuit = DefineCircuit('Test_Downsample_Parallel', *args)
 
-    downsampleParallel = DownsampleParallel(cirb, numIn, inType.T)
+    downsampleParallel = DownsampleParallel(numIn, inType.T)
     wire(downsampleParallel.I, testcircuit.I)
     wire(testcircuit.O, downsampleParallel.O)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):
@@ -42,7 +40,6 @@ def test_downsample_sequential():
     width = 5
     numOut = 2
     testVal = 3
-    c = coreir.Context()
     scope = Scope()
     outType = Array[width, Out(BitIn)]
     inType = In(outType)
@@ -50,7 +47,6 @@ def test_downsample_sequential():
 
     testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
 
-    cirb = CoreIRBackend(c)
     downsampleSequential = DownsampleSequential(numOut, inType)
     wire(downsampleSequential.I, testcircuit.I)
     wire(testcircuit.O, downsampleSequential.O)
@@ -61,7 +57,7 @@ def test_downsample_sequential():
     #cirb.context.run_passes(["rungenerators", "verifyconnectivity --noclkrst"], ["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     #testModule.save_to_file("downsampleSequential.json")
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)

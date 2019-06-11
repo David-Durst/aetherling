@@ -1,11 +1,8 @@
 from aetherling.modules.upsample import UpsampleSequential, UpsampleParallel
 from magma import *
 from magma.clock import *
-from magma.backend.coreir_ import CoreIRBackend, compile
 from magma.bitutils import *
-from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
-import coreir
 from magma.scope import Scope
 from mantle.common.countermod import CounterModM, Decode
 
@@ -13,7 +10,6 @@ def test_up_parallel():
     width = 5
     numOut = 2
     testVal = 3
-    c = coreir.Context()
     scope = Scope()
     inType = Array[width, In(BitIn)]
     outType = Array[numOut, Out(inType)]
@@ -61,7 +57,6 @@ def test_up_sequential():
     width = 5
     numOut = 2
     testVal = 3
-    c = coreir.Context()
     scope = Scope()
     inType = Array[width, In(BitIn)]
     outType = Out(inType)
@@ -69,15 +64,14 @@ def test_up_sequential():
 
     testcircuit = DefineCircuit('TestUpSequential', *args)
 
-    coreir_backend = CoreIRBackend(c)
-    upSequential = UpsampleSequential(coreir_backend, numOut, inType)
+    upSequential = UpsampleSequential(numOut, inType)
     wire(upSequential.I, testcircuit.I)
     wire(testcircuit.O, upSequential.O)
     wire(testcircuit.READY, upSequential.READY)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=coreir_backend.context)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
     sim.evaluate()

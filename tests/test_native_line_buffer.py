@@ -5,7 +5,7 @@ import random
 from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
 from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import GetCoreIRModule
+from magma.frontend.coreir_ import GetCoreIRModule, GetCoreIRBackend
 
 from magma import *
 from magma.bitutils import int2seq, seq2int
@@ -21,84 +21,65 @@ from mantle.common.countermod import SizedCounterModM
 from aetherling.helpers.cli_helper import save_CoreIR_json
 
 def test_basic_native_linebuffer():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ClockInterface(False, False)
 
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
-    lb = OneDimensionalLineBuffer(cirb, Array[3, Bit], 1, 3, 100, 1, 0)
+    lb = OneDimensionalLineBuffer(Array[3, Bit], 1, 3, 100, 1, 0)
 
     EndCircuit()
 
 def test_basic_native_any_d_linebuffer():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ClockInterface(False, False)
 
     testcircuit = DefineCircuit('create_native_lb_test', *args)
 
-    lb = AnyDimensionalLineBuffer(cirb, Array[7, Bit], [1, 4], [3,3], [30, 30], [1,1], [0,0])
+    lb = AnyDimensionalLineBuffer(Array[7, Bit], [1, 4], [3,3], [30, 30], [1,1], [0,0])
 
     EndCircuit()
 
 
 def test_multiple_sipo():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ['I', In(Bit), 'O', Out(Array[4, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('multiple_sipo_test', *args)
 
-    map_sipo = MapParallel(cirb, 1, DefineSIPO(4, 0, has_ce=True))
+    map_sipo = MapParallel(1, DefineSIPO(4, 0, has_ce=True))
     wire(1, map_sipo.CE[0])
     wire(testcircuit.I, map_sipo.I[0])
     wire(testcircuit.O, map_sipo.O[0])
     EndCircuit()
 
 
-    mod = GetCoreIRModule(cirb, testcircuit)
-    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst",
-                             "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"]:
-        print("Running pass {}".format(p))
-        c.run_passes([p], namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    #mod = GetCoreIRModule(GetCoreIRBackend(), testcircuit)
+    #for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst",
+    #                         "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"]:
+    #    print("Running pass {}".format(p))
+    #    c.run_passes([p], namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     # save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
-    #sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
-    #                      namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 
 def test_double_nested_sipo():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     args = ['I', In(Bit), 'O', Out(Array[1,Array[1, Array[4, Bit]]])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('multiple_sipo_test', *args)
 
-    map_sipo = MapParallel(cirb, 1, DefineMapParallel(cirb, 1, DefineSIPO(4, 0, has_ce=True)))
+    map_sipo = MapParallel(1, DefineMapParallel(1, DefineSIPO(4, 0, has_ce=True)))
     wire(1, map_sipo.CE[0][0])
     wire(testcircuit.I, map_sipo.I[0][0])
     wire(testcircuit.O, map_sipo.O)
     EndCircuit()
 
 
-    mod = GetCoreIRModule(cirb, testcircuit)
-    for p in ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst",
-                             "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"]:
-        print("Running pass {}".format(p))
-        c.run_passes([p], namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     # save_CoreIR_json(cirb, testcircuit, "multiple_sipo.json")
-    #sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
-    #                      namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 
 def test_sipo():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ['I', In(Bit), 'O', Out(Array[4, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('sipo_test', *args)
@@ -110,13 +91,10 @@ def test_sipo():
     EndCircuit()
 
     #save_CoreIR_json(cirb, testcircuit, "sipo.json")
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 def test_sized_counter_modm():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ['O', Out(Array[2, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('sized_counter_modm_test', *args)
@@ -127,13 +105,10 @@ def test_sized_counter_modm():
     EndCircuit()
 
     #save_CoreIR_json(cirb, testcircuit, "sized_counter_modm.json")
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 def test_sipo_and_counter():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ['I', In(Bit), 'O_sipo', Out(Array[4, Bit])] + ['O_counter', Out(Array[2, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('sipo_and_counter_test', *args)
@@ -149,19 +124,16 @@ def test_sipo_and_counter():
     EndCircuit()
 
     #save_CoreIR_json(cirb, testcircuit, "sipo_and_counter.json")
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 
 def test_multiple_sipo_and_counter():
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
-    scope = Scope()
     args = ['I', In(Bit), 'O_sipo', Out(Array[4, Bit])] + ['O_counter', Out(Array[2, Bit])] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('multiple_sipo_and_counter_test', *args)
 
-    map_sipo = MapParallel(cirb, 1, SIPO(4, 0, has_ce=True))
+    map_sipo = MapParallel(1, SIPO(4, 0, has_ce=True))
     wire(1, map_sipo.CE[0])
     wire(testcircuit.I, map_sipo.I[0])
     wire(testcircuit.O_sipo, map_sipo.O[0])
@@ -172,7 +144,7 @@ def test_multiple_sipo_and_counter():
     EndCircuit()
 
     #save_CoreIR_json(cirb, testcircuit, "multiple_sipo_and_counter.json")
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 def impl_test_1D_line_buffer(
@@ -186,13 +158,11 @@ def impl_test_1D_line_buffer(
     """Run tests for the 1D line buffer with given token type (magma_type)
 and parameters."""
 
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
 
     # Test line buffer for each combination of parameters and test data.
     for in_arrays in generate_test_data_sets_1D(magma_type, pixels_per_clock, image_size):
-        a_1D_line_buffer_test(cirb, scope, in_arrays, magma_type, pixels_per_clock, window_width, image_size, output_stride, origin)
+        a_1D_line_buffer_test(scope, in_arrays, magma_type, pixels_per_clock, window_width, image_size, output_stride, origin)
 
 def test_1D_bit_line_buffer_1_3_9_1_0():
     impl_test_1D_line_buffer(Bit, 1, 3, 9, 1, 0)
@@ -311,7 +281,6 @@ def test_1D_int8_line_buffer_2_3_14_2_1():
 
 
 def a_1D_line_buffer_test(
-    cirb,
     scope,
     in_arrays,
     magma_type,
@@ -336,12 +305,12 @@ def a_1D_line_buffer_test(
     )
 
     LineBufferDef = DefineOneDimensionalLineBuffer(
-        cirb, magma_type, pixels_per_clock, window_width, image_size, output_stride, origin
+        magma_type, pixels_per_clock, window_width, image_size, output_stride, origin
     )
 
     #save_CoreIR_json(cirb, LineBufferDef, "native_linebuffer.json")
 
-    sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK, context=cirb.context,
+    sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(LineBufferDef.CE, 1, scope)

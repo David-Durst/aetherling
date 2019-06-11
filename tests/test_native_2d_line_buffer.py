@@ -9,23 +9,14 @@ Note: The simulated data is passed around as a 4D list for output, 3D for input.
     Example: [4][1][2][3] means the pixel at row 2, col 3 of the output window that
     was emitted on clock cycle 4 through output port 1."""
 
-import sys
 import random
-from itertools import chain
 from magma.simulator.coreir_simulator import CoreIRSimulator
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import GetCoreIRModule
 
 from magma import *
 from magma.bitutils import int2seq, seq2int
-import coreir
 from magma.scope import Scope
 from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer import TwoDimensionalLineBuffer, \
     DefineTwoDimensionalLineBuffer
-from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from mantle.common.sipo import SIPO
-from mantle.common.countermod import SizedCounterModM
-from aetherling.helpers.cli_helper import save_CoreIR_json
 
 class LineBufferParameters(object):
     """Bundle of data for 2D line buffer parameters."""
@@ -305,10 +296,8 @@ and run it on test data sets."""
 
     print(parameters.as_kwargs())
 
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
-    LineBufferDef = DefineTwoDimensionalLineBuffer(cirb, **parameters.as_kwargs())
+    LineBufferDef = DefineTwoDimensionalLineBuffer(**parameters.as_kwargs())
     window_count, parallelism, valid_count = parameters.internal_parameters()
     window_x = parameters.window_x
     window_y = parameters.window_y
@@ -350,7 +339,6 @@ and run it on test data sets."""
 
     for test_set in generate_test_sets_2D(generators, parameters):
         sim = CoreIRSimulator(LineBufferDef, LineBufferDef.CLK,
-            context=cirb.context,
             namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
         )
         sim.set_value(LineBufferDef.CE, 1, scope)

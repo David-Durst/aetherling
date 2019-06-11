@@ -12,8 +12,6 @@ from mantle.coreir.arith import *
 def test_serializer():
     width = 11
     numIn = 13
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = In(Array[numIn, Array[width, BitIn]])
     outType = Out(Array[width, Bit])
@@ -21,7 +19,7 @@ def test_serializer():
 
     testcircuit = DefineCircuit('Test_Serializer', *args)
 
-    serializer = Serializer(cirb, inType.T, numIn)
+    serializer = Serializer(inType.T, numIn)
     wire(serializer.I, testcircuit.I)
     wire(testcircuit.O, serializer.out)
     wire(testcircuit.ready, serializer.ready)
@@ -29,7 +27,7 @@ def test_serializer():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):
@@ -47,8 +45,6 @@ def test_serializer():
 def test_deserializer():
     width = 11
     numIn = 13
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = In(Array[width, Bit])
     outType = Out(Array[numIn, Array[width, BitIn]])
@@ -56,7 +52,7 @@ def test_deserializer():
 
     testcircuit = DefineCircuit('Test_Deserializer', *args)
 
-    deserializer = Deserializer(cirb, inType, numIn)
+    deserializer = Deserializer(inType, numIn)
     wire(deserializer.I, testcircuit.I)
     wire(testcircuit.O, deserializer.out)
     wire(testcircuit.ready, deserializer.ready)
@@ -64,7 +60,7 @@ def test_deserializer():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):

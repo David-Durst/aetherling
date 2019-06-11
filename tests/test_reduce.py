@@ -11,8 +11,6 @@ from mantle.coreir import DefineCoreirConst
 def test_reduce_parallel():
     width = 11
     numIn = 13
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = In(Array[numIn, Array[width, BitIn]])
     outType = Out(Array[width, Bit])
@@ -20,7 +18,7 @@ def test_reduce_parallel():
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 
-    reducePar = ReduceParallel(cirb, numIn, renameCircuitForReduce(DefineAdd(width)))
+    reducePar = ReduceParallel(numIn, renameCircuitForReduce(DefineAdd(width)))
     coreirConst = DefineCoreirConst(width, 0)()
     wire(reducePar.I.data, testcircuit.I)
     wire(reducePar.I.identity, coreirConst.O)
@@ -28,7 +26,7 @@ def test_reduce_parallel():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):
@@ -39,8 +37,6 @@ def test_reduce_parallel():
 def test_reduce_sequential_with_ce():
     width = 11
     numIn = 13
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = In(Array[width, BitIn])
     outType = Out(Array[width, Bit])
@@ -48,7 +44,7 @@ def test_reduce_sequential_with_ce():
 
     testcircuit = DefineCircuit('Test_Reduce_Sequential_With_CE', *args)
 
-    reduceSeq = ReduceSequential(cirb, numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=True)
+    reduceSeq = ReduceSequential(numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=True)
     wire(reduceSeq.I, testcircuit.I)
     wire(testcircuit.O, reduceSeq.out)
     wire(testcircuit.ready, reduceSeq.ready)
@@ -57,7 +53,7 @@ def test_reduce_sequential_with_ce():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.CE, 1)
@@ -79,8 +75,6 @@ def test_reduce_sequential_with_ce():
 def test_reduce_sequential_without_ce():
     width = 11
     numIn = 13
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = In(Array[width, BitIn])
     outType = Out(Array[width, Bit])
@@ -88,7 +82,7 @@ def test_reduce_sequential_without_ce():
 
     testcircuit = DefineCircuit('Test_Reduce_Sequential_Without_CE', *args)
 
-    reduceSeq = ReduceSequential(cirb, numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=False)
+    reduceSeq = ReduceSequential(numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=False)
     wire(reduceSeq.I, testcircuit.I)
     wire(testcircuit.O, reduceSeq.out)
     wire(testcircuit.ready, reduceSeq.ready)
@@ -96,7 +90,7 @@ def test_reduce_sequential_without_ce():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     for i in range(numIn):
@@ -116,8 +110,6 @@ def test_reduce_partially_parallel():
     width = 11
     numIn = 12
     parallelism = 3
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = In(Array[width, BitIn])
     outType = Out(Array[width, Bit])
@@ -125,7 +117,7 @@ def test_reduce_partially_parallel():
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 
-    reduce_op = ReducePartiallyParallel(cirb, numIn, parallelism, renameCircuitForReduce(DefineAdd(width)))
+    reduce_op = ReducePartiallyParallel(numIn, parallelism, renameCircuitForReduce(DefineAdd(width)))
     wire(reduce_op.I, testcircuit.I)
     wire(testcircuit.O, reduce_op.O)
     coreirConst = DefineCoreirConst(width, 0)()
@@ -135,7 +127,7 @@ def test_reduce_partially_parallel():
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     reduce_result = 0

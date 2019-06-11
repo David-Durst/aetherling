@@ -1,8 +1,5 @@
 from aetherling.modules.hydrate import Hydrate, Dehydrate
 from aetherling.modules.map_fully_parallel_sequential import MapParallel
-from magma.backend.coreir_ import CoreIRBackend
-from magma.frontend.coreir_ import GetCoreIRModule
-from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 import coreir
 from magma.scope import Scope
@@ -18,8 +15,6 @@ imgSrc = join(dirname(__file__), "custom_small.png")
 #NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
 def run_test_updown_npxPerClock(pxPerClock):
     upsampleAmount = 7
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     args = ClockInterface(False, False) + RAMInterface(imgSrc, True, True, pxPerClock)
 
@@ -27,27 +22,27 @@ def run_test_updown_npxPerClock(pxPerClock):
 
     imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array[imgData.bitsPerPixel, Bit]
-    bitsToPixelHydrate = MapParallel(cirb, pxPerClock, Hydrate(cirb, pixelType))
-    upParallel = MapParallel(cirb, pxPerClock, UpsampleParallel(upsampleAmount, pixelType))
-    downParallel = MapParallel(cirb, pxPerClock, DownsampleParallel(cirb, upsampleAmount, pixelType))
-    pixelToBitsDehydrate = MapParallel(cirb, pxPerClock, Dehydrate(cirb, pixelType))
+    bitsToPixelHydrate = MapParallel(pxPerClock, Hydrate(pixelType))
+    upParallel = MapParallel(pxPerClock, UpsampleParallel(upsampleAmount, pixelType))
+    downParallel = MapParallel(pxPerClock, DownsampleParallel(upsampleAmount, pixelType))
+    pixelToBitsDehydrate = MapParallel(pxPerClock, Dehydrate(pixelType))
 
 
     # Note: input image RAM will send data to hydrate,
     # which converts it to form upsample and downsample can use
     # note that these do wiriring to connect the RAMs to edge of test circuit and
     # adjacent node inside circuit
-    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
-    OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
+    InputImageRAM(testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock)
+    OutputImageRAM(testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren, imgSrc, pxPerClock)
     wire(upParallel.I, bitsToPixelHydrate.out)
     wire(upParallel.O, downParallel.I)
     wire(downParallel.O, pixelToBitsDehydrate.I)
 
     EndCircuit()
 
-    #GetCoreIRModule(cirb, testcircuit).save_to_file("updown_out{}.json".format(pxPerClock))
+    #GetCoreIRModule(testcircuit).save_to_file("updown_out{}.json".format(pxPerClock))
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     LoadImageRAMForSimulation(sim, testcircuit, scope, imgSrc, pxPerClock)

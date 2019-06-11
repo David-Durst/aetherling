@@ -17,8 +17,6 @@ def test_partition():
     parallelism = 2
     testValInt = 210
     testValBits = int2seq(testValInt)
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     inType = Array[width, In(BitIn)]
     outType = Array[parallelism, Out(Bit)]
@@ -26,13 +24,13 @@ def test_partition():
 
     testcircuit = DefineCircuit('test_partition', *args)
 
-    part = Partition(cirb, inType, parallelism)
+    part = Partition(inType, parallelism)
     wire(part.I, testcircuit.I)
     wire(testcircuit.O, part.O)
 
     EndCircuit()
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(testcircuit.I, int2seq(testValInt, width), scope)

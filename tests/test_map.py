@@ -20,8 +20,6 @@ imgSrc = join(dirname(__file__), "custom_small.png")
 #NOTE: since doesn't start with test_, this isn't a test, it's called by other tests
 def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     addAmount = 4
-    c = coreir.Context()
-    cirb = CoreIRBackend(c)
     scope = Scope()
     args = ClockInterface(False, False, has_ce=True) + RAMInterface(imgSrc, True, True, pxPerClock,
                                                                     parallelism)
@@ -30,26 +28,26 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
     imgData = loadImage(imgSrc, pxPerClock)
     pixelType = Array[imgData.bandsPerPixel, Array[imgData.bitsPerBand, Bit]]
-    bitsToPixelHydrate = MapParallel(cirb, pxPerClock, DefineHydrate(cirb, pixelType))
+    bitsToPixelHydrate = MapParallel(pxPerClock, DefineHydrate(pixelType))
     # do an add constant for each band, for each pixel
-    addConstants = DefineNativeMapParallel(cirb, pxPerClock,
-                               DefineNativeMapParallel(cirb, imgData.bandsPerPixel,
+    addConstants = DefineNativeMapParallel(pxPerClock,
+                               DefineNativeMapParallel(imgData.bandsPerPixel,
                                            DefineCoreirConst(imgData.bitsPerBand, addAmount)))()
 
-    addParallel = MapPartiallyParallel(cirb, pxPerClock, parallelism,
-                                       DefineMapParallel(cirb, imgData.bandsPerPixel,
+    addParallel = MapPartiallyParallel(pxPerClock, parallelism,
+                                       DefineMapParallel(imgData.bandsPerPixel,
                                                    DefineAdd(imgData.bitsPerBand)),
                                        has_ce=True)
 
-    pixelToBitsDehydrate = MapParallel(cirb, parallelism, DefineDehydrate(cirb, pixelType))
+    pixelToBitsDehydrate = MapParallel(parallelism, DefineDehydrate(pixelType))
 
 
     # Note: input image RAM will send data to hydrate,
     # which converts it to form upsample and downsample can use
     # note that these do wiriring to connect the RAMs to edge of test circuit and
     # adjacent node inside circuit
-    InputImageRAM(cirb, testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock, parallelism)
-    OutputImageRAM(cirb, testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
+    InputImageRAM(testcircuit, bitsToPixelHydrate.I, imgSrc, pxPerClock, parallelism)
+    OutputImageRAM(testcircuit, pixelToBitsDehydrate.out, testcircuit.input_ren,
                    imgSrc, parallelism)
     wire(addParallel.in0, bitsToPixelHydrate.out)
     wire(addParallel.in1, addConstants.O)
@@ -68,7 +66,7 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
     #mod.save_to_file("test_map_muxnmapped.json")
     #returnx
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK, context=cirb.context,
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     #GetCoreIRModule(cirb, testcircuit).save_to_file("test_map_flattened.json.test")

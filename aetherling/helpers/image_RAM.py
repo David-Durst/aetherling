@@ -94,7 +94,7 @@ def InputImageRAM(circuit, nextNodeInput, imgSrc, pxPerClock, parallelism = None
 
 def OutputImageRAM(circuit, prevNodeOutput, writeValidSignal, imgSrc, pxPerClock):
     imgData = loadImage(imgSrc, pxPerClock)
-    imgRAM = CoreirMem(GetCoreIRBackend(), imgData.numRows, imgData.bitsPerRow)
+    imgRAM = CoreirMem(imgData.numRows, imgData.bitsPerRow)
 
     # this counter ensures writing to correct address always
     writeCounter = SizedCounterModM(imgData.numRows, has_ce=True)
