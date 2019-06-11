@@ -1,6 +1,7 @@
 import pytest
 from magma import clear_cachedFunctions
-from magma.backend.coreir_ import __reset_context
+from magma.backend.coreir_ import CoreIRContextSingleton
+import coreir
 import fault
 
 
@@ -13,5 +14,8 @@ def mantle_test():
     import magma.config
     magma.config.set_compile_dir('callee_file_dir')
     fault.config.set_test_dir('callee_file_dir')
+    print('mantle_test_resetting')
+    #global magma_coreir_context
+    #magma_coreir_context = coreir.Context()
+    CoreIRContextSingleton().reset_instance()
     clear_cachedFunctions()
-    __reset_context()
