@@ -1,5 +1,6 @@
 import pytest
 from magma import clear_cachedFunctions
+from magma.backend.coreir_ import __reset_context
 import fault
 
 
@@ -13,3 +14,4 @@ def mantle_test():
     magma.config.set_compile_dir('callee_file_dir')
     fault.config.set_test_dir('callee_file_dir')
     clear_cachedFunctions()
+    __reset_context()

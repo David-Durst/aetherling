@@ -4,7 +4,6 @@ from magma.frontend.coreir_ import GetCoreIRBackend, GetMagmaContext
 from aetherling.modules.delayed_buffer import DefineDelayedBuffer
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
-import coreir
 from magma.scope import Scope
 from magma.bitutils import *
 
