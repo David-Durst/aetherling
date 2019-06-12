@@ -38,9 +38,9 @@ num_valid_out_rows = len(valid_out_rows)
 num_valid_out_cols = len(valid_out_rows)
 
 def test_downsample_stencil_1_per_64():
-    from .downsampleStencilChain1Per64 import cirb as downsampleStencilChain1Per64Cirb, downsampleStencilChain1Per64
+    from .downsampleStencilChain1Per64 import downsampleStencilChain1Per64
     scope = Scope()
-    sim = CoreIRSimulator(downsampleStencilChain1Per64, downsampleStencilChain1Per64.CLK, context=downsampleStencilChain1Per64Cirb.context,
+    sim = CoreIRSimulator(downsampleStencilChain1Per64, downsampleStencilChain1Per64.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(downsampleStencilChain1Per64.valid_data_in, 1, scope)
@@ -133,9 +133,9 @@ def test_downsample_stencil_1_per_64():
 
 
 def test_downsample_stencil_1_per_32():
-    from .downsampleStencilChain1Per32 import cirb as downsampleStencilChain1Per32Cirb, downsampleStencilChain1Per32
+    from .downsampleStencilChain1Per32 import downsampleStencilChain1Per32
     scope = Scope()
-    sim = CoreIRSimulator(downsampleStencilChain1Per32, downsampleStencilChain1Per32.CLK, context=downsampleStencilChain1Per32Cirb.context,
+    sim = CoreIRSimulator(downsampleStencilChain1Per32, downsampleStencilChain1Per32.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(downsampleStencilChain1Per32.valid_data_in, 1, scope)
@@ -175,11 +175,11 @@ def test_downsample_stencil_1_per_32():
     assert successfully_checked_all_valid_outputs
 
 def test_downsample_stencil_1_per_32_fault():
-    from .downsampleStencilChain1Per32 import c, downsampleStencilChain1Per32
+    from .downsampleStencilChain1Per32 import downsampleStencilChain1Per32
 
     magma.compile("vBuild/" + downsampleStencilChain1Per32.name, downsampleStencilChain1Per32, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
     tester = fault.Tester(downsampleStencilChain1Per32, downsampleStencilChain1Per32.CLK)
 
     tester.poke(downsampleStencilChain1Per32.valid_data_in, 1)

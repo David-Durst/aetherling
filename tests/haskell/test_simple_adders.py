@@ -9,8 +9,8 @@ from mantle.coreir.arith import *
 from mantle.coreir import DefineCoreirConst
 
 def test_parallel_simple_add():
-    from .parallelSimpleAdd import cirb as parallelSimpleAddCirb, parallelSimpleAdd
-    sim = CoreIRSimulator(parallelSimpleAdd, parallelSimpleAdd.CLK, context=parallelSimpleAddCirb.context,
+    from .parallelSimpleAdd import parallelSimpleAdd
+    sim = CoreIRSimulator(parallelSimpleAdd, parallelSimpleAdd.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(parallelSimpleAdd.I0, int2seq(1, 8))
@@ -24,8 +24,8 @@ def test_parallel_simple_add():
     assert seq2int(sim.get_value(parallelSimpleAdd.O3)) == 5
 
 def test_partial_parallel_simple_add():
-    from .partialParallelSimpleAdd import cirb as partialParallelSimpleAddCirb, partialParallelSimpleAdd
-    sim = CoreIRSimulator(partialParallelSimpleAdd, partialParallelSimpleAdd.CLK, context=partialParallelSimpleAddCirb.context,
+    from .partialParallelSimpleAdd import partialParallelSimpleAdd
+    sim = CoreIRSimulator(partialParallelSimpleAdd, partialParallelSimpleAdd.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(partialParallelSimpleAdd.I0, int2seq(3, 8))
@@ -35,8 +35,8 @@ def test_partial_parallel_simple_add():
     assert seq2int(sim.get_value(partialParallelSimpleAdd.O1)) == 5
 
 def test_sequential_simple_add():
-    from .sequentialSimpleAdd import cirb as sequentialSimpleAddCirb, sequentialSimpleAdd
-    sim = CoreIRSimulator(sequentialSimpleAdd, sequentialSimpleAdd.CLK, context=sequentialSimpleAddCirb.context,
+    from .sequentialSimpleAdd import sequentialSimpleAdd
+    sim = CoreIRSimulator(sequentialSimpleAdd, sequentialSimpleAdd.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(sequentialSimpleAdd.I0, int2seq(9, 8))

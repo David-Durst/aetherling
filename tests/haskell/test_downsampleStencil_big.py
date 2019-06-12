@@ -46,11 +46,11 @@ num_valid_out_cols = len(valid_out_rows)
 # is that, for a 2x2 window, only the last window is invalid. Since downsampleing by 2 in x dimension, that never
 # gets emitted and only valid outputs are emitted.
 def test_downsample_256x256_to_32x32_1px_in_per_clk():
-    from .downsample_256x256_to_32x32_1px_in_per_clk import c, downsample_256x256_to_32x32_1px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_1px_in_per_clk import downsample_256x256_to_32x32_1px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -82,11 +82,11 @@ def test_downsample_256x256_to_32x32_1px_in_per_clk():
             assert filtered_results == [element for sublist in thirdResults for element in sublist]
 
 def test_downsample_256x256_to_32x32_2px_in_per_clk():
-    from .downsample_256x256_to_32x32_2px_in_per_clk import c, downsample_256x256_to_32x32_2px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_2px_in_per_clk import downsample_256x256_to_32x32_2px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -120,11 +120,11 @@ def test_downsample_256x256_to_32x32_2px_in_per_clk():
 
 
 def test_downsample_256x256_to_32x32_4px_in_per_clk():
-    from .downsample_256x256_to_32x32_4px_in_per_clk import c, downsample_256x256_to_32x32_4px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_4px_in_per_clk import downsample_256x256_to_32x32_4px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -160,11 +160,11 @@ def test_downsample_256x256_to_32x32_4px_in_per_clk():
 
 
 def test_downsample_256x256_to_32x32_8px_in_per_clk():
-    from .downsample_256x256_to_32x32_8px_in_per_clk import c, downsample_256x256_to_32x32_8px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_8px_in_per_clk import downsample_256x256_to_32x32_8px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -204,11 +204,11 @@ def test_downsample_256x256_to_32x32_8px_in_per_clk():
 
 
 def test_downsample_256x256_to_32x32_16px_in_per_clk():
-    from .downsample_256x256_to_32x32_16px_in_per_clk import c, downsample_256x256_to_32x32_16px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_16px_in_per_clk import downsample_256x256_to_32x32_16px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -256,11 +256,11 @@ def test_downsample_256x256_to_32x32_16px_in_per_clk():
 
 
 def test_downsample_256x256_to_32x32_32px_in_per_clk():
-    from .downsample_256x256_to_32x32_32px_in_per_clk import c, downsample_256x256_to_32x32_32px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_32px_in_per_clk import downsample_256x256_to_32x32_32px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -325,11 +325,11 @@ def test_downsample_256x256_to_32x32_32px_in_per_clk():
 
 
 def test_downsample_256x256_to_32x32_64px_in_per_clk():
-    from .downsample_256x256_to_32x32_64px_in_per_clk import c, downsample_256x256_to_32x32_64px_in_per_clk as testcircuit
+    from .downsample_256x256_to_32x32_64px_in_per_clk import downsample_256x256_to_32x32_64px_in_per_clk as testcircuit
 
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 

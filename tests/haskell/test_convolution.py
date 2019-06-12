@@ -1,5 +1,4 @@
 from aetherling.modules.reduce import ReduceSequential, ReduceParallel, ReducePartiallyParallel, renameCircuitForReduce
-from magma.backend.coreir_ import CoreIRBackend
 from magma.bitutils import *
 from coreir.context import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
@@ -27,9 +26,9 @@ def do_convolution_at_point(row, col):
 results = [[do_convolution_at_point(row,col) for col in valid_cols] for row in valid_rows]
 
 def test_sequential_convolution():
-    from .sequentialConvolution import cirb as sequentialConvolutionCirb, sequentialConvolution
+    from .sequentialConvolution import sequentialConvolution
     scope = Scope()
-    sim = CoreIRSimulator(sequentialConvolution, sequentialConvolution.CLK, context=sequentialConvolutionCirb.context,
+    sim = CoreIRSimulator(sequentialConvolution, sequentialConvolution.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(sequentialConvolution.valid_data_in, 1, scope)
@@ -67,9 +66,9 @@ def test_sequential_convolution():
     assert successfully_checked_all_valid_outputs
 
 def test_partial_parallel_2_convolution():
-    from .partialParallel2Convolution import cirb as partialParallel2ConvolutionCirb, partialParallel2Convolution
+    from .partialParallel2Convolution import partialParallel2Convolution
     scope = Scope()
-    sim = CoreIRSimulator(partialParallel2Convolution, partialParallel2Convolution.CLK, context=partialParallel2ConvolutionCirb.context,
+    sim = CoreIRSimulator(partialParallel2Convolution, partialParallel2Convolution.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(partialParallel2Convolution.valid_data_in, 1, scope)
@@ -110,9 +109,9 @@ def test_partial_parallel_2_convolution():
     assert successfully_checked_all_valid_outputs
 
 def test_partial_parallel_4_convolution():
-    from .partialParallel4Convolution import cirb as partialParallel4ConvolutionCirb, partialParallel4Convolution
+    from .partialParallel4Convolution import partialParallel4Convolution
     scope = Scope()
-    sim = CoreIRSimulator(partialParallel4Convolution, partialParallel4Convolution.CLK, context=partialParallel4ConvolutionCirb.context,
+    sim = CoreIRSimulator(partialParallel4Convolution, partialParallel4Convolution.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(partialParallel4Convolution.valid_data_in, 1, scope)
@@ -159,9 +158,9 @@ def test_partial_parallel_4_convolution():
     assert successfully_checked_all_valid_outputs
 
 def test_partial_parallel_8_convolution():
-    from .partialParallel8Convolution import cirb as partialParallel8ConvolutionCirb, partialParallel8Convolution
+    from .partialParallel8Convolution import partialParallel8Convolution
     scope = Scope()
-    sim = CoreIRSimulator(partialParallel8Convolution, partialParallel8Convolution.CLK, context=partialParallel8ConvolutionCirb.context,
+    sim = CoreIRSimulator(partialParallel8Convolution, partialParallel8Convolution.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(partialParallel8Convolution.valid_data_in, 1, scope)
@@ -221,9 +220,9 @@ def test_partial_parallel_8_convolution():
 
 
 def test_partial_parallel_16_convolution():
-    from .partialParallel16Convolution import cirb as partialParallel16ConvolutionCirb, partialParallel16Convolution
+    from .partialParallel16Convolution import partialParallel16Convolution
     scope = Scope()
-    sim = CoreIRSimulator(partialParallel16Convolution, partialParallel16Convolution.CLK, context=partialParallel16ConvolutionCirb.context,
+    sim = CoreIRSimulator(partialParallel16Convolution, partialParallel16Convolution.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     sim.set_value(partialParallel16Convolution.valid_data_in, 1, scope)

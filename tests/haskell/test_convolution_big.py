@@ -29,10 +29,10 @@ def do_convolution_at_point(row, col):
 results = [[do_convolution_at_point(row,col) for col in valid_cols] for row in valid_rows]
 flattenedResults = [element for sublist in results for element in sublist]
 
-def run_conv_test(testcircuit, c, parallelism):
+def run_conv_test(testcircuit, parallelism):
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"], context = c)
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
@@ -75,18 +75,18 @@ def run_conv_test(testcircuit, c, parallelism):
             assert filtered_results == flattenedResults
 
 def test_convolution_32x32Im_2x2Win_1px_in_per_clk():
-    from .convolution_32x32Im_2x2Win_1px_in_per_clk import c, convolution_32x32Im_2x2Win_1px_in_per_clk as testcircuit
-    run_conv_test(testcircuit, c, 1)
+    from .convolution_32x32Im_2x2Win_1px_in_per_clk import convolution_32x32Im_2x2Win_1px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, 1)
 
 def test_convolution_32x32Im_2x2Win_2px_in_per_clk():
-    from .convolution_32x32Im_2x2Win_2px_in_per_clk import c, convolution_32x32Im_2x2Win_2px_in_per_clk as testcircuit
-    run_conv_test(testcircuit, c, 2)
+    from .convolution_32x32Im_2x2Win_2px_in_per_clk import convolution_32x32Im_2x2Win_2px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, 2)
 
 def test_convolution_32x32Im_2x2Win_4px_in_per_clk():
-    from .convolution_32x32Im_2x2Win_4px_in_per_clk import c, convolution_32x32Im_2x2Win_4px_in_per_clk as testcircuit
-    run_conv_test(testcircuit, c, 4)
+    from .convolution_32x32Im_2x2Win_4px_in_per_clk import convolution_32x32Im_2x2Win_4px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, 4)
 
 def test_convolution_32x32Im_2x2Win_8px_in_per_clk():
-    from .convolution_32x32Im_2x2Win_8px_in_per_clk import c, convolution_32x32Im_2x2Win_8px_in_per_clk as testcircuit
-    run_conv_test(testcircuit, c, 8)
+    from .convolution_32x32Im_2x2Win_8px_in_per_clk import convolution_32x32Im_2x2Win_8px_in_per_clk as testcircuit
+    run_conv_test(testcircuit, 8)
 

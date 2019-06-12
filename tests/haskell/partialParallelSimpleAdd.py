@@ -18,9 +18,6 @@ from aetherling.modules.downsample import *
 from aetherling.modules.reduce import *
 from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer import DefineTwoDimensionalLineBuffer
 
-c = coreir.Context()
-cirb = CoreIRBackend(c)
-
 args = ['I0', Array[8, In(Bit)], 'I1', Array[8, In(Bit)], 'O0', Array[8, Out(Bit)], 'O1', Array[8, Out(Bit)], 'valid_data_in', In(Bit), 'ready_data_in', Out(Bit), 'valid_data_out', Out(Bit), 'ready_data_out', In(Bit), ] + ClockInterface(has_ce=True)
 partialParallelSimpleAdd = DefineCircuit('partialParallelSimpleAdd_Circuit', *args)
 magmaInstance0 = DefineNoop(DefineCoreirConst(8, 1))()
@@ -39,6 +36,6 @@ wire(partialParallelSimpleAdd.O0, magmaInstance5.O)
 wire(partialParallelSimpleAdd.O1, magmaInstance6.O)
 wire(partialParallelSimpleAdd.ready_data_out, partialParallelSimpleAdd.ready_data_in)
 wire(partialParallelSimpleAdd.valid_data_in, partialParallelSimpleAdd.valid_data_out)
-ceTerm = TermAnyType(cirb, Enable)
+ceTerm = TermAnyType(Enable)
 wire(ceTerm.I, partialParallelSimpleAdd.CE)
 EndCircuit()
