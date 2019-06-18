@@ -2,6 +2,7 @@
 This file handles of the magma idiosyncrasies.
 """
 from magma.interface import InterfaceKind
+from magma import In, Out, Bit
 
 def getInputPorts(interface_kind: InterfaceKind) -> list:
     """
@@ -20,5 +21,7 @@ def getOutputPorts(interface_kind: InterfaceKind) -> list:
     :return: A list of lists where the first entries are names of out ports, second entries are the types.
     """
     return [[name, interface_kind.ports[name]] for name in interface_kind.ports if interface_kind.ports[name].isoutput()]
+
+ready_valid_interface = ['ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit), 'valid_down', Out(Bit)]
 
 
