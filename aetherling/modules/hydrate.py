@@ -27,7 +27,7 @@ def DefineDehydrate(T: Kind):
     name = "dehydrate_t{}".format(cleanName(str(T)))
     defToReturn = DefineCircuitFromGeneratorWrapper(cirb, "aetherlinglib", "dehydrate", name,
                                                          ["commonlib", "mantle", "coreir", "global"],
-                                                         {"hydratedType": cirType}, print_error=True)
+                                                         {"hydratedType": cirType})
     defToReturn.size = cirType.size
     #print(f"Current Dehydrate input type {T} and output IO {defToReturn.IO}")
     return defToReturn
