@@ -1,88 +1,114 @@
 import math
 
-from mantle import Register, Decode, Mux
+from mantle import Decode
 from mantle.common.countermod import SizedCounterModM
-from mantle.common.operator import *
 from magma import *
-from magma.backend.coreir_ import CoreIRBackend
-from .hydrate import Hydrate, Dehydrate
 from ..helpers.nameCleanup import cleanName
+from ..helpers.magma_helpers import ready_valid_interface
+from aetherling.modules.delayed_buffer import DefineDelayedBuffer
+from aetherling.modules.register_any_type import DefineRegisterAnyType
+from aetherling.modules.mux_any_type import DefineMuxAnyType
 
 __all__ = ['DefineUpsampleParallel', 'UpsampleParallel', 'DefineUpsampleSequential', 'UpsampleSequential']
 
 @cache_definition
-def DefineUpsampleParallel(n, T):
+def DefineUpsampleParallel(n, T, has_ready_valid=False):
     """
-    Upsample a single T to an array of T's in one clock cycle.
-    Aetherling Type: {1, T} -> {1, T[n]}
+    Upsample a SSeq 1 T' to and SSeq n T' in one period.
+
+    The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
+
+    Note that the T passed to this operator just the Magma type each clock cycle.
+    You can get T by calling magma_repr on a space-time type T'.
 
     I : In(T)
     O : Out(Array[n, T])
+
+    if has_ready_valid:
+    ready_up : Out(Bit)
+    valid_up : In(Bit)
+    ready_down : In(Bit)
+    valid_down : Out(Bit)
     """
     class UpParallel(Circuit):
         name = "UpsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
         IO = ['I', In(T), 'O', Out(Array[n, T])]
+        if has_ready_valid:
+            IO += ready_valid_interface
         @classmethod
         def definition(upsampleParallel):
             for i in range(n):
                 upsampleParallel.wire = wire(upsampleParallel.I, upsampleParallel.O[i])
-
+            if has_ready_valid:
+                wire(upsampleParallel.ready_up, upsampleParallel.ready_down)
+                wire(upsampleParallel.valid_up, upsampleParallel.valid_down)
     return UpParallel
 
-def UpsampleParallel(n, T):
-    x = DefineUpsampleParallel(n, T)
-    y = x()
-    return y
+def UpsampleParallel(n, T, has_ready_valid=False):
+    return DefineUpsampleParallel(n, T, has_ready_valid)()
 
 @cache_definition
-def DefineUpsampleSequential(n, T, has_ce=False, has_reset=False):
+def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
     """
-    Upsample a single T to a stream of T's over n clock cycles.
-    Ready is asserted on the clock cycle when a new input is accepted
-    Aetherling Type: {1, T} -> {n, T}
+    Upsample a TSeq 1 T' to a TSeq n T' over n periods.
+
+    Each T' period is time_per_element clock cycles
+    You can get time_per_element by calling time on a space-time type.
+
+    Note that the T passed to this operator just the Magma type each clock cycle.
+    You can get T by calling magma_repr on a space-time type T'.
 
     I : In(T)
     O : Out(T)
-    READY : In(Bit)
+    ready_up : Out(Bit)
+    valid_up : In(Bit)
+    ready_down : In(Bit)
+    valid_down : Out(Bit)
+    if has_ce:
+    CE : In(Bit)
     """
     class UpSequential(Circuit):
-        name = "UpsampleSequential_n{}_T{}_hasCE{}" \
-               "_hasReset{}".format(str(n), cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['I', In(T), 'O', Out(T), 'READY', Out(Bit)] + ClockInterface(has_ce, has_reset)
+        name = "UpsampleSequential_n{}_T{}_hasCE{}".format(str(n), cleanName(str(T)), str(has_ce))
+        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce) + ready_valid_interface
         @classmethod
         def definition(upsampleSequential):
-            dehydrate = Dehydrate(T)
-            hydrate = Hydrate(T)
-            valueStoreReg = Register(dehydrate.size, has_ce=has_ce, has_reset=has_reset)
-            mux = Mux(width=dehydrate.size)
-            counter = SizedCounterModM(n, has_ce=has_ce or has_reset)
-            eq0 = Decode(0, counter.O.N)(counter.O)
-            wire(upsampleSequential.I, dehydrate.I)
-            wire(dehydrate.out, valueStoreReg.I)
-            # on first clock cycle, send the input directly out. otherwise, use the register
-            wire(eq0, mux.S)
-            wire(valueStoreReg.O, mux.I0)
-            wire(upsampleSequential.I, mux.I1)
-            wire(mux.O, hydrate.I)
-            wire(hydrate.out, upsampleSequential.O)
-            wire(eq0, upsampleSequential.READY)
-
-            # reset counter on clock enable or reset, setup both reset and CE for reg
-            if has_ce and has_reset:
-                wire(counter.CE, And(2)(upsampleSequential.RESET, upsampleSequential.CE))
+            enabled = upsampleSequential.ready_up & upsampleSequential.valid_up
             if has_ce:
-                wire(valueStoreReg.CE, upsampleSequential.CE)
-                if not has_reset:
-                    wire(counter.CE, upsampleSequential.CE)
-            if has_reset:
-                wire(valueStoreReg.RESET, upsampleSequential.RESET)
-                if not has_ce:
-                    wire(counter.RESET, upsampleSequential.RESET)
+                enabled = enabled & bit(upsampleSequential.CE)
+
+            if time_per_element > 1:
+                value_store = DefineDelayedBuffer(T, time_per_element, 1, time_per_element)
+
+                time_per_element_counter = SizedCounterModM(time_per_element,
+                                                            has_ce=True)
+                go_to_next_element = Decode(time_per_element - 1, time_per_element_counter.O.N)(time_per_element_counter.O)
+                element_idx_counter = SizedCounterModM(n, has_ce=True)
+
+                wire(time_per_element_counter.CE, enabled)
+                wire(element_idx_counter.CE, enabled & go_to_next_element)
+            else:
+                value_store = DefineRegisterAnyType(T, has_ce=True)
+                element_idx_counter = SizedCounterModM(n, has_ce=True)
+                wire(element_idx_counter.CE, enabled)
+
+            output_selector = DefineMuxAnyType(T, 2)
+            is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
+
+            wire(upsampleSequential.I, value_store.I)
+
+            # on first clock cycle, send the input directly out. otherwise, use the register
+            wire(is_first_element, output_selector.sel)
+            wire(value_store.O, output_selector.data[0])
+            wire(upsampleSequential.I, output_selector.data[1])
+            wire(output_selector.out, upsampleSequential.O)
+
+            wire(enabled, upsampleSequential.valid_down)
+            wire(upsampleSequential.ready_down, upsampleSequential.ready_up)
 
     return UpSequential
 
-def UpsampleSequential(n, T, has_ce=False, has_reset=False):
-    return DefineUpsampleSequential(n, T, has_ce, has_reset)()
+def UpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=False):
+    return DefineUpsampleSequential(n, time_per_element, T, has_ce, has_reset)()
 
 """
 from coreir.context import *
