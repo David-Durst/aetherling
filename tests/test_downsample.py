@@ -105,7 +105,7 @@ def test_downsample_sequential_ce_and_rv_always_true():
     out_type = Array[width, Out(BitIn)]
     in_type = In(out_type)
     args = ['I', in_type, 'O', out_type, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
-            'valid_down', Out(Bit), 'nnn', Out(Array[3, Bit]), 'is_enabled', Out(Bit)] + ClockInterface(has_ce=True)
+            'valid_down', Out(Bit)] + ClockInterface(has_ce=True)
 
     testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
 
@@ -116,8 +116,6 @@ def test_downsample_sequential_ce_and_rv_always_true():
     wire(testcircuit.valid_up, downsampleSequential.valid_up)
     wire(testcircuit.ready_down, downsampleSequential.ready_down)
     wire(testcircuit.valid_down, downsampleSequential.valid_down)
-    wire(testcircuit.nnn, downsampleSequential.nnn)
-    wire(testcircuit.is_enabled, downsampleSequential.is_enabled)
     wire(testcircuit.CE, downsampleSequential.CE)
     EndCircuit()
 
@@ -134,6 +132,89 @@ def test_downsample_sequential_ce_and_rv_always_true():
             assert seq2int(sim.get_value(testcircuit.O, scope)) == clk
         assert sim.get_value(testcircuit.valid_down, scope) == (active_idx == clk // time_per_element)
         assert sim.get_value(testcircuit.ready_up, scope) == True
+        sim.advance_cycle()
+        sim.evaluate()
+
+def test_downsample_sequential_ce_and_rv_sometimes_true():
+    width = 5
+    num_elements = 6
+    active_idx = 3
+    time_per_element = 1
+    scope = Scope()
+    out_type = Array[width, Out(BitIn)]
+    in_type = In(out_type)
+    args = ['I', in_type, 'O', out_type, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(has_ce=True)
+
+    testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
+
+    downsampleSequential = DownsampleSequential(num_elements, time_per_element, active_idx, in_type, has_ce=True)
+    wire(downsampleSequential.I, testcircuit.I)
+    wire(testcircuit.O, downsampleSequential.O)
+    wire(testcircuit.ready_up, downsampleSequential.ready_up)
+    wire(testcircuit.valid_up, downsampleSequential.valid_up)
+    wire(testcircuit.ready_down, downsampleSequential.ready_down)
+    wire(testcircuit.valid_down, downsampleSequential.valid_down)
+    wire(testcircuit.CE, downsampleSequential.CE)
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    for clk in range(num_elements * 12):
+        sim.set_value(testcircuit.valid_up, clk % 2 == 0, scope)
+        sim.set_value(testcircuit.ready_down, clk % 3 == 0, scope)
+        sim.set_value(testcircuit.CE, clk % 4 == 0, scope)
+        sim.set_value(testcircuit.I, int2seq(clk // 12, width), scope)
+        sim.evaluate()
+        if clk // 12 == active_idx and clk % 12 == 0:
+            assert seq2int(sim.get_value(testcircuit.O, scope)) == clk // 12
+        assert sim.get_value(testcircuit.valid_down, scope) == ((active_idx == clk // 12) & (clk % 12 == 0))
+        assert sim.get_value(testcircuit.ready_up, scope) == (clk % 3 == 0)
+        sim.advance_cycle()
+        sim.evaluate()
+
+def test_downsample_sequential_multi_clock_elements():
+    width = 5
+    num_elements = 6
+    active_idx = 3
+    time_per_element = 3
+    scope = Scope()
+    out_type = Array[width, Out(BitIn)]
+    in_type = In(out_type)
+    args = ['I', in_type, 'O', out_type, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(has_ce=True)
+
+    testcircuit = DefineCircuit('Test_Downsample_Sequential', *args)
+
+    downsampleSequential = DownsampleSequential(num_elements, time_per_element, active_idx, in_type, has_ce=True)
+    wire(downsampleSequential.I, testcircuit.I)
+    wire(testcircuit.O, downsampleSequential.O)
+    wire(testcircuit.ready_up, downsampleSequential.ready_up)
+    wire(testcircuit.valid_up, downsampleSequential.valid_up)
+    wire(testcircuit.ready_down, downsampleSequential.ready_down)
+    wire(testcircuit.valid_down, downsampleSequential.valid_down)
+    wire(testcircuit.CE, downsampleSequential.CE)
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    valid_clks = [i for i in range(num_elements * 12 * time_per_element) \
+                  if i // 12 >= active_idx * time_per_element and \
+                  i // 12 < (active_idx + 1) * time_per_element and \
+                  i % 12 == 0]
+
+    for clk in range(num_elements * 12 * time_per_element):
+        sim.set_value(testcircuit.valid_up, clk % 2 == 0, scope)
+        sim.set_value(testcircuit.ready_down, clk % 3 == 0, scope)
+        sim.set_value(testcircuit.CE, clk % 4 == 0, scope)
+        sim.set_value(testcircuit.I, int2seq(clk // (12 * time_per_element), width), scope)
+        sim.evaluate()
+        if clk in valid_clks:
+            assert seq2int(sim.get_value(testcircuit.O, scope)) == clk // (12 * time_per_element)
+        assert sim.get_value(testcircuit.valid_down, scope) == (clk in valid_clks)
+        assert sim.get_value(testcircuit.ready_up, scope) == (clk % 3 == 0)
         sim.advance_cycle()
         sim.evaluate()
 

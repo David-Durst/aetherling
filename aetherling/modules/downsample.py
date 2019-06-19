@@ -60,7 +60,7 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
     class DownsampleSequential(Circuit):
         name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n), \
                cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['I', In(T), 'O', Out(T), 'nnn', Out(Array[3, Bit]), 'is_enabled', Out(Bit)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
+        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(downsampleSequential):
             enabled = downsampleSequential.ready_down & downsampleSequential.valid_up
@@ -87,11 +87,9 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
                     wire(element_idx_counter.RESET, downsampleSequential.RESET)
 
             emit_cur_element = Decode(idx, element_idx_counter.O.N)(element_idx_counter.O)
-            wire(downsampleSequential.ready_down & downsampleSequential.valid_up, downsampleSequential.is_enabled)
-            wire(element_idx_counter.O, downsampleSequential.nnn)
             wire(downsampleSequential.I, downsampleSequential.O)
             # on first clock cycle, send the input directly out. otherwise, use the register
-            wire(emit_cur_element, downsampleSequential.valid_down)
+            wire(emit_cur_element & enabled, downsampleSequential.valid_down)
             wire(downsampleSequential.ready_down, downsampleSequential.ready_up)
 
     return DownsampleSequential
