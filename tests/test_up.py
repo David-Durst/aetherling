@@ -97,27 +97,34 @@ def test_up_sequential():
     scope = Scope()
     inType = Array[width, In(BitIn)]
     outType = Out(inType)
-    args = ['I', inType, 'O', outType, 'READY', Out(Bit)] + ClockInterface(False, False)
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(False, False)
 
     testcircuit = DefineCircuit('TestUpSequential', *args)
 
-    upSequential = UpsampleSequential(numOut, inType)
+    upSequential = UpsampleSequential(numOut, 1, inType)
     wire(upSequential.I, testcircuit.I)
     wire(testcircuit.O, upSequential.O)
-    wire(testcircuit.READY, upSequential.READY)
+    wire(testcircuit.ready_up, upSequential.ready_up)
+    wire(testcircuit.valid_up, upSequential.valid_up)
+    wire(testcircuit.ready_down, upSequential.ready_down)
+    wire(testcircuit.valid_down, upSequential.valid_down)
 
     EndCircuit()
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
     sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
+    sim.set_value(testcircuit.valid_up, True, scope)
+    sim.set_value(testcircuit.ready_down, True, scope)
     sim.evaluate()
 
     for i in range(numOut):
         assert seq2int(sim.get_value(testcircuit.O, scope)) == testVal
+        assert sim.get_value(testcircuit.ready_up, scope) == (i == 0)
+        assert sim.get_value(testcircuit.valid_down, scope) == True
         sim.advance_cycle()
         sim.evaluate()
-        assert sim.get_value(testcircuit.READY, scope) == (i == numOut - 1)
 
 
 
