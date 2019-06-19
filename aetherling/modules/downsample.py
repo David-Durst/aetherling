@@ -21,6 +21,11 @@ def DefineDownsampleParallel(n, idx, T, has_ready_valid=False):
 
     I : In(Array[n, T])
     O : Out(T)
+    if has_ready_valid:
+    ready_up : Out(Bit)
+    valid_up : In(Bit)
+    ready_down : In(Bit)
+    valid_down : Out(Bit)
     """
     class DownsampleParallel(Circuit):
         name = "DownsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
@@ -56,6 +61,14 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
 
     I : In(T)
     O : Out(T)
+    ready_up : Out(Bit)
+    valid_up : In(Bit)
+    ready_down : In(Bit)
+    valid_down : Out(Bit)
+    if has_ce:
+    CE : In(Bit)
+    if has_reset:
+    RESET : In(Bit)
     """
     class DownsampleSequential(Circuit):
         name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n), \
