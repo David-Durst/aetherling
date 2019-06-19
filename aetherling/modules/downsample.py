@@ -16,8 +16,13 @@ __all__ = ['DefineDownsampleParallel', 'DownsampleParallel',
 @cache_definition
 def DefineDownsampleParallel(n, idx, T, has_ready_valid=False):
     """
-    Downsample an array of T's to a single T in one period.
+    Downsample an SSeq n T' to and SSeq 1 T' in one period.
     idx specifies which element of the downsample
+
+    The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
+
+    Note that the T passed to this operator just the Magma type each clock cycle.
+    You can get T by calling magma_repr on a space-time type T'.
 
     I : In(Array[n, T])
     O : Out(T)
@@ -54,10 +59,13 @@ def DownsampleParallel(n, idx, T, has_ready_valid=False):
 @cache_definition
 def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_reset=False):
     """
-    Downsample a stream of n T's to a single T over n*time_per_element clock cycles.
-    Each T should take time_per_element clock cycles
-    VALID is asserted on the clock cycle when valid output is coming out
-    Aetherling Type: {n, T} -> {1, T}
+    Downsample a TSeq n T' to a TSeq 1 T' over n period.
+
+    Each T' period is time_per_element clock cycles
+    You can get time_per_element by calling time on a space-time type.
+
+    Note that the T passed to this operator just the Magma type each clock cycle.
+    You can get T by calling magma_repr on a space-time type T'.
 
     I : In(T)
     O : Out(T)
@@ -101,7 +109,6 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
 
             emit_cur_element = Decode(idx, element_idx_counter.O.N)(element_idx_counter.O)
             wire(downsampleSequential.I, downsampleSequential.O)
-            # on first clock cycle, send the input directly out. otherwise, use the register
             wire(emit_cur_element & enabled, downsampleSequential.valid_down)
             wire(downsampleSequential.ready_down, downsampleSequential.ready_up)
 
