@@ -161,7 +161,8 @@ def test_downsample_sequential_ce_and_rv_sometimes_true():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    for clk in range(num_elements * 12):
+    # * 12 as only valid every 12th clock, *2 as iterating over sequence twice
+    for clk in range(num_elements * 12 * 2):
         sim.set_value(testcircuit.valid_up, clk % 2 == 0, scope)
         sim.set_value(testcircuit.ready_down, clk % 3 == 0, scope)
         sim.set_value(testcircuit.CE, clk % 4 == 0, scope)
@@ -169,7 +170,8 @@ def test_downsample_sequential_ce_and_rv_sometimes_true():
         sim.evaluate()
         if clk // 12 == active_idx and clk % 12 == 0:
             assert seq2int(sim.get_value(testcircuit.O, scope)) == clk // 12
-        assert sim.get_value(testcircuit.valid_down, scope) == ((active_idx == clk // 12) & (clk % 12 == 0))
+        # 2 possible active_idx as doing downsample over two input sequences
+        assert sim.get_value(testcircuit.valid_down, scope) == ((clk // 12 in [active_idx, num_elements + active_idx]) & (clk % 12 == 0))
         assert sim.get_value(testcircuit.ready_up, scope) == (clk % 3 == 0)
         sim.advance_cycle()
         sim.evaluate()
@@ -200,12 +202,16 @@ def test_downsample_sequential_multi_clock_elements():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
+    # * 12 as only valid every 12th clock
     valid_clks = [i for i in range(num_elements * 12 * time_per_element) \
                   if i // 12 >= active_idx * time_per_element and \
                   i // 12 < (active_idx + 1) * time_per_element and \
                   i % 12 == 0]
 
-    for clk in range(num_elements * 12 * time_per_element):
+    # duplicating to repeat the input sequence
+    valid_clks += [num_elements * 12 * time_per_element + i for i in valid_clks]
+
+    for clk in range(num_elements * 12 * time_per_element * 2):
         sim.set_value(testcircuit.valid_up, clk % 2 == 0, scope)
         sim.set_value(testcircuit.ready_down, clk % 3 == 0, scope)
         sim.set_value(testcircuit.CE, clk % 4 == 0, scope)
