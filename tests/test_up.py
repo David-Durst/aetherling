@@ -196,7 +196,7 @@ def test_up_sequential_multi_clock_elements():
     inType = Array[width, In(BitIn)]
     outType = Out(inType)
     args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
-            'valid_down', Out(Bit), 'dbo', outType, 'eic', Out(UInt[2, Bit])] + ClockInterface(True, False)
+            'valid_down', Out(Bit)] + ClockInterface(True, False)
 
     testcircuit = DefineCircuit('TestUpSequential', *args)
 
@@ -208,8 +208,6 @@ def test_up_sequential_multi_clock_elements():
     wire(testcircuit.ready_down, upSequential.ready_down)
     wire(testcircuit.valid_down, upSequential.valid_down)
     wire(testcircuit.CE, upSequential.CE)
-    wire(testcircuit.eic, upSequential.eic)
-    wire(testcircuit.dbo, upSequential.dbo)
 
     EndCircuit()
 
@@ -231,8 +229,6 @@ def test_up_sequential_multi_clock_elements():
     for clk in range(num_total_clocks):
         sim.set_value(testcircuit.I, int2seq(test_vals[write_test_val_idx], width), scope)
         sim.evaluate()
-        print(f"current element: {seq2int(sim.get_value(testcircuit.eic, scope))}")
-        print(f"delayed buffer output: {seq2int(sim.get_value(testcircuit.dbo, scope))}")
         if clk in valid_clks:
             assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[read_test_val_idx]
         assert sim.get_value(testcircuit.valid_down, scope) == (clk in valid_clks)

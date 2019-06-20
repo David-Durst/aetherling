@@ -70,7 +70,7 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
     """
     class UpSequential(Circuit):
         name = "UpsampleSequential_n{}_T{}_hasCE{}".format(str(n), cleanName(str(T)), str(has_ce))
-        IO = ['I', In(T), 'O', Out(T), 'dbo', Out(T), 'eic', Out(UInt[2, Bit])] + ClockInterface(has_ce) + ready_valid_interface
+        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce) + ready_valid_interface
         @classmethod
         def definition(upsampleSequential):
             enabled = upsampleSequential.ready_down & upsampleSequential.valid_up
@@ -80,13 +80,11 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
             # the counter of the current element, when hits 0, load the next input to upsample
             element_idx_counter = SizedCounterModM(n, has_ce=True)
             is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
-            wire(element_idx_counter.O, upsampleSequential.eic)
 
             if time_per_element > 1:
                 value_store = DefineRAMAnyType(T, time_per_element)()
                 value_store_input = value_store.WDATA
                 value_store_output = value_store.RDATA
-                wire(value_store_output, upsampleSequential.dbo)
 
                 time_per_element_counter = SizedCounterModM(time_per_element,
                                                             has_ce=True)
