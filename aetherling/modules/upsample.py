@@ -49,7 +49,7 @@ def UpsampleParallel(n, T, has_ready_valid=False):
     return DefineUpsampleParallel(n, T, has_ready_valid)()
 
 @cache_definition
-def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
+def DefineUpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=False):
     """
     Upsample a TSeq 1 T' to a TSeq n T' over n periods.
 
@@ -67,10 +67,12 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
     valid_down : Out(Bit)
     if has_ce:
     CE : In(Bit)
+    if has_reset:
+    RESET : In(Bit)
     """
     class UpSequential(Circuit):
-        name = "UpsampleSequential_n{}_T{}_hasCE{}".format(str(n), cleanName(str(T)), str(has_ce))
-        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce) + ready_valid_interface
+        name = "UpsampleSequential_n{}_T{}_hasCE{}_hasReset".format(str(n), cleanName(str(T)), str(has_ce), str(has_reset))
+        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(upsampleSequential):
             enabled = upsampleSequential.ready_down & upsampleSequential.valid_up
@@ -78,8 +80,10 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
                 enabled = enabled & bit(upsampleSequential.CE)
 
             # the counter of the current element, when hits 0, load the next input to upsample
-            element_idx_counter = SizedCounterModM(n, has_ce=True)
+            element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
             is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
+            if has_reset:
+                wire(upsampleSequential.RESET, element_idx_counter.RESET)
 
             if time_per_element > 1:
                 value_store = DefineRAMAnyType(T, time_per_element)()
@@ -87,7 +91,7 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
                 value_store_output = value_store.RDATA
 
                 time_per_element_counter = SizedCounterModM(time_per_element,
-                                                            has_ce=True)
+                                                            has_ce=True, has_reset=has_reset)
                 go_to_next_element = Decode(time_per_element - 1, time_per_element_counter.O.N)(time_per_element_counter.O)
 
                 wire(time_per_element_counter.CE, enabled)
@@ -97,6 +101,9 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
                 # will write on first iteration through element, read on later iterations
                 wire(time_per_element_counter.O, value_store.WADDR)
                 wire(time_per_element_counter.O, value_store.RADDR)
+
+                if has_reset:
+                    wire(time_per_element_counter.RESET, upsampleSequential.RESET)
 
             else:
                 value_store = DefineRegisterAnyType(T, has_ce=True)()
@@ -121,8 +128,8 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False):
 
     return UpSequential
 
-def UpsampleSequential(n, time_per_element, T, has_ce=False):
-    return DefineUpsampleSequential(n, time_per_element, T, has_ce)()
+def UpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=False):
+    return DefineUpsampleSequential(n, time_per_element, T, has_ce, has_reset)()
 
 """
 from coreir.context import *
