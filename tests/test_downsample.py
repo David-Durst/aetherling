@@ -135,7 +135,7 @@ def test_downsample_sequential_ce_and_rv_always_true():
         sim.advance_cycle()
         sim.evaluate()
 
-def test_downsample_sequential_ce_and_rv_sometimes_true():
+def test_downsample_sequential_ce_and_rv_flicker():
     width = 5
     num_elements = 6
     active_idx = 3
