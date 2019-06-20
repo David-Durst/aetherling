@@ -24,7 +24,7 @@ def run_test_updown_npxPerClock(pxPerClock):
     pixelType = Array[imgData.bitsPerPixel, Bit]
     bitsToPixelHydrate = MapParallel(pxPerClock, Hydrate(pixelType))
     upParallel = MapParallel(pxPerClock, UpsampleParallel(upsampleAmount, pixelType))
-    downParallel = MapParallel(pxPerClock, DownsampleParallel(upsampleAmount, pixelType))
+    downParallel = MapParallel(pxPerClock, DownsampleParallel(upsampleAmount, 0, pixelType))
     pixelToBitsDehydrate = MapParallel(pxPerClock, Dehydrate(pixelType))
 
 
