@@ -33,7 +33,8 @@ def DefineDownsampleParallel(n, idx, T, has_ready_valid=False):
     valid_down : Out(Bit)
     """
     class DownsampleParallel(Circuit):
-        name = "DownsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
+        name = "DownsampleParallel_n{}_T{}_idx{}_rv{}".format(str(n), str(idx), cleanName(str(T)), \
+                                                              str(has_ready_valid))
         IO = ['I', In(Array[n, T]), 'O', Out(T)]
         if has_ready_valid:
             IO += ready_valid_interface
@@ -79,8 +80,8 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
     RESET : In(Bit)
     """
     class DownsampleSequential(Circuit):
-        name = "DownsampleSequential_n{}_T{}_hasCE{}_hasReset{}".format(str(n), \
-               cleanName(str(T)), str(has_ce), str(has_reset))
+        name = "DownsampleSequential_n{}_tEl{}_idx{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element), \
+               str(idx), cleanName(str(T)), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(downsampleSequential):

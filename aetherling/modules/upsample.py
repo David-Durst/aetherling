@@ -32,7 +32,7 @@ def DefineUpsampleParallel(n, T, has_ready_valid=False):
     valid_down : Out(Bit)
     """
     class UpParallel(Circuit):
-        name = "UpsampleParallel_n{}_T{}".format(str(n), cleanName(str(T)))
+        name = "UpsampleParallel_n{}_T{}_rv{}".format(str(n), cleanName(str(T)), str(has_ready_valid))
         IO = ['I', In(T), 'O', Out(Array[n, T])]
         if has_ready_valid:
             IO += ready_valid_interface
@@ -71,7 +71,8 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=Fal
     RESET : In(Bit)
     """
     class UpSequential(Circuit):
-        name = "UpsampleSequential_n{}_T{}_hasCE{}_hasReset".format(str(n), cleanName(str(T)), str(has_ce), str(has_reset))
+        name = "UpsampleSequential_n{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element), \
+                                                                            cleanName(str(T)), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(upsampleSequential):
