@@ -80,7 +80,7 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=Fal
             if has_ce:
                 enabled = enabled & bit(upsampleSequential.CE)
 
-            # the counter of the current element, when hits 0, load the next input to upsample
+            # the counter of the current element of output sequence, when hits 0, load the next input to upsample
             element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
             is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
             if has_reset:
@@ -118,7 +118,7 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=Fal
 
             wire(upsampleSequential.I, value_store_input)
 
-            # on first clock cycle, send the input directly out. otherwise, use the register
+            # on first element, send the input directly out. otherwise, use the register
             wire(is_first_element, output_selector.sel[0])
             wire(value_store_output, output_selector.data[0])
             wire(upsampleSequential.I, output_selector.data[1])
