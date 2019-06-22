@@ -76,15 +76,29 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=Fal
         IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(upsampleSequential):
-            enabled = upsampleSequential.ready_down & upsampleSequential.valid_up
-            if has_ce:
-                enabled = enabled & bit(upsampleSequential.CE)
-
             # the counter of the current element of output sequence, when hits 0, load the next input to upsample
             element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
             is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
             if has_reset:
                 wire(upsampleSequential.RESET, element_idx_counter.RESET)
+
+            # enabled means run the circuit
+            # do this when downstream is ready, so have something to communicate with,
+            # and when in first element and upstream is valid or have data to repeat
+            enabled = upsampleSequential.ready_down & \
+                      ((is_first_element & upsampleSequential.valid_up) | (~is_first_element))
+            # ready means can accept input when get valid from upstream
+            # do this when in first element and downstream ready to accept
+            ready = is_first_element & upsampleSequential.ready_down
+            # valid means can emit downstream
+            # valid when in first element and upstream valid or repeating old data
+            valid = (is_first_element & upsampleSequential.valid_up) | (~is_first_element)
+
+            # only assert these signals when CE is high or no CE
+            if has_ce:
+                enabled = enabled & bit(upsampleSequential.CE)
+                ready = ready & bit(upsampleSequential.CE)
+                valid = valid & bit(upsampleSequential.CE)
 
             if time_per_element > 1:
                 value_store = DefineRAMAnyType(T, time_per_element)()
@@ -124,8 +138,8 @@ def DefineUpsampleSequential(n, time_per_element, T, has_ce=False, has_reset=Fal
             wire(upsampleSequential.I, output_selector.data[1])
             wire(output_selector.out, upsampleSequential.O)
 
-            wire(enabled, upsampleSequential.valid_down)
-            wire(enabled & is_first_element, upsampleSequential.ready_up)
+            wire(valid, upsampleSequential.valid_down)
+            wire(ready, upsampleSequential.ready_up)
 
     return UpSequential
 
