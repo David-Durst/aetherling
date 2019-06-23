@@ -214,7 +214,7 @@ def test_up_sequential_rv_and_ce_flicker():
                 assert sim.get_value(testcircuit.valid_down, scope) == True
             else:
                 assert sim.get_value(testcircuit.valid_down, scope) == False
-            # increment counters
+            # increment counters each time circuit executes
             if clk % ce_period == 0 and clk % ready_down_period == 0 and \
                 ((clk % valid_up_period == 0 and elements_emitted < 1) or elements_emitted >= 1):
                 parts_of_elements_emitted += 1
@@ -255,34 +255,37 @@ def test_up_sequential_multi_clock_elements():
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
-    valid_clks = get_clock_pattern(num_total_clocks, 1, 1)
-
-    # only ready one element per num_out as outputs need to repeat num_out times
-    ready_clks = filter_clock_pattern(get_clock_pattern(num_total_clocks, 1, 1), time_per_element, [0, 3])
-
     sim.set_value(testcircuit.valid_up, True, scope)
     sim.set_value(testcircuit.ready_down, True, scope)
     sim.set_value(testcircuit.CE, True, scope)
-    for clk in range(num_total_clocks):
-        sim.set_value(testcircuit.I, int2seq(test_vals[write_test_val_idx], width), scope)
-        sim.evaluate()
-        if clk in valid_clks:
-            assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[read_test_val_idx]
-        assert sim.get_value(testcircuit.valid_down, scope) == (clk in valid_clks)
-        assert sim.get_value(testcircuit.ready_up, scope) == (clk in ready_clks)
-        sim.advance_cycle()
-        sim.evaluate()
+    for i in range(num_iterations):
+        parts_of_elements_emitted = 0
+        elements_emitted = 0
+        clk = -1
+        while elements_emitted < num_out:
+            clk += 1
+            sim.set_value(testcircuit.I, int2seq(test_vals[write_test_val_idx], width), scope)
+            sim.evaluate()
+            assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[read_test_val_idx + (time_per_element * i)]
+            assert sim.get_value(testcircuit.valid_down, scope) == True
+            if elements_emitted == 0:
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            sim.advance_cycle()
+            sim.evaluate()
 
-        if clk in valid_clks:
             # only use the inputs for the current input sequence
             read_test_val_idx += 1
-            read_test_val_idx %= 2
-            read_test_val_idx += 2 * ((clk+1) // num_clocks_per_iteration)
-        if clk in ready_clks:
-            write_test_val_idx += 1
-            # after finishing all the test values, on last ready clock, will need to roll back to start so
-            # don't overflow test_vals array
-            write_test_val_idx %= len(test_vals)
+            read_test_val_idx %= time_per_element
+            if elements_emitted == 0:
+                write_test_val_idx += 1
+                # after finishing all the test values, on last ready clock, will need to roll back to start so
+                # don't overflow test_vals array
+                write_test_val_idx %= len(test_vals)
+
+            # since ready, valid, and CE in always true, always increment elements counters
+            parts_of_elements_emitted += 1
+            if parts_of_elements_emitted % time_per_element == 0:
+                elements_emitted += 1
 
 def test_up_sequential_multi_clock_elements_flicker_rv_and_ce():
     width = 5
