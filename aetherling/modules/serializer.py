@@ -79,11 +79,11 @@ def DefineSerializer(n:int, time_per_element: int, T: Kind, has_ce=False, has_re
                 wire(time_per_element_counter.CE, enabled)
                 wire(element_idx_counter.CE, enabled & go_to_next_element)
                 for input_idx in range(n):
-                    wire(value_store[input_idx].WE, is_first_element & enabled)
+                    wire(value_store.WE[input_idx], is_first_element & enabled)
                     # location in current element is where to read and write.
                     # will write on first iteration through element, read on later iterations
-                    wire(time_per_element_counter.O, value_store[input_idx].WADDR)
-                    wire(time_per_element_counter.O, value_store[input_idx].RADDR)
+                    wire(time_per_element_counter.O, value_store.WADDR[input_idx])
+                    wire(time_per_element_counter.O, value_store.RADDR[input_idx])
 
                 if has_reset:
                     wire(time_per_element_counter.RESET, serializer.RESET)
@@ -149,13 +149,14 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
         name = "deserialize_t{}_tEl{}_n{}_hasCE{}_hasRESET{}".format(cleanName(str(T)), str(time_per_element), \
                                                                      str(n), str(has_ce), str(has_reset))
 
-        IO = ["I", In(Array[n, T]), "out", Out(T)] + \
+        IO = ["I", In(T), "O", Out(Array[n, T]), "idx", Out(UInt[3])] + \
              ClockInterface(has_ce, has_reset) + ready_valid_interface
 
         @classmethod
         def definition(deserializer):
             # the counter of the current element of output sequence, when hits n-1, output sload the next input to serialize
             element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
+            wire(element_idx_counter, deserializer.idx)
             is_last_element = Decode(n-1, element_idx_counter.O.N)(element_idx_counter.O)
 
             # enabled means run the circuit
@@ -219,7 +220,7 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
                 wire(value_store_output[element_idx], deserializer.O[element_idx])
 
             # send the last input directly out
-            wire(deserializer.I[n-1], deserializer.O[n-1])
+            wire(deserializer.I, deserializer.O[n-1])
 
             wire(valid, deserializer.valid_down)
             wire(ready, deserializer.ready_up)

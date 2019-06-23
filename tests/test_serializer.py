@@ -9,64 +9,359 @@ import coreir
 from magma.scope import Scope
 from mantle.coreir.arith import *
 
-def test_serializer():
-    width = 11
-    numIn = 13
+def test_serializer_rv_ce_always_true():
+    width = 5
+    numIn = 5
+    numIterations = 2
     scope = Scope()
     inType = In(Array[numIn, Array[width, BitIn]])
     outType = Out(Array[width, Bit])
-    args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(True, False)
 
     testcircuit = DefineCircuit('Test_Serializer', *args)
 
-    serializer = Serializer(inType.T, numIn)
+    serializer = Serializer(numIn, 1, inType.T, has_ce=True)
     wire(serializer.I, testcircuit.I)
-    wire(testcircuit.O, serializer.out)
-    wire(testcircuit.ready, serializer.ready)
-    wire(testcircuit.valid, serializer.valid)
+    wire(testcircuit.O, serializer.O)
+    wire(testcircuit.ready_up, serializer.ready_up)
+    wire(testcircuit.valid_up, serializer.valid_up)
+    wire(testcircuit.ready_down, serializer.ready_down)
+    wire(testcircuit.valid_down, serializer.valid_down)
+    wire(testcircuit.CE, serializer.CE)
 
     EndCircuit()
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    for i in range(numIn):
-        sim.set_value(testcircuit.I[i], int2seq(i, width), scope)
+    for i in range(numIterations):
+        sim.set_value(testcircuit.CE, True, scope)
+        sim.set_value(testcircuit.valid_up, True, scope)
+        sim.set_value(testcircuit.ready_down, True, scope)
+
+        for j in range(numIn):
+            sim.set_value(testcircuit.I[j], int2seq(i * numIn + j, width), scope)
+
         sim.evaluate()
 
-    for i in range(numIn):
-        assert sim.get_value(testcircuit.ready, scope) == (i == 0)
-        assert seq2int(sim.get_value(testcircuit.O, scope)) == i
-        sim.evaluate()
-        sim.advance_cycle()
-        sim.evaluate()
-    assert sim.get_value(testcircuit.ready, scope) == True
+        for j in range(numIn):
+            assert sim.get_value(testcircuit.ready_up, scope) == (j == 0)
+            assert sim.get_value(testcircuit.valid_down, scope) == True
+            assert seq2int(sim.get_value(testcircuit.O, scope)) == i * numIn + j
+            sim.evaluate()
+            sim.advance_cycle()
+            sim.evaluate()
+            # this ensures that the output is not dpeendent on the input after first clock
+            # as changing inputs to outputs that would be invalid
+            for j in range(numIn):
+                sim.set_value(testcircuit.I[j], int2seq(0, width), scope)
 
-def test_deserializer():
-    width = 11
-    numIn = 13
+def test_serializer_rv_and_ce_flicker():
+    width = 5
+    num_in = 5
+    time_per_element = 1
+    ce_period = 2
+    ready_down_period = 3
+    valid_up_period = 4
+    num_iterations = 2
+    scope = Scope()
+    inType = In(Array[num_in, Array[width, BitIn]])
+    outType = Out(Array[width, Bit])
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(True, False)
+
+    testcircuit = DefineCircuit('Test_Serializer', *args)
+
+    serializer = Serializer(num_in, time_per_element, inType.T, has_ce=True)
+    wire(serializer.I, testcircuit.I)
+    wire(testcircuit.O, serializer.O)
+    wire(testcircuit.ready_up, serializer.ready_up)
+    wire(testcircuit.valid_up, serializer.valid_up)
+    wire(testcircuit.ready_down, serializer.ready_down)
+    wire(testcircuit.valid_down, serializer.valid_down)
+    wire(testcircuit.CE, serializer.CE)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    for i in range(num_iterations):
+        for j in range(num_in):
+            sim.set_value(testcircuit.I[j], int2seq(i * num_in + j, width), scope)
+
+        parts_of_elements_emitted = 0
+        elements_emitted = 0
+        clk = -1
+        while elements_emitted < num_in:
+            clk += 1
+            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
+            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
+            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
+            # ensure that can change input after first element emitted and not affect anything
+            # as serializer memory set
+            if elements_emitted == 1:
+                for j in range(num_in):
+                    sim.set_value(testcircuit.I[j], int2seq(0, width), scope)
+            sim.evaluate()
+            # check ready
+            if clk % ce_period == 0 and clk % ready_down_period == 0 and elements_emitted == 0:
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
+            # check valid
+            if clk % ce_period == 0 and (clk % valid_up_period == 0 or elements_emitted > 0):
+                assert seq2int(sim.get_value(testcircuit.O, scope)) == i * num_in + elements_emitted
+                assert sim.get_value(testcircuit.valid_down, scope) == True
+            else:
+                assert sim.get_value(testcircuit.valid_down, scope) == False
+            # increment counters each time circuit executes
+            if clk % ce_period == 0 and clk % ready_down_period == 0 and \
+                    ((clk % valid_up_period == 0 and elements_emitted < 1) or elements_emitted >= 1):
+                parts_of_elements_emitted += 1
+                if parts_of_elements_emitted % time_per_element == 0:
+                    elements_emitted += 1
+            sim.advance_cycle()
+            sim.evaluate()
+
+def test_serializer_multi_clock_elements():
+    width = 5
+    num_in = 3
+    time_per_element = 2
+    num_iterations = 2
+    scope = Scope()
+    inType = In(Array[num_in, Array[width, BitIn]])
+    outType = Out(Array[width, Bit])
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(True, False)
+
+    testcircuit = DefineCircuit('TestUpSequential', *args)
+
+    serializer = Serializer(num_in, time_per_element, inType.T, has_ce=True)
+    wire(serializer.I, testcircuit.I)
+    wire(testcircuit.O, serializer.O)
+    wire(testcircuit.ready_up, serializer.ready_up)
+    wire(testcircuit.valid_up, serializer.valid_up)
+    wire(testcircuit.ready_down, serializer.ready_down)
+    wire(testcircuit.valid_down, serializer.valid_down)
+    wire(testcircuit.CE, serializer.CE)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+
+    sim.set_value(testcircuit.valid_up, True, scope)
+    sim.set_value(testcircuit.ready_down, True, scope)
+    sim.set_value(testcircuit.CE, True, scope)
+    for i in range(num_iterations):
+        parts_of_elements_emitted = 0
+        elements_emitted = 0
+        clk = -1
+        while elements_emitted < num_in:
+            clk += 1
+            if elements_emitted == 0:
+                for j in range(num_in):
+                    sim.set_value(testcircuit.I[j], int2seq(i * (num_in + time_per_element) + \
+                                                            j * time_per_element + parts_of_elements_emitted, width), scope)
+            sim.evaluate()
+            assert seq2int(sim.get_value(testcircuit.O, scope)) == i * (num_in + time_per_element) + \
+                   elements_emitted * time_per_element + (parts_of_elements_emitted % time_per_element)
+
+            # valid_down and ready_up should always be true since valid_up, ready_down, and CE always true
+            assert sim.get_value(testcircuit.valid_down, scope) == True
+            if elements_emitted == 0:
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
+
+            sim.advance_cycle()
+            sim.evaluate()
+
+            # since ready, valid, and CE in always true, always increment elements counters
+            parts_of_elements_emitted += 1
+            if parts_of_elements_emitted % time_per_element == 0:
+                elements_emitted += 1
+
+
+def test_serializer_multi_clock_elements_flicker_rv_and_ce():
+    width = 5
+    num_in = 3
+    time_per_element = 2
+    ce_period = 2
+    ready_down_period = 3
+    valid_up_period = 4
+    num_iterations = 2
+    scope = Scope()
+    inType = In(Array[num_in, Array[width, BitIn]])
+    outType = Out(Array[width, Bit])
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(True, False)
+
+    testcircuit = DefineCircuit('TestUpSequential', *args)
+
+    serializer = Serializer(num_in, time_per_element, inType.T, has_ce=True)
+    wire(serializer.I, testcircuit.I)
+    wire(testcircuit.O, serializer.O)
+    wire(testcircuit.ready_up, serializer.ready_up)
+    wire(testcircuit.valid_up, serializer.valid_up)
+    wire(testcircuit.ready_down, serializer.ready_down)
+    wire(testcircuit.valid_down, serializer.valid_down)
+    wire(testcircuit.CE, serializer.CE)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+
+    for i in range(num_iterations):
+        for j in range(num_in):
+            sim.set_value(testcircuit.I[j], int2seq(i * num_in + j, width), scope)
+
+        parts_of_elements_emitted = 0
+        elements_emitted = 0
+        clk = -1
+        while elements_emitted < num_in:
+            clk += 1
+            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
+            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
+            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
+
+            if elements_emitted == 0:
+                for j in range(num_in):
+                    sim.set_value(testcircuit.I[j], int2seq(i * (num_in + time_per_element) + \
+                                                            j * time_per_element + parts_of_elements_emitted, width), scope)
+            sim.evaluate()
+
+            # check ready
+            if clk % ce_period == 0 and clk % ready_down_period == 0 and elements_emitted == 0:
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
+
+            # check valid
+            if clk % ce_period == 0 and (clk % valid_up_period == 0 or elements_emitted > 0):
+                assert seq2int(sim.get_value(testcircuit.O, scope)) == i * (num_in + time_per_element) + \
+                       elements_emitted * time_per_element + (parts_of_elements_emitted % time_per_element)
+                assert sim.get_value(testcircuit.valid_down, scope) == True
+            else:
+                assert sim.get_value(testcircuit.valid_down, scope) == False
+
+            # increment counters each time circuit executes
+            if clk % ce_period == 0 and clk % ready_down_period == 0 and \
+                    ((clk % valid_up_period == 0 and elements_emitted < 1) or elements_emitted >= 1):
+                parts_of_elements_emitted += 1
+
+                if parts_of_elements_emitted % time_per_element == 0:
+                    elements_emitted += 1
+
+            sim.advance_cycle()
+            sim.evaluate()
+
+def test_deserializer_rv_ce_always_true():
+    width = 5
+    num_in = 5
+    num_iterations = 2
     scope = Scope()
     inType = In(Array[width, Bit])
-    outType = Out(Array[numIn, Array[width, BitIn]])
-    args = ['I', inType, 'O', outType, 'ready', Out(Bit), 'valid', Out(Bit)] + ClockInterface(False, False)
+    outType = Out(Array[num_in, Array[width, BitIn]])
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit)] + ClockInterface(True, False)
 
     testcircuit = DefineCircuit('Test_Deserializer', *args)
 
-    deserializer = Deserializer(inType, numIn)
+    deserializer = Deserializer(num_in, 1, inType, has_ce=True)
     wire(deserializer.I, testcircuit.I)
-    wire(testcircuit.O, deserializer.out)
-    wire(testcircuit.ready, deserializer.ready)
-    wire(testcircuit.valid, deserializer.valid)
+    wire(testcircuit.O, deserializer.O)
+    wire(testcircuit.ready_up, deserializer.ready_up)
+    wire(testcircuit.valid_up, deserializer.valid_up)
+    wire(testcircuit.ready_down, deserializer.ready_down)
+    wire(testcircuit.valid_down, deserializer.valid_down)
+    wire(testcircuit.CE, deserializer.CE)
 
     EndCircuit()
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    for i in range(numIn):
-        sim.set_value(testcircuit.I, int2seq(i, width), scope)
-        assert sim.get_value(testcircuit.valid, scope) == (i == numIn - 1)
-        sim.evaluate()
-        sim.advance_cycle()
-        sim.evaluate()
-    assert sim.get_value(testcircuit.valid, scope) == False
+    for i in range(num_iterations):
+        sim.set_value(testcircuit.CE, True, scope)
+        sim.set_value(testcircuit.valid_up, True, scope)
+        sim.set_value(testcircuit.ready_down, True, scope)
+
+        for j in range(num_in):
+            sim.set_value(testcircuit.I, int2seq(i * num_in + j, width), scope)
+            sim.evaluate()
+
+            assert sim.get_value(testcircuit.ready_up, scope) == True
+            assert sim.get_value(testcircuit.valid_down, scope) == (j == num_in - 1)
+
+            if j == num_in - 1:
+                for k in range(num_in):
+                    assert seq2int(sim.get_value(testcircuit.O[k], scope)) == i * num_in + k
+
+            sim.evaluate()
+            sim.advance_cycle()
+            sim.evaluate()
+
+def test_deserializer_rv_and_ce_flicker():
+    width = 5
+    num_in = 5
+    time_per_element = 1
+    ce_period = 2
+    ready_down_period = 3
+    valid_up_period = 4
+    num_iterations = 2
+    scope = Scope()
+    inType = In(Array[width, Bit])
+    outType = Out(Array[num_in, Array[width, BitIn]])
+    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
+            'valid_down', Out(Bit), 'idx', Out(UInt[3])] + ClockInterface(True, False)
+
+    testcircuit = DefineCircuit('Test_Deserializer', *args)
+
+    deserializer = Deserializer(num_in, time_per_element, inType, has_ce=True)
+    wire(deserializer.idx, testcircuit.idx)
+    wire(deserializer.I, testcircuit.I)
+    wire(testcircuit.O, deserializer.O)
+    wire(testcircuit.ready_up, deserializer.ready_up)
+    wire(testcircuit.valid_up, deserializer.valid_up)
+    wire(testcircuit.ready_down, deserializer.ready_down)
+    wire(testcircuit.valid_down, deserializer.valid_down)
+    wire(testcircuit.CE, deserializer.CE)
+
+    EndCircuit()
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    for i in range(num_iterations):
+        parts_of_elements_accepted = 0
+        elements_accepted = 0
+        clk = -1
+        while elements_accepted < num_in:
+            clk += 1
+            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
+            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
+            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
+            sim.set_value(testcircuit.I, int2seq(i * num_in + parts_of_elements_accepted, width), scope)
+            sim.evaluate()
+            # check ready
+            if clk % ce_period == 0 and (clk % ready_down_period == 0 or elements_accepted != num_in - 1):
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
+            # check valid
+            if clk % ce_period == 0 and clk % valid_up_period == 0 and elements_accepted == num_in - 1:
+                for k in range(num_in):
+                    assert seq2int(sim.get_value(testcircuit.O[k], scope)) == i * num_in + k
+                assert sim.get_value(testcircuit.valid_down, scope) == True
+            else:
+                assert sim.get_value(testcircuit.valid_down, scope) == False
+            # increment counters each time circuit executes
+            if clk % ce_period == 0 and clk % valid_up_period == 0 and \
+                    ((clk % ready_down_period == 0 and elements_accepted == num_in - 1) or elements_accepted != num_in - 1):
+                parts_of_elements_accepted += 1
+                if parts_of_elements_accepted % time_per_element == 0:
+                    elements_accepted += 1
+            sim.advance_cycle()
+            sim.evaluate()
