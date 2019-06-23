@@ -162,14 +162,11 @@ def test_up_sequential_rv_and_ce_flicker():
     width = 5
     num_out = 3
     time_per_element = 1
-    num_valid_clocks = num_out * time_per_element
     ce_period = 2
-    ready_down_period = 2
-    valid_up_period = 6
-    # 6 is least common multiple of all periods
-    num_clocks_per_iteration = num_valid_clocks * 6
+    ready_down_period = 3
+    valid_up_period = 4
+    # 12 is least common multiple of all periods
     num_iterations = 2
-    num_total_clocks = num_clocks_per_iteration * num_iterations
     test_val = 3
     scope = Scope()
     inType = Array[width, In(BitIn)]
@@ -192,26 +189,37 @@ def test_up_sequential_rv_and_ce_flicker():
 
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
 
-    valid_clks = get_clock_pattern(num_total_clocks, ce_period, valid_up_period)
-
-    # only ready one element per num_out as outputs need to repeat num_out times
-    ready_clks = filter_clock_pattern(get_clock_pattern(num_total_clocks, ce_period, ready_down_period), time_per_element, [0])
-
     for i in range(num_iterations):
-        for clk in range(num_clocks_per_iteration):
+        parts_of_elements_emitted = 0
+        elements_emitted = 0
+        clk = -1
+        while elements_emitted < num_out:
+            clk += 1
             sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
             sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
             sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
             sim.set_value(testcircuit.I, int2seq(test_val + i, width), scope)
             sim.evaluate()
-            if clk in ready_clks:
+            # check ready
+            if clk % ce_period == 0 and clk % ready_down_period == 0 and elements_emitted == 0:
                 assert sim.get_value(testcircuit.ready_up, scope) == True
             # ensure that can change input on not ready clock and not affect anything
             else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
                 sim.set_value(testcircuit.I, int2seq(0, width), scope)
-            if clk in valid_clks:
+            sim.evaluate()
+            # check valid
+            if clk % ce_period == 0 and (clk % valid_up_period == 0 or elements_emitted > 0):
                 assert seq2int(sim.get_value(testcircuit.O, scope)) == test_val + i
                 assert sim.get_value(testcircuit.valid_down, scope) == True
+            else:
+                assert sim.get_value(testcircuit.valid_down, scope) == False
+            # increment counters
+            if clk % ce_period == 0 and clk % ready_down_period == 0 and \
+                ((clk % valid_up_period == 0 and elements_emitted < 1) or elements_emitted >= 1):
+                parts_of_elements_emitted += 1
+                if parts_of_elements_emitted % time_per_element == 0:
+                    elements_emitted += 1
             sim.advance_cycle()
             sim.evaluate()
 
