@@ -85,16 +85,31 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
         IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(downsampleSequential):
-            enabled = downsampleSequential.ready_down & downsampleSequential.valid_up
+            element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
+            emit_cur_element = Decode(idx, element_idx_counter.O.N)(element_idx_counter.O)
+
+            # enabled means run the circuit
+            # do this when upstream is ready, so have something to downsample,
+            # and when have to emit current element and downstream is ready or don't have to emit current element
+            enabled = downsampleSequential.valid_up & \
+                      ((emit_cur_element & downsampleSequential.ready_down) | (~emit_cur_element))
+            # ready means can accept input when get valid from upstream
+            # ready when emit current element and downstream is ready or don't have to emit current element
+            ready = (emit_cur_element & downsampleSequential.ready_down) | (~emit_cur_element)
+            # valid means can emit downstream
+            # valid when emitting current element and upstream is providing valid input for element
+            valid = emit_cur_element & downsampleSequential.valid_up
+
             if has_ce:
                 enabled = enabled & bit(downsampleSequential.CE)
+                ready = ready & bit(downsampleSequential.CE)
+                valid = valid & bit(downsampleSequential.CE)
 
             if time_per_element > 1:
                 time_per_element_counter = SizedCounterModM(time_per_element,
                                                             has_ce=True,
                                                             has_reset=has_reset)
                 go_to_next_element = Decode(time_per_element - 1, time_per_element_counter.O.N)(time_per_element_counter.O)
-                element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
 
                 wire(time_per_element_counter.CE, enabled)
                 wire(element_idx_counter.CE, enabled & go_to_next_element)
@@ -103,15 +118,13 @@ def DefineDownsampleSequential(n, time_per_element, idx, T, has_ce=False, has_re
                     wire(time_per_element_counter.RESET, downsampleSequential.RESET)
                     wire(element_idx_counter.RESET, downsampleSequential.RESET)
             else:
-                element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
                 wire(element_idx_counter.CE, enabled)
                 if has_reset:
                     wire(element_idx_counter.RESET, downsampleSequential.RESET)
 
-            emit_cur_element = Decode(idx, element_idx_counter.O.N)(element_idx_counter.O)
             wire(downsampleSequential.I, downsampleSequential.O)
-            wire(emit_cur_element & enabled, downsampleSequential.valid_down)
-            wire(downsampleSequential.ready_down, downsampleSequential.ready_up)
+            wire(valid, downsampleSequential.valid_down)
+            wire(ready, downsampleSequential.ready_up)
 
     return DownsampleSequential
 

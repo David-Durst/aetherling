@@ -140,6 +140,10 @@ def test_downsample_sequential_ce_and_rv_flicker():
     num_elements = 6
     active_idx = 3
     time_per_element = 1
+    ce_period = 2
+    ready_down_period = 3
+    valid_up_period = 4
+    num_iterations = 2
     scope = Scope()
     out_type = Array[width, Out(BitIn)]
     in_type = In(out_type)
@@ -161,26 +165,46 @@ def test_downsample_sequential_ce_and_rv_flicker():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    # * 12 as only valid every 12th clock, *2 as iterating over sequence twice
-    for clk in range(num_elements * 12 * 2):
-        sim.set_value(testcircuit.valid_up, clk % 2 == 0, scope)
-        sim.set_value(testcircuit.ready_down, clk % 3 == 0, scope)
-        sim.set_value(testcircuit.CE, clk % 4 == 0, scope)
-        sim.set_value(testcircuit.I, int2seq(clk // 12, width), scope)
-        sim.evaluate()
-        if clk // 12 == active_idx and clk % 12 == 0:
-            assert seq2int(sim.get_value(testcircuit.O, scope)) == clk // 12
-        # 2 possible active_idx as doing downsample over two input sequences
-        assert sim.get_value(testcircuit.valid_down, scope) == ((clk // 12 in [active_idx, num_elements + active_idx]) & (clk % 12 == 0))
-        assert sim.get_value(testcircuit.ready_up, scope) == (clk % 3 == 0)
-        sim.advance_cycle()
-        sim.evaluate()
+    for i in range(num_iterations):
+        parts_of_elements_accepted = 0
+        elements_accepted = 0
+        clk = -1
+        while elements_accepted < num_elements:
+            clk += 1
+            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
+            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
+            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
+            sim.set_value(testcircuit.I, int2seq(parts_of_elements_accepted, width), scope)
+            sim.evaluate()
+            # check ready
+            if clk % ce_period == 0 and (clk % ready_down_period == 0 or elements_accepted != active_idx):
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
+            # check valid
+            if clk % ce_period == 0 and clk % valid_up_period == 0 and elements_accepted == active_idx:
+                assert seq2int(sim.get_value(testcircuit.O, scope)) == parts_of_elements_accepted
+                assert sim.get_value(testcircuit.valid_down, scope) == True
+            else:
+                assert sim.get_value(testcircuit.valid_down, scope) == False
+            # increment counters each time circuit executes
+            if clk % ce_period == 0 and clk % valid_up_period == 0 and \
+                    ((clk % ready_down_period == 0 and elements_accepted == active_idx) or elements_accepted != active_idx):
+                parts_of_elements_accepted += 1
+                if parts_of_elements_accepted % time_per_element == 0:
+                    elements_accepted += 1
+            sim.advance_cycle()
+            sim.evaluate()
 
 def test_downsample_sequential_multi_clock_elements():
     width = 5
     num_elements = 6
     active_idx = 3
     time_per_element = 3
+    ce_period = 2
+    ready_down_period = 3
+    valid_up_period = 4
+    num_iterations = 2
     scope = Scope()
     out_type = Array[width, Out(BitIn)]
     in_type = In(out_type)
@@ -202,25 +226,34 @@ def test_downsample_sequential_multi_clock_elements():
     sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
                           namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    # * 12 as only valid every 12th clock
-    valid_clks = [i for i in range(num_elements * 12 * time_per_element) \
-                  if i // 12 >= active_idx * time_per_element and \
-                  i // 12 < (active_idx + 1) * time_per_element and \
-                  i % 12 == 0]
-
-    # duplicating to repeat the input sequence
-    valid_clks += [num_elements * 12 * time_per_element + i for i in valid_clks]
-
-    for clk in range(num_elements * 12 * time_per_element * 2):
-        sim.set_value(testcircuit.valid_up, clk % 2 == 0, scope)
-        sim.set_value(testcircuit.ready_down, clk % 3 == 0, scope)
-        sim.set_value(testcircuit.CE, clk % 4 == 0, scope)
-        sim.set_value(testcircuit.I, int2seq(clk // (12 * time_per_element), width), scope)
-        sim.evaluate()
-        if clk in valid_clks:
-            assert seq2int(sim.get_value(testcircuit.O, scope)) == clk // (12 * time_per_element)
-        assert sim.get_value(testcircuit.valid_down, scope) == (clk in valid_clks)
-        assert sim.get_value(testcircuit.ready_up, scope) == (clk % 3 == 0)
-        sim.advance_cycle()
-        sim.evaluate()
+    for i in range(num_iterations):
+        parts_of_elements_accepted = 0
+        elements_accepted = 0
+        clk = -1
+        while elements_accepted < num_elements:
+            clk += 1
+            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
+            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
+            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
+            sim.set_value(testcircuit.I, int2seq(parts_of_elements_accepted, width), scope)
+            sim.evaluate()
+            # check ready
+            if clk % ce_period == 0 and (clk % ready_down_period == 0 or elements_accepted != active_idx):
+                assert sim.get_value(testcircuit.ready_up, scope) == True
+            else:
+                assert sim.get_value(testcircuit.ready_up, scope) == False
+            # check valid
+            if clk % ce_period == 0 and clk % valid_up_period == 0 and elements_accepted == active_idx:
+                assert seq2int(sim.get_value(testcircuit.O, scope)) == parts_of_elements_accepted
+                assert sim.get_value(testcircuit.valid_down, scope) == True
+            else:
+                assert sim.get_value(testcircuit.valid_down, scope) == False
+            # increment counters each time circuit executes
+            if clk % ce_period == 0 and clk % valid_up_period == 0 and \
+                    ((clk % ready_down_period == 0 and elements_accepted == active_idx) or elements_accepted != active_idx):
+                parts_of_elements_accepted += 1
+                if parts_of_elements_accepted % time_per_element == 0:
+                    elements_accepted += 1
+            sim.advance_cycle()
+            sim.evaluate()
 
