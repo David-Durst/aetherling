@@ -149,14 +149,13 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
         name = "deserialize_t{}_tEl{}_n{}_hasCE{}_hasRESET{}".format(cleanName(str(T)), str(time_per_element), \
                                                                      str(n), str(has_ce), str(has_reset))
 
-        IO = ["I", In(T), "O", Out(Array[n, T]), "idx", Out(UInt[3])] + \
+        IO = ["I", In(T), "O", Out(Array[n, T])] + \
              ClockInterface(has_ce, has_reset) + ready_valid_interface
 
         @classmethod
         def definition(deserializer):
             # the counter of the current element of output sequence, when hits n-1, output sload the next input to serialize
             element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
-            wire(element_idx_counter, deserializer.idx)
             is_last_element = Decode(n-1, element_idx_counter.O.N)(element_idx_counter.O)
 
             # enabled means run the circuit
@@ -185,7 +184,7 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
                 value_store = DefineNativeMapParallel(n-1, DefineRAMAnyType(T, time_per_element))()
                 value_store_input = value_store.WDATA
                 value_store_output = value_store.RDATA
-                value_store_enables = value_store.CE
+                value_store_enables = value_store.WE
 
                 time_per_element_counter = SizedCounterModM(time_per_element,
                                                             has_ce=True, has_reset=has_reset)
@@ -196,8 +195,8 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
                 for input_idx in range(n-1):
                     # location in current element is where to read and write.
                     # will write on first iteration through each element, read on last iteration from all elements
-                    wire(time_per_element_counter.O, value_store[input_idx].WADDR)
-                    wire(time_per_element_counter.O, value_store[input_idx].RADDR)
+                    wire(time_per_element_counter.O, value_store.WADDR[input_idx])
+                    wire(time_per_element_counter.O, value_store.RADDR[input_idx])
 
                 if has_reset:
                     wire(time_per_element_counter.RESET, deserializer.RESET)
