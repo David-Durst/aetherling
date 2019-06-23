@@ -43,13 +43,26 @@ def DefineSerializer(n:int, time_per_element: int, T: Kind, has_ce=False, has_re
 
         @classmethod
         def definition(serializer):
-            enabled = serializer.ready_down & serializer.valid_up
-            if has_ce:
-                enabled = enabled & bit(serializer.CE)
-
             # the counter of the current element of output sequence, when hits 0, load the next input to serialize
             element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
             is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
+
+            # enabled means run the circuit
+            # do this when downstream is ready, so have something to communicate with,
+            # and when in first element and upstream is valid or have serialized data to emit
+            enabled = serializer.ready_down & \
+                      ((is_first_element & serializer.valid_up) | (~is_first_element))
+            # ready means can accept input when get valid from upstream
+            # do this when in first element and downstream ready to accept
+            ready = is_first_element & serializer.ready_down
+            # valid means can emit downstream
+            # valid when in first element and upstream valid or have serialized data to emit
+            valid = (is_first_element & serializer.valid_up) | (~is_first_element)
+            if has_ce:
+                enabled = enabled & bit(serializer.CE)
+                ready = ready & bit(serializer.CE)
+                valid = valid & bit(serializer.CE)
+
             if has_reset:
                 wire(serializer.RESET, element_idx_counter.RESET)
 
@@ -82,11 +95,10 @@ def DefineSerializer(n:int, time_per_element: int, T: Kind, has_ce=False, has_re
 
                 wire(element_idx_counter.CE, enabled)
                 for input_idx in range(n):
-                    wire(value_store.CE, is_first_element & enabled)
+                    wire(value_store.CE[input_idx], is_first_element & enabled)
 
 
-            for input_idx in range(n):
-                wire(serializer.I, value_store_input[input_idx])
+            wire(serializer.I, value_store_input)
 
             # to serialize, go through all different rams/registers in value store
             # and select the output from the ith one, where i is current output element
@@ -98,11 +110,11 @@ def DefineSerializer(n:int, time_per_element: int, T: Kind, has_ce=False, has_re
             first_element_output_selector = DefineMuxAnyType(T, 2)()
             wire(is_first_element, first_element_output_selector.sel[0])
             wire(value_store_output_selector, first_element_output_selector.data[0])
-            wire(serializer.I, first_element_output_selector.data[1])
+            wire(serializer.I[0], first_element_output_selector.data[1])
             wire(first_element_output_selector.out, serializer.O)
 
-            wire(enabled, serializer.valid_down)
-            wire(enabled & is_first_element, serializer.ready_up)
+            wire(valid, serializer.valid_down)
+            wire(ready, serializer.ready_up)
 
     return _Serializer
 
@@ -142,13 +154,26 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
 
         @classmethod
         def definition(deserializer):
-            enabled = deserializer.ready_down & deserializer.valid_up
-            if has_ce:
-                enabled = enabled & bit(deserializer.CE)
-
-            # the counter of the current element of output sequence, when hits 0, load the next input to serialize
+            # the counter of the current element of output sequence, when hits n-1, output sload the next input to serialize
             element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
             is_last_element = Decode(n-1, element_idx_counter.O.N)(element_idx_counter.O)
+
+            # enabled means run the circuit
+            # do this when upstream is ready, so have something to serialize,
+            # and when have to emit serialized array and downstream is ready or don't have to emit current element
+            enabled = deserializer.valid_up & \
+                      ((is_last_element & deserializer.ready_down) | (~is_last_element))
+            # ready means can accept input when get valid from upstream
+            # ready when emitting serialized array and downstream is ready or don't have to emit current element
+            ready = (is_last_element & deserializer.ready_down) | (~is_last_element)
+            # valid means can emit downstream
+            # valid when emitting serialized array and upstream is providing valid input for element
+            valid = is_last_element & deserializer.valid_up
+            if has_ce:
+                enabled = enabled & bit(deserializer.CE)
+                ready = ready & bit(deserializer.CE)
+                valid = valid & bit(deserializer.CE)
+
             if has_reset:
                 wire(deserializer.RESET, element_idx_counter.RESET)
 
@@ -196,8 +221,8 @@ def DefineDeserializer(n: int, time_per_element: int, T: Kind, has_ce=False, has
             # send the last input directly out
             wire(deserializer.I[n-1], deserializer.O[n-1])
 
-            wire(enabled & is_last_element, deserializer.valid_down)
-            wire(enabled, deserializer.ready_up)
+            wire(valid, deserializer.valid_down)
+            wire(ready, deserializer.ready_up)
 
     return _Deserializer
 
