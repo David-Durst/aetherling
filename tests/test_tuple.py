@@ -87,5 +87,4 @@ def test_atomTupleAppender():
     sim.set_value(testcircuit.I1, True, scope)
     sim.evaluate()
     assert seq2int(sim.get_value(testcircuit.O[0], scope)) == 4
-    print(sim.get_value(testcircuit.O[1], scope))
-    #assert sim.get_value(testcircuit.O[1], scope) == True
+    assert sim.get_value(testcircuit.O[1], scope) == True
