@@ -40,7 +40,7 @@ def DefineFIFO(n, time_per_element, T, expand_max_by_one_clk, has_ce=False, has_
     class FIFO(Circuit):
         name = "FIFO_n{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element), \
                                                               cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['I', In(T), 'O', Out(T), 'rc', Out(Array[3, Bit]), 'wc', Out(Array[3, Bit]), 'nsc', Out(Array[3, Bit])] + ClockInterface(has_ce, has_reset) + ready_valid_interface
+        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(fifo):
             pieces_of_elements = n * time_per_element
@@ -51,9 +51,6 @@ def DefineFIFO(n, time_per_element, T, expand_max_by_one_clk, has_ce=False, has_
             # add 1 as 0 doesn't mean on first element, means 0 element, so also need pieces_of_elements to be
             # entry if all written
             num_stored_counter = CeilFloorUpDownCounter(pieces_of_elements + 1, has_ce=has_ce, has_reset=has_reset)
-            wire(read_counter, fifo.rc)
-            wire(write_counter, fifo.wc)
-            wire(num_stored_counter, fifo.nsc)
 
             # ready means can accept input.
             # Do this when the num_stored_counter is not at it's max value
