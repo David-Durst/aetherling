@@ -17,10 +17,10 @@ __all__ = ['DefineRShiftParallel', 'RShiftParallel',
            'DefineRShiftSequential', 'RShiftSequential']
 
 @cache_definition
-def DefineRShiftParallel(n: int, init: DefineCircuitKind, shift_amount: int, T: Kind, has_ready_valid=False):
+def DefineRShiftParallel(n: int, shift_amount: int, T: Kind, has_ready_valid=False):
     """
     Shifts the elements in SSeq n T' by shift_amount to the right.
-    init is a Magma circuit that specifies the outputs used for the shift_amount elements to the right
+    THe first shift_amount elements are undefined.
 
     The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
 
@@ -36,21 +36,19 @@ def DefineRShiftParallel(n: int, init: DefineCircuitKind, shift_amount: int, T: 
     valid_down : Out(Bit)
     """
     class RShiftParallel(Circuit):
-        name = "RShiftParallel_n{}_init{}_amt{}_T_rv{}".format(str(n), init.name,
-                                                                        str(shift_amount), cleanName(str(T)),
+        name = "RShiftParallel_n{}_amt{}_T_rv{}".format(str(n), str(shift_amount), cleanName(str(T)),
                                                                         str(has_ready_valid))
         IO = ['I', In(Array[n, T]), 'O', Out(Array[n, T])]
         if has_ready_valid:
             IO += ready_valid_interface
         @classmethod
         def definition(rshiftParallel):
-            # dehydrate all but the first, that one is passed through
             inputs_term = TermAnyType(Array[shift_amount, T])
             for i in range(n):
                 if i >= shift_amount:
                     wire(rshiftParallel.I[i], rshiftParallel.O[i + shift_amount])
                 else:
-                    wire(rshiftParallel.I[i], inputs_term.I[i - shift_amount])
+                    wire(rshiftParallel.I[i], inputs_term.I[i])
             if has_ready_valid:
                 wire(rshiftParallel.ready_up, rshiftParallel.ready_down)
                 wire(rshiftParallel.valid_up, rshiftParallel.valid_down)
@@ -60,11 +58,10 @@ def RShiftParallel(n: int, init: DefineCircuitKind, shift_amount: int, T: Kind, 
     return DefineRShiftParallel(n, init, shift_amount, T, has_ready_valid)()
 
 @cache_definition
-def DefineRShiftSequential(n: int, time_per_element: int, init: DefineCircuitKind,
-                           shift_amount: int, T: Kind, has_ce=False, has_reset=False):
+def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: Kind, has_ce=False, has_reset=False):
     """
     Shifts the elements in TSeq n T' by shift_amount to the right.
-    init is a Magma circuit that specifies the outputs used for the shift_amount elements to the right
+    The first shift_amount elements are undefined
 
     The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
 
@@ -80,8 +77,8 @@ def DefineRShiftSequential(n: int, time_per_element: int, init: DefineCircuitKin
     valid_down : Out(Bit)
     """
     class _RShiftSequential(Circuit):
-        name = "RShiftSequential_n{}_tEl{}_init{}_amt{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element),
-                                                                                       init.name, str(shift_amount),
+        name = "RShiftSequential_n{}_tEl{}_amt{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element),
+                                                                                       str(shift_amount),
                                                                                        cleanName(str(T)), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
@@ -104,26 +101,17 @@ def DefineRShiftSequential(n: int, time_per_element: int, init: DefineCircuitKin
                 ready = ready & bit(rshiftSequential.CE)
                 valid = valid & bit(rshiftSequential.CE)
 
-            # track all the inputs so know when to switch from constant to shift memory
-            num_inputs_counter = SizedCounterModM(n * time_per_element,
-                                                      has_ce=True, has_reset=has_reset)
-            emit_from_shifter = num_inputs_counter.O >= (shift_amount * time_per_element)
-            wire(num_inputs_counter.CE, enabled)
-
-            if has_reset:
-                wire(rshiftSequential.RESET, num_inputs_counter.RESET)
-
             if shift_amount > 1:
                 value_store = DefineRAMAnyType(T, shift_amount * time_per_element)()
                 value_store_input = value_store.WDATA
                 value_store_output = value_store.RDATA
 
-                # write and read from num_inputs_counter % shift_amount * time_per_element location
-                # the RAM addressd space is 0 to that, and writer is always shift_amount * time_per_element ahead
+                # write and read from same location
                 # will write on first iteration through element, write and read on later iterations
-                ram_address = UMod(num_inputs_counter.O.N)(num_inputs_counter.O, shift_amount * time_per_element)
-                wire(ram_address, value_store.WADDR)
-                wire(ram_address, value_store.RADDR)
+                # output for first iteration is undefined, so ok to read anything
+                ram_addr = SizedCounterModM(n * time_per_element, has_ce=True, has_reset=has_reset)
+                wire(ram_addr.O, value_store.WADDR)
+                wire(ram_addr.O, value_store.RADDR)
                 wire(enabled, value_store.WE)
 
 
@@ -134,20 +122,12 @@ def DefineRShiftSequential(n: int, time_per_element: int, init: DefineCircuitKin
 
                 wire(value_store.CE, enabled)
 
-            output_selector = DefineMuxAnyType(T, 2)()
-
             wire(rshiftSequential.I, value_store_input)
-
-            # on first shift_amount elements, send the input directly out. otherwise, use the register
-            wire(emit_from_shifter, output_selector.sel[0])
-            wire(value_store_output, output_selector.data[1])
-            wire(init().O, output_selector.data[0])
-            wire(output_selector.out, rshiftSequential.O)
+            wire(value_store_output, rshiftSequential.O)
 
             wire(valid, rshiftSequential.valid_down)
             wire(ready, rshiftSequential.ready_up)
     return _RShiftSequential
 
-def RShiftSequential(n: int, time_per_element: int, init: DefineCircuitKind,
-                     shift_amount: int, T: Kind, has_ce=False, has_reset=False):
-    return DefineRShiftSequential(n, time_per_element, init, shift_amount, T, has_ce, has_reset)()
+def RShiftSequential(n: int, time_per_element: int, shift_amount: int, T: Kind, has_ce=False, has_reset=False):
+    return DefineRShiftSequential(n, time_per_element, shift_amount, T, has_ce, has_reset)()
