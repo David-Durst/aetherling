@@ -1,8 +1,11 @@
 from mantle import Register, Decode
+from mantle.common.arith import UMod
 from mantle.common.countermod import SizedCounterModM
 from mantle.common.operator import *
 from aetherling.modules.term_any_type import TermAnyType
-from aetherling.modules.fifo import FIFO
+from aetherling.modules.ram_any_type import DefineRAMAnyType
+from aetherling.modules.register_any_type import DefineRegisterAnyType
+from aetherling.modules.mux_any_type import DefineMuxAnyType
 from magma import *
 from magma.circuit import DefineCircuitKind
 from .hydrate import Dehydrate, Hydrate
@@ -33,7 +36,7 @@ def DefineRShiftParallel(n: int, init: DefineCircuitKind, shift_amount: int, T: 
     valid_down : Out(Bit)
     """
     class RShiftParallel(Circuit):
-        name = "RShiftParallel_n{}_init{}_shift_amount{}_T_rv{}".format(str(n), init.name,
+        name = "RShiftParallel_n{}_init{}_amt{}_T_rv{}".format(str(n), init.name,
                                                                         str(shift_amount), cleanName(str(T)),
                                                                         str(has_ready_valid))
         IO = ['I', In(Array[n, T]), 'O', Out(Array[n, T])]
@@ -57,7 +60,8 @@ def RShiftParallel(n: int, init: DefineCircuitKind, shift_amount: int, T: Kind, 
     return DefineRShiftParallel(n, init, shift_amount, T, has_ready_valid)()
 
 @cache_definition
-def DefineRShiftSequential(n, time_per_element, idx, T, has_ce=False, has_reset=False):
+def DefineRShiftSequential(n: int, time_per_element: int, init: DefineCircuitKind,
+                           shift_amount: int, T: Kind, has_ce=False, has_reset=False):
     """
     Shifts the elements in TSeq n T' by shift_amount to the right.
     init is a Magma circuit that specifies the outputs used for the shift_amount elements to the right
@@ -75,24 +79,24 @@ def DefineRShiftSequential(n, time_per_element, idx, T, has_ce=False, has_reset=
     ready_down : In(Bit)
     valid_down : Out(Bit)
     """
-    class DownsampleSequential(Circuit):
-        name = "DownsampleSequential_n{}_tEl{}_idx{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element), \
-                                                                                    str(idx), cleanName(str(T)), str(has_ce), str(has_reset))
+    class _RShiftSequential(Circuit):
+        name = "RShiftSequential_n{}_tEl{}_init{}_amt{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element),
+                                                                                       init.name, str(shift_amount),
+                                                                                       cleanName(str(T)), str(has_ce), str(has_reset))
         IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset) + ready_valid_interface
         @classmethod
         def definition(rshiftSequential):
-            # the counter of the current element of output sequence, when hits 0, load the next input to upsample
-            element_idx_counter = SizedCounterModM(n, has_ce=True, has_reset=has_reset)
-            is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
-            if has_reset:
-                wire(rshiftSequential.RESET, element_idx_counter.RESET)
-
-            # ready means can accept input when get valid from upstream
+            # ready means can accept input
+            # ready only when downstream - since constant rate module, only accept
+            # when the downstream can accept as well
             # do this when in first element or downstream ready to accept
-            ready = is_first_element & rshiftSequential.ready_down
+            ready = rshiftSequential.ready_down
             # valid means can emit downstream
-            # valid when in first element and upstream valid or repeating old data
-            valid = (is_first_element & rshiftSequential.valid_up) | (~is_first_element)
+            # valid upstream is valid as this is a constant rate module, just forwarding
+            # from upstream
+            valid = rshiftSequential.valid_up
+            # only run when downstream is ready to accept and upstream is emitting valid data
+            enabled = ready & valid
 
             # only assert these signals when CE is high or no CE
             if has_ce:
@@ -100,50 +104,50 @@ def DefineRShiftSequential(n, time_per_element, idx, T, has_ce=False, has_reset=
                 ready = ready & bit(rshiftSequential.CE)
                 valid = valid & bit(rshiftSequential.CE)
 
-            if n * time_per_element > 1:
-                value_store = FIFO(n, time_per_element, T, True, has_ce, has_reset)()
+            # track all the inputs so know when to switch from constant to shift memory
+            num_inputs_counter = SizedCounterModM(n * time_per_element,
+                                                      has_ce=True, has_reset=has_reset)
+            emit_from_shifter = num_inputs_counter.O >= (shift_amount * time_per_element)
+            wire(num_inputs_counter.CE, enabled)
+
+            if has_reset:
+                wire(rshiftSequential.RESET, num_inputs_counter.RESET)
+
+            if shift_amount > 1:
+                value_store = DefineRAMAnyType(T, shift_amount * time_per_element)()
                 value_store_input = value_store.WDATA
                 value_store_output = value_store.RDATA
 
-                time_per_element_counter = SizedCounterModM(time_per_element,
-                                                            has_ce=True, has_reset=has_reset)
-                go_to_next_element = Decode(time_per_element - 1, time_per_element_counter.O.N)(time_per_element_counter.O)
+                # write and read from num_inputs_counter % shift_amount * time_per_element location
+                # the RAM addressd space is 0 to that, and writer is always shift_amount * time_per_element ahead
+                # will write on first iteration through element, write and read on later iterations
+                ram_address = UMod(num_inputs_counter.O.N)(num_inputs_counter.O, shift_amount * time_per_element)
+                wire(ram_address, value_store.WADDR)
+                wire(ram_address, value_store.RADDR)
+                wire(enabled, value_store.WE)
 
-                wire(time_per_element_counter.CE, enabled)
-                wire(element_idx_counter.CE, enabled & go_to_next_element)
-                wire(value_store.WE, is_first_element & enabled)
-                # location in current element is where to read and write.
-                # will write on first iteration through element, read on later iterations
-                wire(time_per_element_counter.O, value_store.WADDR)
-                wire(time_per_element_counter.O, value_store.RADDR)
-
-                if has_ce:
-                    wire(value_store.ce, rshiftSequential.CE)
-
-                if has_reset:
-                    wire(time_per_element_counter.RESET, rshiftSequential.RESET)
 
             else:
                 value_store = DefineRegisterAnyType(T, has_ce=True)()
                 value_store_input = value_store.I
                 value_store_output = value_store.O
 
-                wire(element_idx_counter.CE, enabled)
-                wire(value_store.CE, is_first_element & enabled)
+                wire(value_store.CE, enabled)
 
             output_selector = DefineMuxAnyType(T, 2)()
 
             wire(rshiftSequential.I, value_store_input)
 
-            # on first element, send the input directly out. otherwise, use the register
-            wire(is_first_element, output_selector.sel[0])
-            wire(value_store_output, output_selector.data[0])
-            wire(rshiftSequential.I, output_selector.data[1])
+            # on first shift_amount elements, send the input directly out. otherwise, use the register
+            wire(emit_from_shifter, output_selector.sel[0])
+            wire(value_store_output, output_selector.data[1])
+            wire(init().O, output_selector.data[0])
             wire(output_selector.out, rshiftSequential.O)
 
             wire(valid, rshiftSequential.valid_down)
             wire(ready, rshiftSequential.ready_up)
-    return DownsampleSequential
+    return _RShiftSequential
 
-def RShiftSequential(n, time_per_element, idx, T, has_ce=False, has_reset=False):
-    return DefineRShiftSequential(n, time_per_element, idx, T, has_ce, has_reset)()
+def RShiftSequential(n: int, time_per_element: int, init: DefineCircuitKind,
+                     shift_amount: int, T: Kind, has_ce=False, has_reset=False):
+    return DefineRShiftSequential(n, time_per_element, init, shift_amount, T, has_ce, has_reset)()
