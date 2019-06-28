@@ -1,5 +1,3 @@
-import math
-
 from mantle import Register, Decode
 from mantle.common.countermod import SizedCounterModM
 from mantle.common.operator import *
