@@ -98,7 +98,7 @@ def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: 
                 ready = ready & bit(rshiftSequential.CE)
                 valid = valid & bit(rshiftSequential.CE)
 
-            if shift_amount > 1:
+            if shift_amount > 1 or time_per_element > 1:
                 value_store = DefineRAMAnyType(T, shift_amount * time_per_element)()
                 value_store_input = value_store.WDATA
                 value_store_output = value_store.RDATA
@@ -106,12 +106,11 @@ def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: 
                 # write and read from same location
                 # will write on first iteration through element, write and read on later iterations
                 # output for first iteration is undefined, so ok to read anything
-                ram_addr = SizedCounterModM(n * time_per_element, has_ce=True, has_reset=has_reset)
+                ram_addr = SizedCounterModM(shift_amount * time_per_element, has_ce=True, has_reset=has_reset)
                 wire(ram_addr.O, value_store.WADDR)
                 wire(ram_addr.O, value_store.RADDR)
                 wire(enabled, value_store.WE)
-
-
+                wire(enabled, ram_addr.CE)
             else:
                 value_store = DefineRegisterAnyType(T, has_ce=True)()
                 value_store_input = value_store.I
