@@ -98,3 +98,73 @@ def test_rshift_parallel_alternate_rv():
         assert sim.get_value(testcircuit.ready_up, scope) == (clk % 2 == 0)
         sim.advance_cycle()
         sim.evaluate()
+
+
+def test_rshift_sequential_rv_always_true_no_ce():
+    width = 5
+    test_vals = [2,5,3,8]
+    shift_amount = 1
+    num_clocks_per_iteration = len(test_vals)
+    num_iterations = 2
+    scope = Scope()
+
+    testcircuit = DefineRShiftSequential(len(test_vals), 1, shift_amount, Array[width, Bit])
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+
+
+    sim.set_value(testcircuit.valid_up, True, scope)
+    sim.set_value(testcircuit.ready_down, True, scope)
+    for i in range(num_iterations):
+        for clk in range(num_clocks_per_iteration):
+            sim.set_value(testcircuit.I, int2seq(test_vals[clk] + i, width), scope)
+            sim.evaluate()
+            if clk >= shift_amount:
+                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[clk - shift_amount] + i
+            assert sim.get_value(testcircuit.ready_up, scope) == True
+            assert sim.get_value(testcircuit.valid_down, scope) == True
+            sim.advance_cycle()
+            sim.evaluate()
+
+def test_rshift_sequential_rv_and_ce_flicker():
+    width = 5
+    test_vals = [2,5,3,8]
+    shift_amount = 1
+    ready_down_period = 3
+    valid_up_period = 4
+    ce_period = 2
+    # 12 is lcm of all periods
+    lcm_periods = 12
+    # rshift only executes when upstream valid, downstream valid, and ce high
+    # that occurs only on lcm of their periods
+    num_clocks_per_iteration = len(test_vals) * lcm_periods
+    num_iterations = 2
+    scope = Scope()
+
+    testcircuit = DefineRShiftSequential(len(test_vals), 1, shift_amount, Array[width, Bit], has_ce=True)
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+
+
+    for i in range(num_iterations):
+        for clk in range(num_clocks_per_iteration):
+            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
+            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
+            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
+            if clk % valid_up_period == 0:
+                sim.set_value(testcircuit.I, int2seq(test_vals[clk // lcm_periods], width), scope)
+            # ensure that can change input on not valid_up clock and not affect anything
+            else:
+                sim.set_value(testcircuit.I, int2seq(0, width), scope)
+            sim.evaluate()
+            # check ready
+            assert sim.get_value(testcircuit.ready_up, scope) == (clk % ready_down_period == 0 and
+                                                                  clk % ce_period == 0)
+            # check valid
+            assert sim.get_value(testcircuit.valid_down, scope) == (clk % valid_up_period == 0 and
+                                                                    clk % ce_period == 0)
+            # check that output right
+            if clk > 0 and clk % ce_period == 0 and clk % ready_down_period == 0 and \
+                clk % valid_up_period == 0:
+                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[(clk // lcm_periods) - 1]
+            sim.advance_cycle()
+            sim.evaluate()
+
