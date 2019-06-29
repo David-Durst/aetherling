@@ -43,19 +43,16 @@ def DefineRShiftParallel(n: int, shift_amount: int, T: Kind, has_ready_valid=Fal
             IO += ready_valid_interface
         @classmethod
         def definition(rshiftParallel):
-            inputs_term = TermAnyType(Array[shift_amount, T])
             for i in range(n):
-                if i >= shift_amount:
-                    wire(rshiftParallel.I[i], rshiftParallel.O[i + shift_amount])
-                else:
-                    wire(rshiftParallel.I[i], inputs_term.I[i])
+                # wrap around. first shift_amount outputs undefined, so anything can go out there
+                wire(rshiftParallel.I[i], rshiftParallel.O[(i + shift_amount) % n])
             if has_ready_valid:
                 wire(rshiftParallel.ready_up, rshiftParallel.ready_down)
                 wire(rshiftParallel.valid_up, rshiftParallel.valid_down)
     return RShiftParallel
 
-def RShiftParallel(n: int, init: DefineCircuitKind, shift_amount: int, T: Kind, has_ready_valid=False):
-    return DefineRShiftParallel(n, init, shift_amount, T, has_ready_valid)()
+def RShiftParallel(n: int, shift_amount: int, T: Kind, has_ready_valid=False):
+    return DefineRShiftParallel(n, shift_amount, T, has_ready_valid)()
 
 @cache_definition
 def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: Kind, has_ce=False, has_reset=False):
