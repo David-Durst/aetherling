@@ -54,3 +54,71 @@ def DefinePartition(arrayType: ArrayKind, subsetSize: int, has_ce=False):
 
 def Partition(arrayType: Type, subsetSize: int, has_ce=False):
     return DefinePartition(arrayType, subsetSize, has_ce)()
+
+def DefinePartitionParallel(T: Kind, outer_len: int, inner_len: int, has_ready_valid=False):
+    """
+    Convert an SSeq (no*ni) T to and SSeq ni (SSeq no T)
+
+    The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
+
+    Note that the T passed to this operator just the Magma type each clock cycle.
+    You can get T by calling magma_repr on a space-time type T'.
+
+    I : In(Array[outer_len * inner_len, T])
+    O : Out(Array[outer_len, Array[inner_len, T]])
+    if has_ready_valid:
+    ready_up : Out(Bit)
+    valid_up : In(Bit)
+    ready_down : In(Bit)
+    valid_down : Out(Bit)
+    """
+    class PartitionParallel(Circuit):
+        name = "PartitionParallel_T{}_outer{}_inner{}_hasReadyValid{}".format(cleanName(str(T)), str(outer_len),
+                                                                              str(inner_len), str(has_ready_valid))
+        IO = ['I', In(Array[outer_len * inner_len, T]), 'O', Out(Array[outer_len, Array[inner_len, T]])]
+        @classmethod
+        def definition(partitionParallel):
+            for i in range(outer_len):
+                for j in range(inner_len):
+                    wire(partitionParallel.I[i * inner_len + j], partitionParallel.O[i][j])
+            if has_ready_valid:
+                wire(partitionParallel.ready_up, partitionParallel.ready_down)
+                wire(partitionParallel.valid_up, partitionParallel.valid_down)
+    return PartitionParallel
+
+def PartitionParallel(T: Kind, outer_len: int, inner_len: int, has_ready_valid=False):
+    return DefinePartitionParallel(T, outer_len, inner_len, has_ready_valid)
+
+def DefineUnpartitionParallel(T: Kind, outer_len: int, inner_len: int, has_ready_valid=False):
+    """
+    Convert an SSeq no (Seq ni T) to and SSeq (no*ni) T
+
+    The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
+
+    Note that the T passed to this operator just the Magma type each clock cycle.
+    You can get T by calling magma_repr on a space-time type T'.
+
+    I : In(Array[outer_len, Array[inner_len, T]])
+    O : Out(Array[outer_len * inner_len, T])
+    if has_ready_valid:
+    ready_up : Out(Bit)
+    valid_up : In(Bit)
+    ready_down : In(Bit)
+    valid_down : Out(Bit)
+    """
+    class PartitionParallel(Circuit):
+        name = "UnpartitionParallel_T{}_outer{}_inner{}_hasReadyValid{}".format(cleanName(str(T)), str(outer_len),
+                                                                              str(inner_len), str(has_ready_valid))
+        IO = ['I', In(Array[outer_len, Array[inner_len, T]]), 'O', Out(Array[outer_len * inner_len, T])]
+        @classmethod
+        def definition(partitionParallel):
+            for i in range(outer_len):
+                for j in range(inner_len):
+                    wire(partitionParallel.O[i * inner_len + j], partitionParallel.I[i][j])
+            if has_ready_valid:
+                wire(partitionParallel.ready_up, partitionParallel.ready_down)
+                wire(partitionParallel.valid_up, partitionParallel.valid_down)
+    return PartitionParallel
+
+def PartitionParallel(T: Kind, outer_len: int, inner_len: int, has_ready_valid=False):
+    return DefinePartitionParallel(T, outer_len, inner_len, has_ready_valid)
