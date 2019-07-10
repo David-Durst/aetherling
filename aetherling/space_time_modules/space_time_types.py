@@ -73,7 +73,7 @@ class ST_Atom_Tuple():
 
     def magma_repr(self):
         return Tuple(self.t0.magma_repr(), self.t1.magma_repr())
-
+int_width = 8
 class ST_Int():
     def __init__(self):
         return
@@ -85,7 +85,7 @@ class ST_Int():
         return 1
 
     def magma_repr(self):
-        return Array[8, Bit]
+        return Array[int_width, Bit]
 
 class ST_Bit():
     def __init__(self):
