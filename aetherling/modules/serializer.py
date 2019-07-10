@@ -20,10 +20,10 @@ def DefineSerializer(n:int, time_per_element: int, T: Kind, has_ce=False, has_re
     Each T' period is time_per_element clock cycles
     You can get time_per_element by calling time on a space-time type.
 
-    Note that the T passed to this operator just the Magma type each clock cycle.
+    Note that the T passed to this operator just the Magma type emitted each clock cycle.
     You can get T by calling magma_repr on a space-time type T'.
 
-    I : In(T)
+    I : In(Array[n, T])
     O : Out(T)
     ready_up : Out(Bit)
     valid_up : In(Bit)
