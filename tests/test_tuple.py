@@ -16,7 +16,7 @@ def test_sseqTupleCreator():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    sseqTupleCreator = SSeqTupleCreator(T)
+    sseqTupleCreator = SSeqTupleCreator(T_magma)
 
     wire(testcircuit.I0, sseqTupleCreator.I0)
     wire(testcircuit.I1, sseqTupleCreator.I1)
@@ -44,7 +44,7 @@ def test_sseqTupleAppender():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    sseqTupleAppender = SSeqTupleAppender(T_inner, 2)
+    sseqTupleAppender = SSeqTupleAppender(T_inner.magma_repr(), 2)
 
     wire(testcircuit.I0, sseqTupleAppender.I0)
     wire(testcircuit.I1, sseqTupleAppender.I1)
@@ -73,7 +73,7 @@ def test_atomTupleAppender():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    sseqTupleAppender = AtomTupleCreator(T0, T1)
+    sseqTupleAppender = AtomTupleCreator(T0.magma_repr(), T1.magma_repr())
 
     wire(testcircuit.I0, sseqTupleAppender.I0)
     wire(testcircuit.I1, sseqTupleAppender.I1)
