@@ -1,6 +1,7 @@
 from aetherling.modules.hydrate import DefineHydrate, DefineDehydrate
 from aetherling.modules.map_fully_parallel_sequential import MapParallel, DefineMapParallel, DefineNativeMapParallel
 from aetherling.modules.map_partially_parallel import MapPartiallyParallel
+from aetherling.modules.upsample import DefineUpsampleSequential
 from magma.backend.coreir_ import CoreIRBackend
 from magma.frontend.coreir_ import GetCoreIRModule
 from coreir.context import *
@@ -12,6 +13,7 @@ from mantle.coreir.arith import *
 from mantle.coreir import DefineCoreirConst
 from os.path import dirname, join
 import bit_vector
+from magma.bitutils import *
 
 imgSrc = join(dirname(__file__), "custom_small.png")
 # use this to write the img output image of the test to the folder containing these tests
@@ -103,3 +105,30 @@ def run_test_map_npxPerClock_mparallelism(pxPerClock, parallelism):
 
 def test_map_4pxPerClock_2PxParallel():
     run_test_map_npxPerClock_mparallelism(4,2)
+
+def test_map_merge_rv_ce():
+    width = 11
+    numIn = 13
+    numUp = 5
+    scope = Scope()
+    T = Array[width, BitIn]
+
+    testcircuit = DefineNativeMapParallel(numIn, DefineUpsampleSequential(numUp, 1, T, True, True), merge_ready_valid_ce_reset=True)
+
+    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
+                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    sim.set_value(testcircuit.ready_down, True, scope)
+    sim.set_value(testcircuit.valid_up, True, scope)
+    sim.set_value(testcircuit.CE, True, scope)
+    sim.set_value(testcircuit.RESET, False, scope)
+    for i in range(numIn):
+        sim.set_value(testcircuit.I[i], int2seq(i, width), scope)
+    for i in range(numUp):
+        sim.evaluate()
+        assert seq2int(sim.get_value(testcircuit.O, scope)) == sum(range(numIn))
+        assert sim.get_value(testcircuit.ready_up) == (i == 0)
+        assert sim.get_value(testcircuit.valid_down) == True
+        sim.advance_cycle()
+        for i in range(numIn):
+            sim.set_value(testcircuit.I[i], int2seq(i, 0), scope)

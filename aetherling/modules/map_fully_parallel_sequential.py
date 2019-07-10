@@ -1,3 +1,4 @@
+from aetherling.helpers.magma_helpers import ready_valid_interface
 from magma import *
 from magma.circuit import DefineCircuitKind
 from magma.frontend.coreir_ import DefineCircuitFromGeneratorWrapper, GetCoreIRModule, GetCoreIRBackend
@@ -47,19 +48,78 @@ def MapParallel(numInputs: int, op: DefineCircuitKind) -> Circuit:
     return DefineMapParallel(numInputs, op)()
 
 @cache_definition
-def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind) -> DefineCircuitKind:
+def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_valid_ce_reset: bool = False) -> DefineCircuitKind:
     class _Map(Circuit):
         name = "NativeMapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
+        num_ports = len(op.IO.Decl) // 2
+        port_names = op.IO.Decl[::2]
+        port_types = op.IO.Decl[1::2]
+
+        # booleans for extra ports to add iff merge_ready_valid_ce is true and mapped module has these ports
+        ready_valid_ce_port_idxs = []
+        add_ce = False
+        add_rv = False
+        add_reset = False
+        rv_out_ports = ['ready_up', 'valid_down']
+        rv_in_ports = ['valid_up', 'ready_down']
+        clock_ports = ['CE', 'RESET']
+
+        if merge_ready_valid_ce_reset:
+            for i in range(len(port_names)):
+                if port_names[i] in (rv_in_ports + rv_out_ports + clock_ports):
+                    ready_valid_ce_port_idxs += [i]
+                if port_names[i] == 'CE':
+                    add_ce = True
+                elif port_names[i] == 'RESET':
+                    add_reset = True
+                else:
+                    add_rv = True
+
         IO = []
-        for i in range(len(op.IO.Decl) // 2):
-            IO += [op.IO.Decl[i*2], Array[numInputs, op.IO.Decl[i*2+1]]]
+        for i in range(len(port_names)):
+            # only filtering out ready, valid, or CE if merge_ready_valid is true
+            if i not in ready_valid_ce_port_idxs:
+                IO += [port_names[i], Array[numInputs, port_types[i]]]
+
+        if add_ce:
+            IO += ['CE', In(Enable)]
+        if add_reset:
+            IO += ['RESET', In(Reset)]
+        if add_rv:
+            IO += ready_valid_interface
+
         @classmethod
         def definition(cls):
+            # will need to and all the outgoing rv ports
+            out_ready_ports = []
+            out_valid_ports = []
             for i in range(numInputs):
                 op_instance = op()
-                for j in range(len(op.IO.Decl) // 2):
-                    port_name = op.IO.Decl[j*2]
-                    wire(getattr(cls, port_name)[i], getattr(op_instance, port_name))
+                for j in range(len(cls.port_names)):
+                    port_name = cls.port_names[j]
+                    if j in cls.ready_valid_ce_port_idxs:
+                        # for incoming signals, just wire same map module input to
+                        # each instance module
+                        if port_name in cls.clock_ports + cls.rv_in_ports:
+                            wire(getattr(cls, port_name), getattr(op_instance, port_name))
+                        elif port_name == 'ready_up':
+                            out_ready_ports += [getattr(op_instance, port_name)]
+                        else:
+                            out_valid_ports += [getattr(op_instance, port_name)]
+                    else:
+                        wire(getattr(cls, port_name)[i], getattr(op_instance, port_name))
+
+            if len(out_ready_ports) > 0:
+                # wire all ready and valids to out
+                anded_ready_ports = out_ready_ports[0]
+                for i in range(1, len(out_ready_ports)):
+                    anded_ready_ports = anded_ready_ports & out_ready_ports[i]
+                wire(cls.ready_up, anded_ready_ports)
+            if len(out_valid_ports) > 0:
+                anded_valid_ports = out_valid_ports[0]
+                for i in range(1, len(out_valid_ports)):
+                    anded_valid_ports = anded_valid_ports & out_valid_ports[i]
+                wire(cls.valid_down, anded_valid_ports)
     return _Map
 
 @cache_definition
