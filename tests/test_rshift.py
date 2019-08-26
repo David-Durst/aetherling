@@ -31,13 +31,13 @@ def test_rshift_parallel():
     for i, val in enumerate(test_vals[shift_amount:]):
         assert seq2int(sim.get_value(testcircuit.O[i + shift_amount])) == test_vals[i]
 
-def fault_test_rshift_parallel():
+def test_fault_rshift_parallel():
     width = 5
     num_in = 4
     test_vals = [2,5,3,8]
     shift_amount = 2
     in_type = Array[num_in, Array[width, In(BitIn)]]
-    args = ['I', in_type, 'O', Out(in_type)] + ClockInterface(False, False)
+    args = ['I', in_type, 'O', Out(in_type)]
 
     testcircuit = DefineCircuit('Test', *args)
 
@@ -51,7 +51,7 @@ def fault_test_rshift_parallel():
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
-    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    tester = fault.Tester(testcircuit)
 
     for i, val in enumerate(test_vals):
         tester.circuit.I[i] = val
