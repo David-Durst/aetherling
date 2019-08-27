@@ -39,57 +39,70 @@ def DefineTSBankGenerator(no: int, io: int, ni: int, time_per_element: int, T: K
     RESET : In(Bit)
     """
     class _TSBankGenerator(Circuit):
-        addr_width = getRAMAddrWidth(ni)
+        bank_width = getRAMAddrWidth(ni)
+        addr_width = getRAMAddrWidth(no)
 
         name = "TSBankGenerator_no{}_io{}_ni{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(io), str(ni),
                                                                                     str(time_per_element),
                                                                                     cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['bank', Out(Array[ni, Array[addr_width, Bit]])] + ClockInterface(has_ce, has_reset)
+        IO = ['bank', Out(Tuple({
+            'bank' : Array[no, Array[bank_width, Bit]],
+            'addr' : Array[no, Array[addr_width, Bit]]
+        }))] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(TSBankGenerator):
+            flat_idx_width = getRAMAddrWidth(no*ni)
             # each element of the SSeq is a separate vector lane
             # increase by time_per_element
             index_in_cur_element = SizedCounterModM(time_per_element, has_ce=has_ce, has_reset=has_reset)
-            first_lane_flat_idx = SizedCounterModM(no*ni, incr=ni, has_ce=True, has_reset=has_reset)()
+            first_lane_flat_idx = SizedCounterModM((no+io)*ni, incr=ni, has_ce=True, has_reset=has_reset)()
+            time_counter = SizedCounterModM(no+io, has_ce=True, has_reset=has_reset)
             next_element = Decode(time_per_element - 1, index_in_cur_element.O.N)(index_in_cur_element.O)
             wire(next_element.O, first_lane_flat_idx.CE)
+            wire(next_element.O, time_counter.CE)
             if has_ce:
                 wire(TSBankGenerator.CE, index_in_cur_element.CE)
             if has_reset:
                 wire(TSBankGenerator.RESET, index_in_cur_element.RESET)
                 wire(TSBankGenerator.RESET, first_lane_flat_idx.RESET)
+                wire(TSBankGenerator.RESET, time_counter.RESET)
 
             lane_flat_idxs = [first_lane_flat_idx.O]
 
             # compute the current flat_idx for each lane
             for i in range(1,ni):
-                cur_lane_flat_idx_adder = DefineAdd(TSBankGenerator.addr_width)()
+                cur_lane_flat_idx_adder = DefineAdd(flat_idx_width)()
                 wire(cur_lane_flat_idx_adder.I0, first_lane_flat_idx.O)
-                wire(cur_lane_flat_idx_adder.I1, int2seq(i*no, TSBankGenerator.addr_width))
+                wire(cur_lane_flat_idx_adder.I1, int2seq(i*no, flat_idx_width))
 
                 lane_flat_idxs += [cur_lane_flat_idx_adder.O]
 
             lane_flat_div_lcms = []
             # conmpute flat_idx / lcm_dim for each lane
             for i in range(0,ni):
-                cur_lane_lcm_div = DefineUDiv(TSBankGenerator.addr_width)()
+                cur_lane_lcm_div = DefineUDiv(flat_idx_width)()
                 wire(cur_lane_lcm_div.I0, lane_flat_idxs[0].O)
-                wire(cur_lane_lcm_div.I1, int2seq(lcm(no, ni), TSBankGenerator.addr_width))
+                wire(cur_lane_lcm_div.I1, int2seq(lcm(no, ni), flat_idx_width))
 
                 lane_flat_div_lcms += [cur_lane_flat_idx_adder.O]
 
             # compute ((flat_idx % sseq_dim) + (flat_idx / lcm_dim)) % sseq_dim for each lane
+            # note that s_ts == flat_idx % sseq_dim
             # only need to mod sseq_dim at end as that is same as also doing it flat_idx before addition
             for i in range(0, ni):
-                pre_mod_add = DefineAdd(TSBankGenerator.addr_width)()
+                pre_mod_add = DefineAdd(flat_idx_width)()
                 wire(pre_mod_add.I0, lane_flat_idxs[i])
                 wire(pre_mod_add.I1, lane_flat_div_lcms[i])
 
-                bank_mod = DefineUMod(TSBankGenerator.addr_width)()
+                bank_mod = DefineUMod(flat_idx_width)()
                 wire(bank_mod.I0, pre_mod_add.O)
-                wire(bank_mod.I0, int2seq(no, TSBankGenerator.addr_width))
+                wire(bank_mod.I0, int2seq(ni, flat_idx_width))
 
-                wire(TSBankGenerator.O[i], bank_mod.O)
+                wire(TSBankGenerator.O.bank[i], bank_mod.O[0:TSBankGenerator.bank_width])
+
+            # compute t for each lane addr
+            for i in range(0,ni):
+                wire(TSBankGenerator.O.addr[i], time_counter.O[0:TSBankGenerator.addr_width])
 
     return _TSBankGenerator
 
@@ -116,18 +129,22 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
     RESET : In(Bit)
     """
     class _STBankGenerator(Circuit):
+        bank_width = getRAMAddrWidth(no)
         addr_width = getRAMAddrWidth(ni)
-        name = "STBankGenerator_no{}_io{}_ni{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(io), str(ni),
+        name = "STBankGenerator_no{}_ni{}_ii{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(ni), str(ii),
                                                                                     str(time_per_element),
                                                                                     cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['bank', Out(Array[ni, Array[addr_width, Bit]])] + ClockInterface(has_ce, has_reset)
+        IO = ['bank', Out(Tuple({
+            'bank' : Array[no, Array[bank_width, Bit]],
+            'addr' : Array[no, Array[addr_width, Bit]]
+        }))] + ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(STBankGenerator):
             flat_idx_width = getRAMAddrWidth(no*ni)
             # each element of the SSeq is a separate vector lane
             # increase by time_per_element
             index_in_cur_element = SizedCounterModM(time_per_element, has_ce=has_ce, has_reset=has_reset)
-            first_lane_flat_idx = DefineCounterModM(ni+ii, flat_idx_width, incr=ni, has_ce=True, has_reset=has_reset)()
+            first_lane_flat_idx = DefineCounterModM(ni+ii, flat_idx_width, has_ce=True, has_reset=has_reset)()
             next_element = Decode(time_per_element - 1, index_in_cur_element.O.N)(index_in_cur_element.O)
             wire(next_element.O, first_lane_flat_idx.CE)
             if has_ce:
@@ -139,7 +156,7 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
             lane_flat_idxs = [first_lane_flat_idx.O]
 
             # compute the current flat_idx for each lane
-            for i in range(1,ni):
+            for i in range(1,no):
                 cur_lane_flat_idx_adder = DefineAdd(flat_idx_width)()
                 wire(cur_lane_flat_idx_adder.I0, first_lane_flat_idx.O)
                 wire(cur_lane_flat_idx_adder.I1, int2seq(i*ni, flat_idx_width))
@@ -148,7 +165,7 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
 
             lane_flat_div_lcms = []
             # conmpute flat_idx / lcm_dim for each lane
-            for i in range(0,ni):
+            for i in range(0,no):
                 cur_lane_lcm_div = DefineUDiv(flat_idx_width)()
                 wire(cur_lane_lcm_div.I0, lane_flat_idxs[0].O)
                 wire(cur_lane_lcm_div.I1, int2seq(lcm(no, ni), flat_idx_width))
@@ -157,7 +174,7 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
 
             # compute ((flat_idx % sseq_dim) + (flat_idx / lcm_dim)) % sseq_dim for each lane
             # only need to mod sseq_dim at end as that is same as also doing it flat_idx before addition
-            for i in range(0, ni):
+            for i in range(0, no):
                 pre_mod_add = DefineAdd(flat_idx_width)()
                 wire(pre_mod_add.I0, lane_flat_idxs[i])
                 wire(pre_mod_add.I1, lane_flat_div_lcms[i])
@@ -166,7 +183,15 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
                 wire(bank_mod.I0, pre_mod_add.O)
                 wire(bank_mod.I0, int2seq(no, flat_idx_width))
 
-                wire(STBankGenerator.O[i], bank_mod.O[0:STBankGenerator.addr_width])
+                wire(STBankGenerator.O.bank[i], bank_mod.O[0:STBankGenerator.bank_width])
+
+            # compute flat_idx / sseq_dim for each lane addr
+            for i in range(0,ni):
+                flat_idx_sseq_dim_div = DefineUDiv(flat_idx_width)()
+                wire(flat_idx_sseq_dim_div.I0, lane_flat_idxs[0].O)
+                wire(flat_idx_sseq_dim_div.I1, int2seq(no, flat_idx_width))
+
+                wire(STBankGenerator.O.addr[i], flat_idx_sseq_dim_div.O[0:STBankGenerator.addr_width])
 
     return _STBankGenerator
 
