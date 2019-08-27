@@ -136,7 +136,7 @@ def test_map_merge_rv_ce():
 
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
-    tester.ready_down = True
+    tester.circuit.ready_down = True
     tester.circuit.valid_up = True
     tester.circuit.CE = True
     tester.circuit.RESET = False
@@ -145,9 +145,12 @@ def test_map_merge_rv_ce():
     for i in range(numUp):
         tester.eval()
         for j in range(numIn):
-            tester.circuit.O[j].expect(j if i == 0 else 0)
-        tester.print(f"circuit ready_up: %d\n", testcircuit.ready_up)
-        tester.print(f"first upsample ready_up: %d\n", testcircuit._instances[0]._instances[0].defn.ready_up)
+            tester.circuit.O[j].expect(j)
+        #tester.print(f"circuit ready_up: %d\n", testcircuit.ready_up)
+        #tester.print(f"first upsample ready_up: %d\n", testcircuit._instances[0]._instances[0].defn.ready_up)
+        #tester.print(f"first upsample ready_down: %d\n", testcircuit._instances[0]._instances[0].defn.ready_down)
+        #tester.print(f"first upsample valid_up: %d\n", testcircuit._instances[0]._instances[0].defn.valid_up)
+        #tester.print(f"first upsample valid_down: %d\n", testcircuit._instances[0]._instances[0].defn.valid_down)
         tester.circuit.ready_up.expect(i == 0)
         tester.circuit.valid_down.expect(True)
         tester.step(2)
