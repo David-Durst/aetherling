@@ -12,7 +12,14 @@ before_install:
     - export CC="gcc-7"
     - git clone https://github.com/phanrahan/magma.git
     - pip install -e magma
-    - source magma/.travis/install_coreir.sh
+
+    #- source magma/.travis/install_coreir.sh
+    # install coreir
+    - curl -s -L https://github.com/rdaly525/coreir/releases/latest | grep "href.*coreir-linux.tar.gz" | cut -d \" -f 2 | xargs -I {} wget https://github.com"{}"
+    - mkdir coreir_release;
+    - tar -xf coreir-linux.tar.gz -C coreir_release --strip-components 1;
+    - cd coreir_release && sudo make install && cd ..
+
     - git clone https://github.com/leonardt/fault.git
     - pip install -e fault
     - git clone https://github.com/phanrahan/mantle.git
