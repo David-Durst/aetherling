@@ -57,12 +57,13 @@ def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_v
 
         # booleans for extra ports to add iff merge_ready_valid_ce is true and mapped module has these ports
         ready_valid_ce_port_idxs = []
+        add_clk = False
         add_ce = False
         add_rv = False
         add_reset = False
         rv_out_ports = ['ready_up', 'valid_down']
         rv_in_ports = ['valid_up', 'ready_down']
-        clock_ports = ['CE', 'RESET']
+        clock_ports = ['CLK', 'CE', 'RESET']
 
         if merge_ready_valid_ce_reset:
             for i in range(len(port_names)):
@@ -72,6 +73,8 @@ def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_v
                     add_ce = True
                 elif port_names[i] == 'RESET':
                     add_reset = True
+                elif port_names[i] == 'CLK':
+                    add_clk = True
                 else:
                     add_rv = True
 
@@ -85,6 +88,8 @@ def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_v
             IO += ['CE', In(Enable)]
         if add_reset:
             IO += ['RESET', In(Reset)]
+        if add_clk:
+            IO += ClockInterface()
         if add_rv:
             IO += ready_valid_interface
 

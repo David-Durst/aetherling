@@ -14,6 +14,8 @@ from mantle.coreir import DefineCoreirConst
 from os.path import dirname, join
 import bit_vector
 from magma.bitutils import *
+import fault
+from aetherling.helpers.magma_helpers import ready_valid_interface
 
 imgSrc = join(dirname(__file__), "custom_small.png")
 # use this to write the img output image of the test to the folder containing these tests
@@ -110,25 +112,45 @@ def test_map_merge_rv_ce():
     width = 11
     numIn = 13
     numUp = 5
-    scope = Scope()
     T = Array[width, BitIn]
 
-    testcircuit = DefineNativeMapParallel(numIn, DefineUpsampleSequential(numUp, 1, T, True, True), merge_ready_valid_ce_reset=True)
+    args = ['I', In(Array[numIn, T]), 'O', Out(Array[numIn, T])] + ClockInterface(True, True) + ready_valid_interface
+    testcircuit = DefineCircuit('Test_Map_Merge', *args)
 
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK,
-                          namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+    ups = DefineNativeMapParallel(numIn, DefineUpsampleSequential(numUp, 1, T, True, True), merge_ready_valid_ce_reset=True)()
 
-    sim.set_value(testcircuit.ready_down, True, scope)
-    sim.set_value(testcircuit.valid_up, True, scope)
-    sim.set_value(testcircuit.CE, True, scope)
-    sim.set_value(testcircuit.RESET, False, scope)
+    wire(ups.I, testcircuit.I)
+    wire(ups.O, testcircuit.O)
+    wire(ups.CE, testcircuit.CE)
+    wire(ups.RESET, testcircuit.RESET)
+    wire(ups.valid_down, testcircuit.valid_down)
+    wire(ups.valid_up, testcircuit.valid_up)
+    wire(ups.ready_down, testcircuit.ready_down)
+    wire(ups.ready_up, testcircuit.ready_up)
+
+    EndCircuit()
+
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, verilator_debug=True, output="coreir-verilog",
+                  passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    tester.ready_down = True
+    tester.circuit.valid_up = True
+    tester.circuit.CE = True
+    tester.circuit.RESET = False
     for i in range(numIn):
-        sim.set_value(testcircuit.I[i], int2seq(i, width), scope)
+        tester.circuit.I[i] = i
     for i in range(numUp):
-        sim.evaluate()
-        assert seq2int(sim.get_value(testcircuit.O, scope)) == sum(range(numIn))
-        assert sim.get_value(testcircuit.ready_up) == (i == 0)
-        assert sim.get_value(testcircuit.valid_down) == True
-        sim.advance_cycle()
+        tester.eval()
+        for j in range(numIn):
+            tester.circuit.O[j].expect(j if i == 0 else 0)
+        tester.print(f"circuit ready_up: %d\n", testcircuit.ready_up)
+        tester.print(f"first upsample ready_up: %d\n", testcircuit._instances[0]._instances[0].defn.ready_up) #NativeMapParallel_n13_opUpsampleSequential_n5_tEl1_TArray_11_In_Bit___hasCETrue_hasResetTrue_I_Array_11_In_Bit___O_Array_11_Out_Bit___CLK_In_Clock__CE_In_Enable__RESET_In_Reset__ready_up_Out_Bit__valid_up_In_Bit__ready_down_In_Bit__valid_down_Out_Bit___inst0.UpsampleSequential_n5_tEl1_TArray_11_In_Bit___hasCETrue_hasResetTrue_inst0.ready_up)
+        tester.circuit.ready_up.expect(i == 0)
+        tester.circuit.valid_down.expect(True)
+        tester.step(2)
         for i in range(numIn):
-            sim.set_value(testcircuit.I[i], int2seq(i, 0), scope)
+            tester.circuit.I[i] = 0
+    tester.compile_and_run(target="verilator", magma_opts={"verilator_debug": True}, skip_compile=True, directory="vBuild/")
