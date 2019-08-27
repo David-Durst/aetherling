@@ -57,10 +57,11 @@ def RShiftParallel(n: int, shift_amount: int, T: Kind, has_ready_valid=False):
 @cache_definition
 def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: Kind, has_ce=False, has_reset=False):
     """
-    Shifts the elements in TSeq n T' by shift_amount to the right.
+    Produces the bank  the elements in TSeq n T' by shift_amount to the right.
     The first shift_amount elements are undefined
 
-    The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
+    Each T period is time_per_element clock cycles
+    You can get time_per_element by calling time on a space-time type.
 
     Note that the T passed to this operator just the Magma type each clock cycle.
     You can get T by calling magma_repr on a space-time type T'.
