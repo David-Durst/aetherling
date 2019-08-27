@@ -147,7 +147,7 @@ def test_map_merge_rv_ce():
         for j in range(numIn):
             tester.circuit.O[j].expect(j if i == 0 else 0)
         tester.print(f"circuit ready_up: %d\n", testcircuit.ready_up)
-        tester.print(f"first upsample ready_up: %d\n", testcircuit._instances[0]._instances[0].defn.ready_up) #NativeMapParallel_n13_opUpsampleSequential_n5_tEl1_TArray_11_In_Bit___hasCETrue_hasResetTrue_I_Array_11_In_Bit___O_Array_11_Out_Bit___CLK_In_Clock__CE_In_Enable__RESET_In_Reset__ready_up_Out_Bit__valid_up_In_Bit__ready_down_In_Bit__valid_down_Out_Bit___inst0.UpsampleSequential_n5_tEl1_TArray_11_In_Bit___hasCETrue_hasResetTrue_inst0.ready_up)
+        tester.print(f"first upsample ready_up: %d\n", testcircuit._instances[0]._instances[0].defn.ready_up)
         tester.circuit.ready_up.expect(i == 0)
         tester.circuit.valid_down.expect(True)
         tester.step(2)
