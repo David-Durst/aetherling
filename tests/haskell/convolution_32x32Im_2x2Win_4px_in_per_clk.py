@@ -1,4 +1,4 @@
-from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
+from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallelWithIdentity, renameCircuitForReduce
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.noop import DefineNoop
@@ -85,10 +85,10 @@ wire(magmaInstance0.O[3][1][0], magmaInstance43.I0)
 wire(magmaInstance15.O, magmaInstance43.I1)
 wire(magmaInstance0.O[3][1][1], magmaInstance44.I0)
 wire(magmaInstance19.O, magmaInstance44.I1)
-magmaInstance45 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance46 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance47 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance48 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance45 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance46 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance47 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance48 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance45_identityGen = DefineCoreirConst(8, 0)()
 wire(magmaInstance45_identityGen.O, magmaInstance45.I.identity)
 wire(magmaInstance45_identityGen.O, magmaInstance46.I.identity)

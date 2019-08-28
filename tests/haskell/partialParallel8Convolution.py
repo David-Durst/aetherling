@@ -1,4 +1,4 @@
-from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
+from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallelWithIdentity, renameCircuitForReduce
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.noop import DefineNoop
@@ -149,14 +149,14 @@ wire(magmaInstance0.O[7][1][0], magmaInstance91.I0)
 wire(magmaInstance31.O, magmaInstance91.I1)
 wire(magmaInstance0.O[7][1][1], magmaInstance92.I0)
 wire(magmaInstance39.O, magmaInstance92.I1)
-magmaInstance93 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance94 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance95 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance96 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance97 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance98 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance99 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
-magmaInstance100 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance93 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance94 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance95 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance96 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance97 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance98 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance99 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance100 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance93_identityGen = DefineCoreirConst(8, 0)()
 wire(magmaInstance93_identityGen.O, magmaInstance93.I.identity)
 wire(magmaInstance93_identityGen.O, magmaInstance94.I.identity)

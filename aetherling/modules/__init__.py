@@ -6,4 +6,4 @@ from .upsample import DefineUpsampleParallel, UpsampleParallel, DefineUpsampleSe
 from .downsample import DefineDownsampleParallel, DownsampleParallel, DefineDownsampleSequential, DownsampleSequential
 from .map_fully_parallel_sequential import DefineNativeMapParallel
 from .hydrate import DefineDehydrate, Dehydrate, DefineHydrate, Hydrate
-from .reduce import DefineReduceParallel, ReduceParallel, DefineReduceSequential, ReduceSequential, renameCircuitForReduce
+from .reduce import DefineReduceParallelWithIdentity, ReduceParallel, DefineReduceSequential, ReduceSequential, renameCircuitForReduce

@@ -1,4 +1,4 @@
-from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallel, renameCircuitForReduce
+from aetherling.modules.reduce import DefineReduceSequential, DefineReduceParallelWithIdentity, renameCircuitForReduce
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.noop import DefineNoop
@@ -42,7 +42,7 @@ wire(magmaInstance1.O[0][1][0], magmaInstance8.I0)
 wire(magmaInstance4.O, magmaInstance8.I1)
 wire(magmaInstance1.O[0][1][1], magmaInstance9.I0)
 wire(magmaInstance5.O, magmaInstance9.I1)
-magmaInstance10 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance10 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance10_identityGen = DefineCoreirConst(8, 0)()
 wire(magmaInstance10_identityGen.O, magmaInstance10.I.identity)
 wire(magmaInstance6.O, magmaInstance10.I.data[0])
@@ -78,7 +78,7 @@ wire(magmaInstance15.O[0][1][0], magmaInstance22.I0)
 wire(magmaInstance18.O, magmaInstance22.I1)
 wire(magmaInstance15.O[0][1][1], magmaInstance23.I0)
 wire(magmaInstance19.O, magmaInstance23.I1)
-magmaInstance24 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance24 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance24_identityGen = DefineCoreirConst(8, 0)()
 wire(magmaInstance24_identityGen.O, magmaInstance24.I.identity)
 wire(magmaInstance20.O, magmaInstance24.I.data[0])
@@ -114,7 +114,7 @@ wire(magmaInstance29.O[0][1][0], magmaInstance36.I0)
 wire(magmaInstance32.O, magmaInstance36.I1)
 wire(magmaInstance29.O[0][1][1], magmaInstance37.I0)
 wire(magmaInstance33.O, magmaInstance37.I1)
-magmaInstance38 = DefineReduceParallel(4, renameCircuitForReduce(DefineAdd(8)))()
+magmaInstance38 = DefineReduceParallelWithIdentity(4, renameCircuitForReduce(DefineAdd(8)))()
 magmaInstance38_identityGen = DefineCoreirConst(8, 0)()
 wire(magmaInstance38_identityGen.O, magmaInstance38.I.identity)
 wire(magmaInstance34.O, magmaInstance38.I.data[0])

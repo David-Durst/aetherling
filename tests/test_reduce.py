@@ -19,10 +19,8 @@ def test_reduce_parallel():
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 
     reducePar = ReduceParallel(numIn, renameCircuitForReduce(DefineAdd(width)))
-    coreirConst = DefineCoreirConst(width, 0)()
-    wire(reducePar.I.data, testcircuit.I)
-    wire(reducePar.I.identity, coreirConst.O)
-    wire(testcircuit.O, reducePar.out)
+    wire(reducePar.I, testcircuit.I)
+    wire(testcircuit.O, reducePar.O)
 
     EndCircuit()
 
@@ -120,8 +118,6 @@ def test_reduce_partially_parallel():
     reduce_op = ReducePartiallyParallel(numIn, parallelism, renameCircuitForReduce(DefineAdd(width)))
     wire(reduce_op.I, testcircuit.I)
     wire(testcircuit.O, reduce_op.O)
-    coreirConst = DefineCoreirConst(width, 0)()
-    wire(reduce_op.identity, coreirConst.O)
     wire(testcircuit.ready, reduce_op.ready)
     wire(testcircuit.valid, reduce_op.valid)
 

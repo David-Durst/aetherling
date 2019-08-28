@@ -9,9 +9,10 @@ from aetherling.helpers.magma_helpers import *
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.mux_any_type import DefineMuxAnyType
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
+from math import ceil
 
 @cache_definition
-def DefineReduceParallel(numInputs: int, op: Circuit) -> Circuit:
+def DefineReduceParallelWithIdentity(numInputs: int, op: Circuit) -> Circuit:
     """
     Reduce multiple numInputs into one in one clock cycle.
     This uses a reduction tree but can handle numInputs that aren't powers of 2.
@@ -39,6 +40,50 @@ def DefineReduceParallel(numInputs: int, op: Circuit) -> Circuit:
                                                           "operator": GetCoreIRModule(cirb, op)})
     return moduleToReturn
 
+@cache_definition
+def DefineReduceParallel(numInputs: int, opDef: Circuit) -> Circuit:
+    """
+    Reduce multiple numInputs into one in one clock cycle.
+    Aetherling Type: ({1, T[numInputs]} -> {1, T}, 1)
+
+    :param cirb: The CoreIR backend currently be used
+    :param numInputs: The number of input elements
+    :param op: The operator (the magma circuit) to map over the elements. It should have type T -> T -> T,
+    with input ports in0 and in1.
+    :return: A module with ports:
+    I: Array[numInputs, T]
+    out: Out(T)
+    """
+    class _ReduceParallel(Circuit):
+        name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(opDef)))
+        token_type = type(renameCircuitForReduce(opDef).in0)
+
+        IO = ['I', In(Array[numInputs, token_type]), 'O', Out(token_type)]
+
+        @classmethod
+        def definition(cls):
+            ops = [opDef() for _ in range(numInputs - 1)]
+            unflattened_ports = [[op.in0, op.in1] for op in ops]
+            unwired_in_ports = set([port for op_ports in unflattened_ports for port in op_ports])
+
+            # wire ops into tree
+            for i in range(numInputs - 1):
+                if i == 0:
+                    wire(ops[i].out, cls.O)
+                elif i % 2 == 0:
+                    wire(ops[i].out, ops[i // 2 - 1].in0)
+                    unwired_in_ports.discard(ops[i // 2 - 1].in0)
+                else:
+                    wire(ops[i].out, ops[ceil(i / 2) - 1].in1)
+                    unwired_in_ports.discard(ops[ceil(i / 2) - 1].in1)
+
+            # wire inputs to tree
+            for (i, op_in_port) in zip(range(numInputs), unwired_in_ports):
+                wire(cls.I[i], op_in_port)
+
+
+    return _ReduceParallel
+
 def ReduceParallel(numInputs: int, op: Circuit) -> Circuit:
     """
     Reduce multiple numInputs into one in one clock cycle.
@@ -51,10 +96,7 @@ def ReduceParallel(numInputs: int, op: Circuit) -> Circuit:
     :param op: The operator (the magma circuit) to map over the elements. It should have type T -> T -> T,
     with input ports in0 and in1.
     :return: A module with ports:
-    I: In({
-        data: Array[numInputs, T],
-        identity: T
-    })
+    I: Array[numInputs, T]
     out: Out(T)
     """
     return DefineReduceParallel(numInputs, op)()
@@ -157,7 +199,6 @@ def DefineReducePartiallyParallel(
       the ports will be:
       I : In(Array[parallelism, T]
       O : Out(T)
-      identity : In(T)
       ready :  Out(Bit)
       valid :  Out(Bit)
 
@@ -180,7 +221,6 @@ def DefineReducePartiallyParallel(
 
         IO = ['I', In(Array[parallelism, token_type]),
               'O', Out(token_type),
-              'identity', In(token_type),
               'ready', Out(Bit),
               'valid', Out(Bit)] + ClockInterface(has_ce=has_ce)
 
@@ -195,11 +235,10 @@ def DefineReducePartiallyParallel(
             reduceSeq = ReduceSequential(num_clocks, renameCircuitForReduce(op))
 
             # top level input fed to reduce parallel input
-            wire(rpp.I, reducePar.I.data)
-            wire(reducePar.I.identity, rpp.identity)
+            wire(rpp.I, reducePar.I)
 
             # reduce parallel output fed to reduce sequential input
-            wire(reducePar.out, reduceSeq.I)
+            wire(reducePar.O, reduceSeq.I)
 
             # output of reduce sequential fed to top level output
             wire(reduceSeq.out, rpp.O)
