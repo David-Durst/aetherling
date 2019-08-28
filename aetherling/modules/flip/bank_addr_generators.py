@@ -20,9 +20,9 @@ from math import gcd
 
 
 @cache_definition
-def DefineTSBankGenerator(no: int, io: int, ni: int, time_per_element: int, T: Kind, has_ce=False, has_reset=False):
+def DefineTSBankAddrGenerator(no: int, io: int, ni: int, time_per_element: int, T: Kind, has_ce=False, has_reset=False):
     """
-    For a TSeq no io (SSeq ni T) input to or output from a flip, get the address for reading and writing each T input
+    For a TSeq no io (SSeq ni T) input to or output from a flip, get the bank and address for reading and writing each T input
     every clock.
 
     Note that the T passed to this operator just the Magma type each clock cycle.
@@ -33,6 +33,7 @@ def DefineTSBankGenerator(no: int, io: int, ni: int, time_per_element: int, T: K
     addr = t
 
     bank : Out(Array[ni, Array[getRAMAddrWidth(ni), Bit]) - getRAMAddrWidth is roughly log2(ni-1) with adjustment for corner cases
+    addr : Out(Array[ni, Array[getRAMAddrWidth(no), Bit])
     if has_ce:
     CE : In(Bit)
     if has_reset:
@@ -45,10 +46,8 @@ def DefineTSBankGenerator(no: int, io: int, ni: int, time_per_element: int, T: K
         name = "TSBankGenerator_no{}_io{}_ni{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(io), str(ni),
                                                                                     str(time_per_element),
                                                                                     cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['bank', Out(Tuple({
-            'bank' : Array[no, Array[bank_width, Bit]],
-            'addr' : Array[no, Array[addr_width, Bit]]
-        }))] + ClockInterface(has_ce, has_reset)
+        IO = ['bank', Array[no, Array[bank_width, Bit]], 'addr', Array[no, Array[addr_width, Bit]]] + \
+             ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(TSBankGenerator):
             flat_idx_width = getRAMAddrWidth(no*ni)
@@ -98,18 +97,18 @@ def DefineTSBankGenerator(no: int, io: int, ni: int, time_per_element: int, T: K
                 wire(bank_mod.I0, pre_mod_add.O)
                 wire(bank_mod.I0, int2seq(ni, flat_idx_width))
 
-                wire(TSBankGenerator.O.bank[i], bank_mod.O[0:TSBankGenerator.bank_width])
+                wire(TSBankGenerator.bank[i], bank_mod.O[0:TSBankGenerator.bank_width])
 
             # compute t for each lane addr
             for i in range(0,ni):
-                wire(TSBankGenerator.O.addr[i], time_counter.O[0:TSBankGenerator.addr_width])
+                wire(TSBankGenerator.addr[i], time_counter.O[0:TSBankGenerator.addr_width])
 
     return _TSBankGenerator
 
 @cache_definition
 def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: Kind, has_ce=False, has_reset=False):
     """
-    For a SSeq no (TSeq ni ii T) input to or output from a flip, get the address for reading and writing each T input
+    For a SSeq no (TSeq ni ii T) input to or output from a flip, get the bank and address for reading and writing each T input
     every clock.
 
     Note that the T passed to this operator just the Magma type each clock cycle.
@@ -122,7 +121,8 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
     bank = ((flat_idx % sseq_dim) + (flat_idx / lcm_dim)) % sseq_dim
     addr = flat_idx / sseq_dim
 
-    bank : Out(Array[ni, Array[getRAMAddrWidth(ni), Bit]) - getRAMAddrWidth is roughly log2(ni-1) with adjustment for corner cases
+    bank : Out(Array[ni, Array[getRAMAddrWidth(no), Bit]) - getRAMAddrWidth is roughly log2(ni-1) with adjustment for corner cases
+    addr : Out(Array[ni, Array[getRAMAddrWidth(ni), Bit])
     if has_ce:
     CE : In(Bit)
     if has_reset:
@@ -134,10 +134,8 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
         name = "STBankGenerator_no{}_ni{}_ii{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(ni), str(ii),
                                                                                     str(time_per_element),
                                                                                     cleanName(str(T)), str(has_ce), str(has_reset))
-        IO = ['bank', Out(Tuple({
-            'bank' : Array[no, Array[bank_width, Bit]],
-            'addr' : Array[no, Array[addr_width, Bit]]
-        }))] + ClockInterface(has_ce, has_reset)
+        IO = ['bank', Array[no, Array[bank_width, Bit]], 'addr', Array[no, Array[addr_width, Bit]]] + \
+             ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(STBankGenerator):
             flat_idx_width = getRAMAddrWidth(no*ni)
@@ -183,7 +181,7 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
                 wire(bank_mod.I0, pre_mod_add.O)
                 wire(bank_mod.I0, int2seq(no, flat_idx_width))
 
-                wire(STBankGenerator.O.bank[i], bank_mod.O[0:STBankGenerator.bank_width])
+                wire(STBankGenerator.bank[i], bank_mod.O[0:STBankGenerator.bank_width])
 
             # compute flat_idx / sseq_dim for each lane addr
             for i in range(0,ni):
@@ -191,7 +189,7 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
                 wire(flat_idx_sseq_dim_div.I0, lane_flat_idxs[0].O)
                 wire(flat_idx_sseq_dim_div.I1, int2seq(no, flat_idx_width))
 
-                wire(STBankGenerator.O.addr[i], flat_idx_sseq_dim_div.O[0:STBankGenerator.addr_width])
+                wire(STBankGenerator.addr[i], flat_idx_sseq_dim_div.O[0:STBankGenerator.addr_width])
 
     return _STBankGenerator
 
