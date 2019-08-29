@@ -250,4 +250,7 @@ def test_term():
     EndCircuit()
 
     tester = fault.Tester(testcircuit)
+    tester.circuit.I = 2
+    tester.eval()
+    tester.circuit.O.expect(2)
     compile_and_run(tester)
