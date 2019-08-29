@@ -16,6 +16,7 @@ import bit_vector
 from magma.bitutils import *
 import fault
 from aetherling.helpers.magma_helpers import ready_valid_interface
+from aetherling.helpers.fault_helpers import compile_and_run
 
 imgSrc = join(dirname(__file__), "custom_small.png")
 # use this to write the img output image of the test to the folder containing these tests
@@ -130,10 +131,6 @@ def test_map_merge_rv_ce():
 
     EndCircuit()
 
-    magma.compile("vBuild/" + testcircuit.name, testcircuit, verilator_debug=True, output="coreir-verilog",
-                  passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
-                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
-
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
     tester.circuit.ready_down = True
@@ -156,4 +153,4 @@ def test_map_merge_rv_ce():
         tester.step(2)
         for i in range(numIn):
             tester.circuit.I[i] = 0
-    tester.compile_and_run(target="verilator", magma_opts={"verilator_debug": True}, skip_compile=True, directory="vBuild/")
+    compile_and_run(tester)

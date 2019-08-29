@@ -124,7 +124,7 @@ def DefineSort2Elements(T: Kind, cmp_component: Callable[[DefineCircuitKind], Ki
         IO = ['I0', In(T), 'I1', In(T), 'O0', Out(T), 'O1', Out(T)] + ClockInterface()
         @classmethod
         def definition(Sort2Elements):
-            sel = DefineMuxAnyType(t,2)
+            sel = DefineMuxAnyType(Array[2, T],2)()
 
             cmp0 = cmp_component(Sort2Elements.I0)
             cmp1 = cmp_component(Sort2Elements.I1)
@@ -135,15 +135,18 @@ def DefineSort2Elements(T: Kind, cmp_component: Callable[[DefineCircuitKind], Ki
             wire(cmp0_bits.I, cmp0)
             wire(cmp1_bits.I, cmp1)
 
-            lt = DefineCoreirUlt(cmp0_bits.O.N)
+            lt = DefineCoreirUlt(cmp0_bits.out.N)()
 
-            wire(lt.I0, cmp0_bits.O)
-            wire(lt.I1, cmp1_bits.O)
+            wire(lt.I1, cmp0_bits.out)
+            wire(lt.I0, cmp1_bits.out)
 
-            wire(Sort2Elements.I0, sel.data[0])
-            wire(Sort2Elements.I1, sel.data[1])
-            wire(lt.O, sel.sel)
+            wire(Sort2Elements.I0, sel.data[0][0])
+            wire(Sort2Elements.I1, sel.data[0][1])
+            wire(Sort2Elements.I0, sel.data[1][1])
+            wire(Sort2Elements.I1, sel.data[1][0])
+            wire(lt.O, sel.sel[0])
 
-            wire(sel.out, Sort2Elements.out)
+            wire(sel.out[0], Sort2Elements.O0)
+            wire(sel.out[1], Sort2Elements.O1)
 
     return _Sort2Elements

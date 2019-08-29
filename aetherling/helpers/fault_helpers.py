@@ -46,3 +46,9 @@ def print_nd_int_array_port(tester, port, name = None):
     else:
         tester.print(f"%d, ", port)
 
+def compile_and_run(tester):
+    tester.compile_and_run(target="verilator", magma_opts={
+        "verilator_debug": True,
+        "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
+        "namespaces": ["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
+    }, directory="vBuild/")
