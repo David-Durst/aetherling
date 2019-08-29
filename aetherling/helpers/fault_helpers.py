@@ -51,4 +51,4 @@ def compile_and_run(tester):
         "verilator_debug": True,
         "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
         "namespaces": ["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
-    }, directory="vBuild/")
+    }, directory="vBuild/", flags=["-Wno-fatal"])
