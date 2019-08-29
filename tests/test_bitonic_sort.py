@@ -1,10 +1,14 @@
-from aetherling.modules.flip.bitonic_sort import DefineSort2Elements, DefineBitonicMergePow2, DefineBitonicSortPow2
+from aetherling.modules.flip.bitonic_sort import DefineSort2Elements, DefineBitonicMergePow2, \
+    DefineBitonicSortPow2, DefineBitonicSort
 from magma import *
 from magma.bitutils import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 from magma.scope import Scope
 from aetherling.helpers.fault_helpers import compile_and_run
 import fault
+import random
+from aetherling.modules.term_any_type import TermAnyType
+from mantle.coreir import DefineCoreirConst
 
 
 
@@ -166,4 +170,84 @@ def test_bitonic_sort_2_elem():
     tester.circuit.O[0].v.expect(input1['v'])
     tester.circuit.O[1].k.expect(input0['k'])
     tester.circuit.O[1].v.expect(input0['v'])
+    compile_and_run(tester)
+
+def test_bitonic_sort_4_elem():
+    width = 11
+
+    T = Array[width, BitIn]
+
+    testcircuit = DefineBitonicSortPow2(T, 4, lambda x: x)
+
+    tester = fault.Tester(testcircuit)
+
+    inputs = [0, 2, 1, 3]
+    tester.circuit.I[0] = inputs[0]
+    tester.circuit.I[1] = inputs[1]
+    tester.circuit.I[2] = inputs[2]
+    tester.circuit.I[3] = inputs[3]
+    tester.eval()
+    tester.circuit.O[0].expect(inputs[0])
+    tester.circuit.O[1].expect(inputs[2])
+    tester.circuit.O[2].expect(inputs[1])
+    tester.circuit.O[3].expect(inputs[3])
+    compile_and_run(tester)
+
+def test_bitonic_sort_8():
+    width = 11
+    num_el = 8
+
+    T = Array[width, BitIn]
+
+    testcircuit = DefineBitonicSortPow2(T, num_el, lambda x: x)
+
+    tester = fault.Tester(testcircuit)
+
+    inputs = list(range(num_el))
+    random.shuffle(inputs)
+    outputs = sorted(inputs)
+    for i in range(num_el):
+        tester.circuit.I[i] = inputs[i]
+    tester.eval()
+    for i in range(num_el):
+        tester.print(str(i) + " output: %d\n", testcircuit.O[i])
+    for i in range(num_el):
+        tester.circuit.O[i].expect(outputs[i])
+    compile_and_run(tester)
+
+def test_bitonic_sort_9():
+    width = 11
+    num_el = 9
+
+    T = Array[width, BitIn]
+
+    testcircuit = DefineBitonicSort(T, num_el, lambda x: x)
+
+    tester = fault.Tester(testcircuit)
+
+    inputs = list(range(num_el))
+    random.shuffle(inputs)
+    outputs = sorted(inputs)
+    for i in range(num_el):
+        tester.circuit.I[i] = inputs[i]
+    tester.eval()
+    for i in range(num_el):
+        tester.print(str(i) + " output: %d\n", testcircuit.O[i])
+    for i in range(num_el):
+        tester.circuit.O[i].expect(outputs[i])
+    compile_and_run(tester)
+
+def test_term():
+    width = 11
+    T = Array[width, BitIn]
+
+    args = ['I', In(T), 'O', Out(T)]
+    testcircuit = DefineCircuit('Test_Term', *args)
+    wire(testcircuit.I, testcircuit.O)
+    term = TermAnyType(T)
+    t_const = DefineCoreirConst(width, 0)()
+    wire(t_const.O, term.I)
+    EndCircuit()
+
+    tester = fault.Tester(testcircuit)
     compile_and_run(tester)

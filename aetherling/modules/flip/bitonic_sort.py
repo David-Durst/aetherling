@@ -16,12 +16,52 @@ from mantle.common.countermod import SizedCounterModM, DefineCounterModM
 from mantle.coreir.compare import DefineCoreirUlt
 from mantle import Decode
 from typing import Callable
-from math import log2
+from math import log2, ceil
+from mantle.coreir import DefineCoreirConst
+
+@cache_definition
+def DefineBitonicSort(T: Kind, n: int, cmp_component: Callable[[DefineCircuitKind], Kind]):
+    """
+    Sort n input elements using a bitonic sorting network.
+    :param T: The type of each element in the sort
+    :param n: The number of elements to sort
+    :param cmp_component: A circuit definition that accepts an inputs of type T and emits a subpart for comparison
+    in an instance of DefineSort2Elements
+    :return: A circuit with ports
+    I : Array[n, T]
+    O : Array[n, T]
+    """
+    class _BitonicSort(Circuit):
+        name = "BitonicSort_t{}_n{}".format(cleanName(str(T)), str(n))
+        IO = ['I', In(Array[n, T]), 'O', Out(Array[n, T])]
+        @classmethod
+        def definition(BitonicSort):
+            # generate the max value (all 1's) and feed it to all inputs to
+            # power 2 bitonic sorting network not used by inputs
+            t_size = T.size()
+            n_raised_to_nearest_pow2 = pow(2, ceil(log2(n)))
+            if n_raised_to_nearest_pow2 > n:
+                max_const_flat = DefineCoreirConst(t_size, pow(2,t_size) - 1)()
+                max_const = Hydrate(T)
+                wire(max_const_flat.O, max_const.I)
+
+            pow2_sort = DefineBitonicSortPow2(T, n_raised_to_nearest_pow2, cmp_component)()
+            for i in range(n_raised_to_nearest_pow2):
+                if i < n:
+                    wire(BitonicSort.I[i], pow2_sort.I[i])
+                    wire(BitonicSort.O[i], pow2_sort.O[i])
+                else:
+                    wire(max_const.out, pow2_sort.I[i])
+                    term = TermAnyType(T)
+                    wire(term.I, pow2_sort.O[i])
+
+    return _BitonicSort
+
 
 @cache_definition
 def DefineBitonicSortPow2(T: Kind, n: int, cmp_component: Callable[[DefineCircuitKind], Kind]):
     """
-
+    Sort n input elements using a bitonic sorting network. n must be a power of 2.
     :param T: The type of each element in the sort
     :param n: The number of elements to sort
     :param cmp_component: A circuit definition that accepts an inputs of type T and emits a subpart for comparison
@@ -32,7 +72,7 @@ def DefineBitonicSortPow2(T: Kind, n: int, cmp_component: Callable[[DefineCircui
 
     """
     class _BitonicSortPow2(Circuit):
-        name = "BitonicMergePow2_t{}_n{}_sort2LtDef{}".format(cleanName(str(T)), str(n), cleanName((str(sort2LtDef))))
+        name = "BitonicSortPow2_t{}_n{}".format(cleanName(str(T)), str(n))
         IO = ['I', In(Array[n, T]), 'O', Out(Array[n, T])]
         @classmethod
         def definition(BitonicSortPow2):
@@ -40,16 +80,17 @@ def DefineBitonicSortPow2(T: Kind, n: int, cmp_component: Callable[[DefineCircui
             # starting with just input ports
             ports = [[BitonicSortPow2.I[i] for i in range(n)]]
             # Sort ranges starting with 2^1 until 2^m == n
-            for i in range(1,int(log2(n))):
-                elements_per_merge = pow(2, i)
+            for i in range(int(log2(n))):
+                elements_per_merge = pow(2, i+1)
                 cur_prior_stage_port = 0
                 cur_stage_ports = []
-                for j in range(0,i):
-                    merger = DefineBitonicMergePow2(T, elements_per_merge, cmp_component, j)
-                    for k in range(0,elements_per_merge):
+                for j in range(n // pow(2, i+1)):
+                    merger = DefineBitonicMergePow2(T, elements_per_merge, cmp_component, j)()
+                    for k in range(elements_per_merge):
                         wire(ports[i][cur_prior_stage_port], merger.I[k])
                         cur_prior_stage_port += 1
                         cur_stage_ports += [merger.O[k]]
+                ports += [cur_stage_ports]
             last_ports = ports[-1]
             for i in range(len(last_ports)):
                 wire(last_ports[i], BitonicSortPow2.O[i])
@@ -58,9 +99,9 @@ def DefineBitonicSortPow2(T: Kind, n: int, cmp_component: Callable[[DefineCircui
 @cache_definition
 def DefineBitonicMergePow2(T: Kind, n: int, cmp_component: Callable[[DefineCircuitKind], Kind], ith_merge: int = 0):
     """
-
-    :param T: The type of each element in the sort
-    :param n: The number of elements to sort
+    Sort a bitonic sequence. n must be a power of 2.
+    :param T: The type of each element in the merge
+    :param n: The number of elements to merge
     :param cmp_component: A circuit definition that accepts an inputs of type T and emits a subpart for comparison
     in an instance of DefineSort2Elements
     :param ith_merge: The index of this merge. If multiple merge's aligned vertically, alternate directions
@@ -70,8 +111,7 @@ def DefineBitonicMergePow2(T: Kind, n: int, cmp_component: Callable[[DefineCircu
 
     """
     class _BitonicMergePow2(Circuit):
-        name = "BitonicMergePow2_t{}_n{}_sort2LtDef{}_ithMerge".format(cleanName(str(T)), str(n),
-                                                                       str(ith_merge))
+        name = "BitonicMergePow2_t{}_n{}_ithMerge{}".format(cleanName(str(T)), str(n), str(ith_merge))
         IO = ['I', In(Array[n, T]), 'O', Out(Array[n, T])]
         @classmethod
         def definition(BitonicMergePow2):
@@ -103,18 +143,6 @@ def DefineBitonicMergePow2(T: Kind, n: int, cmp_component: Callable[[DefineCircu
                     wire(mergers[1].O[i], BitonicMergePow2.O[n // 2 + i])
 
     return _BitonicMergePow2
-
-    """
-    wire(first_sorts[i].O0, mergers[0].I[i*2])
-    wire(first_sorts[i].O1, mergers[0].I[i*2+1])
-    wire(mergers[0].O[i*2], BitonicMergePow2.O[i*2])
-    wire(mergers[0].O[i*2+1], BitonicMergePow2.O[i*2+1])
-
-    wire(first_sorts[(n // 4) + i*2].O0, mergers[1].I[i*2])
-    wire(first_sorts[(n // 4) + i*2].O1, mergers[1].I[i*2+1])
-    wire(mergers[1].O[i*2], BitonicMergePow2.O[(n // 2) + i*2])
-    wire(mergers[1].O[i*2+1], BitonicMergePow2.O[(n // 2) + i*2+1])
-    """
 
 @cache_definition
 def DefineSort2Elements(T: Kind, cmp_component: Callable[[DefineCircuitKind], Kind] = id):
