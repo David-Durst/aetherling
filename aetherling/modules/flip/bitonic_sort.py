@@ -137,13 +137,14 @@ def DefineSort2Elements(T: Kind, cmp_component: Callable[[DefineCircuitKind], Ki
 
             lt = DefineCoreirUlt(cmp0_bits.out.N)()
 
-            wire(lt.I1, cmp0_bits.out)
-            wire(lt.I0, cmp1_bits.out)
+            wire(lt.I0, cmp0_bits.out)
+            wire(lt.I1, cmp1_bits.out)
 
-            wire(Sort2Elements.I0, sel.data[0][0])
-            wire(Sort2Elements.I1, sel.data[0][1])
-            wire(Sort2Elements.I0, sel.data[1][1])
-            wire(Sort2Elements.I1, sel.data[1][0])
+            # lt will emit 1 if I0 is less than
+            wire(Sort2Elements.I0, sel.data[1][0])
+            wire(Sort2Elements.I1, sel.data[1][1])
+            wire(Sort2Elements.I0, sel.data[0][1])
+            wire(Sort2Elements.I1, sel.data[0][0])
             wire(lt.O, sel.sel[0])
 
             wire(sel.out[0], Sort2Elements.O0)

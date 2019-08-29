@@ -25,7 +25,7 @@ def test_sort2_elements():
     tester.print("input1 k: %d, input1 v: %d\n", testcircuit.I1.k, testcircuit.I1.v)
     tester.print("output0 k: %d, output0 v: %d\n", testcircuit.O0.k, testcircuit.O0.v)
     tester.print("output1 k: %d, output1 v: %d\n", testcircuit.O1.k, testcircuit.O1.v)
-    tester.print("lt in0: %d, lt in1: %d, lt out k: %d\n", testcircuit.instances[3].I0, testcircuit.instances[3].I1, testcircuit.instances[3].O)
+    #tester.print("lt in0: %d, lt in1: %d, lt out k: %d\n", testcircuit.instances[3].I0, testcircuit.instances[3].I1, testcircuit.instances[3].O)
     tester.circuit.O0.k.expect(input1['k'])
     tester.circuit.O0.v.expect(input1['v'])
     tester.circuit.O1.k.expect(input0['k'])
