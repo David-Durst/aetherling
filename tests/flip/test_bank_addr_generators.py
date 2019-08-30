@@ -27,8 +27,8 @@ def test_sseq2tseq3_0_bank_addr_generator():
     # transpose the st_flat_idxs so inner array is on same clock
     flat_idxs_inner_per_clock = [[st_flat_idxs[s][t] for s in range(sseq_dim)] for t in range(tseq_dim)]
     # banks and addr should write to each clock
-    banks_per_clock = [[((flat_idx % sseq_dim) + (flat_idx / lcm_dim)) % sseq_dim for flat_idx in flat_idxs_one_clock] for flat_idxs_one_clock in flat_idxs_inner_per_clock]
-    addr_per_clock = [[flat_idx / sseq_dim for flat_idx in flat_idxs_one_clock] for flat_idxs_one_clock in flat_idxs_inner_per_clock]
+    banks_per_clock = [[((flat_idx % sseq_dim) + (flat_idx // lcm_dim)) % sseq_dim for flat_idx in flat_idxs_one_clock] for flat_idxs_one_clock in flat_idxs_inner_per_clock]
+    addr_per_clock = [[flat_idx // sseq_dim for flat_idx in flat_idxs_one_clock] for flat_idxs_one_clock in flat_idxs_inner_per_clock]
 
     testcircuit = DefineSTBankAddrGenerator(sseq_dim, tseq_dim, 0, 1)
 
