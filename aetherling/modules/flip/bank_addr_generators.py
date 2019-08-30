@@ -16,17 +16,17 @@ from mantle.common.countermod import SizedCounterModM, DefineCounterModM
 from mantle.coreir.arith import DefineAdd, DefineUDiv, DefineUMod
 from mantle import Decode
 from math import gcd
+from mantle.coreir import DefineCoreirConst
 
 
 
 @cache_definition
-def DefineTSBankAddrGenerator(no: int, io: int, ni: int, time_per_element: int, T: Kind, has_ce=False, has_reset=False):
+def DefineTSBankAddrGenerator(no: int, io: int, ni: int, time_per_element: int, has_ce=False, has_reset=False):
     """
     For a TSeq no io (SSeq ni T) input to or output from a flip, get the bank and address for reading and writing each T input
     every clock.
 
-    Note that the T passed to this operator just the Magma type each clock cycle.
-    You can get T by calling magma_repr on a space-time type T'.
+    You can get the time_per_element by calling time() on a space-time type T'.
 
     TSeq (SSeq) bank and address computations
     bank = (s + (flat_idx / lcm_dim)) % sseq_dim
@@ -45,18 +45,21 @@ def DefineTSBankAddrGenerator(no: int, io: int, ni: int, time_per_element: int, 
 
         name = "TSBankGenerator_no{}_io{}_ni{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(io), str(ni),
                                                                                     str(time_per_element),
-                                                                                    cleanName(str(T)), str(has_ce), str(has_reset))
+                                                                                    str(has_ce), str(has_reset))
         IO = ['bank', Array[no, Array[bank_width, Bit]], 'addr', Array[no, Array[addr_width, Bit]]] + \
              ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(TSBankGenerator):
             flat_idx_width = getRAMAddrWidth(no*ni)
+            # next element each time_per_element clock
+            if time_per_element > 1:
+                index_in_cur_element = SizedCounterModM(time_per_element, has_ce=has_ce, has_reset=has_reset)
+                next_element = Decode(time_per_element - 1, index_in_cur_element.O.N)(index_in_cur_element.O)
+            else:
+                next_element = DefineCoreirConst(1,1)()
             # each element of the SSeq is a separate vector lane
-            # increase by time_per_element
-            index_in_cur_element = SizedCounterModM(time_per_element, has_ce=has_ce, has_reset=has_reset)
             first_lane_flat_idx = SizedCounterModM((no+io)*ni, incr=ni, has_ce=True, has_reset=has_reset)()
             time_counter = SizedCounterModM(no+io, has_ce=True, has_reset=has_reset)
-            next_element = Decode(time_per_element - 1, index_in_cur_element.O.N)(index_in_cur_element.O)
             wire(next_element.O, first_lane_flat_idx.CE)
             wire(next_element.O, time_counter.CE)
             if has_ce:
@@ -106,13 +109,12 @@ def DefineTSBankAddrGenerator(no: int, io: int, ni: int, time_per_element: int, 
     return _TSBankGenerator
 
 @cache_definition
-def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: Kind, has_ce=False, has_reset=False):
+def DefineSTBankAddrGenerator(no: int, ni: int, ii: int, time_per_element: int, has_ce=False, has_reset=False):
     """
     For a SSeq no (TSeq ni ii T) input to or output from a flip, get the bank and address for reading and writing each T input
     every clock.
 
-    Note that the T passed to this operator just the Magma type each clock cycle.
-    You can get T by calling magma_repr on a space-time type T'.
+    You can get the time_per_element by calling time() on a space-time type T'.
 
     This counter will emit during the ii invalid periods. The rest of the circuit must know to ignore it during those
     periods.
@@ -131,19 +133,22 @@ def DefineSTBankGenerator(no: int, ni: int, ii: int, time_per_element: int, T: K
     class _STBankGenerator(Circuit):
         bank_width = getRAMAddrWidth(no)
         addr_width = getRAMAddrWidth(ni)
-        name = "STBankGenerator_no{}_ni{}_ii{}_tEl{}_T{}_hasCE{}_hasReset{}".format(str(no), str(ni), str(ii),
+        name = "STBankGenerator_no{}_ni{}_ii{}_tEl{}_hasCE{}_hasReset{}".format(str(no), str(ni), str(ii),
                                                                                     str(time_per_element),
-                                                                                    cleanName(str(T)), str(has_ce), str(has_reset))
+                                                                                    str(has_ce), str(has_reset))
         IO = ['bank', Array[no, Array[bank_width, Bit]], 'addr', Array[no, Array[addr_width, Bit]]] + \
              ClockInterface(has_ce, has_reset)
         @classmethod
         def definition(STBankGenerator):
             flat_idx_width = getRAMAddrWidth(no*ni)
+            # next element each time_per_element clock
+            if time_per_element > 1:
+                index_in_cur_element = SizedCounterModM(time_per_element, has_ce=has_ce, has_reset=has_reset)
+                next_element = Decode(time_per_element - 1, index_in_cur_element.O.N)(index_in_cur_element.O)
+            else:
+                next_element = DefineCoreirConst(1,1)()
             # each element of the SSeq is a separate vector lane
-            # increase by time_per_element
-            index_in_cur_element = SizedCounterModM(time_per_element, has_ce=has_ce, has_reset=has_reset)
             first_lane_flat_idx = DefineCounterModM(ni+ii, flat_idx_width, has_ce=True, has_reset=has_reset)()
-            next_element = Decode(time_per_element - 1, index_in_cur_element.O.N)(index_in_cur_element.O)
             wire(next_element.O, first_lane_flat_idx.CE)
             if has_ce:
                 wire(STBankGenerator.CE, index_in_cur_element.CE)
