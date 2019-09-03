@@ -1,4 +1,3 @@
-from aetherling.space_time_modules.space_time_types import *
 from aetherling.modules.permutation.assign_addresses import *
 
 def test_flat_idxs_tseq_3_0():

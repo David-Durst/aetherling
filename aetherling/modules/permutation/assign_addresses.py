@@ -14,7 +14,7 @@ class SpaceTimeIndex:
     t: int
 
 next_idx = 0
-def get_output_address_at_input(t:int, s:int, input_type, output_type):
+def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
     """
     Given non-nested space-time coordinates in input, get the non-nested
     space-time coordinates for the output
@@ -31,7 +31,7 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type):
     output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)
     return list(filter(lambda x: x.flat_idx == value, output_ts_value_triples))[0]
 
-def get_input_address_at_output(t:int, s:int, input_type, output_type):
+def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
     """
     Given non-nested space-time coordinates in output, get the non-nested
     space-time coordinates for the inpput

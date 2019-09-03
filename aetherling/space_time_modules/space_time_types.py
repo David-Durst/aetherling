@@ -18,7 +18,16 @@ class ST_TSeq():
     t: Kind
 
     def length(self):
+        """
+        Total amount of data over the entire time of the ST type
+        """
         return self.n * self.t.length()
+
+    def port_width(self):
+        """
+        Number of atoms each active clock
+        """
+        return self.t.port_width()
 
     def time(self):
         return (self.n + self.i) * self.t.time()
@@ -34,6 +43,9 @@ class ST_SSeq():
     def length(self):
         return self.n * self.t.length()
 
+    def port_width(self):
+        return self.n * self.t.port_width()
+
     def time(self):
         return self.t.time()
 
@@ -47,6 +59,9 @@ class ST_SSeq_Tuple():
 
     def length(self):
         return self.n * self.t.length()
+
+    def port_width(self):
+        return self.n * self.t.port_width()
 
     def time(self):
         return self.t.time()
@@ -62,6 +77,9 @@ class ST_Atom_Tuple():
     def length(self):
         return self.t0.length() + self.t1.length()
 
+    def port_width(self):
+        return 1
+
     def time(self):
         return 1
 
@@ -74,6 +92,9 @@ class ST_Int():
     def length(self):
         return 8
 
+    def port_width(self):
+        return 1
+
     def time(self):
         return 1
 
@@ -83,6 +104,9 @@ class ST_Int():
 @dataclass
 class ST_Bit():
     def length(self):
+        return 1
+
+    def port_width(self):
         return 1
 
     def time(self):

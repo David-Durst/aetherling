@@ -25,6 +25,12 @@ class ST_Tombstone:
     def time(self):
         return 1
 
+    def port_width(self):
+        return 1
+
+    def magma_repr(self):
+        raise Exception("shouldn't call magma_repr on tombstone.")
+
 
 def get_shared_and_diff_subtypes(input_type, output_type):
     """
