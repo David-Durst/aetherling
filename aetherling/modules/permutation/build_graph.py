@@ -57,6 +57,7 @@ def build_input_output_graph(input_type, output_type):
             input_addr = get_input_address_at_output(t, s, input_type, output_type)
             graph.output_nodes[t].flat_idxs += [input_addr.flat_idx]
             graph.output_nodes[t].neighbors += [input_addr]
-            graph.output_nodes[t].edge_banks += [s]
+            # using input_addr so that banks match
+            graph.output_nodes[t].edge_banks += [input_addr.s]
 
     return graph

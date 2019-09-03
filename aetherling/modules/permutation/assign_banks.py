@@ -23,7 +23,7 @@ def check_conflict(t: int, edge_banks: List[int]) -> BankConflict:
     used_banks_this_clock = []
     for s in range(len(edge_banks)):
         if edge_banks[s] in used_banks_this_clock:
-            return BankConflict(True, t, s, (s + 1) % len(edge_banks))
+            return BankConflict(True, t, s, (edge_banks[s] + 1) % len(edge_banks))
         else:
             used_banks_this_clock += [edge_banks[s]]
     return BankConflict(False, -1, -1, -1)
@@ -70,8 +70,9 @@ def resolve_conflict(graph: InputOutputGraph, conflict: BankConflict, is_input: 
         input_addr = get_input_address_at_output(t, s, graph.input_type, graph.output_type)
         graph.input_nodes[input_addr.t].edge_banks[input_addr.s] = conflict.new_bank
         induced_conflict = check_conflict(input_addr.t, graph.input_nodes[input_addr.t].edge_banks)
-    if induced_conflict:
+    if induced_conflict.is_conflict:
         resolve_conflict(graph, induced_conflict, not is_input)
+    return graph
 
 
 def assign_banks(graph: InputOutputGraph) -> InputOutputGraph:
