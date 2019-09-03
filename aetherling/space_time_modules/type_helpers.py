@@ -19,6 +19,12 @@ class ST_Tombstone:
     """
     A tombstone node. Present to end ST_Type trees that will be connected with other trees (like a diff with a shread_inner)
     """
+    def length(self):
+        return 1
+
+    def time(self):
+        return 1
+
 
 def get_shared_and_diff_subtypes(input_type, output_type):
     """
