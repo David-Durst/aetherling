@@ -13,8 +13,41 @@ class SpaceTimeIndex:
     s: int
     t: int
 
-
 next_idx = 0
+def get_output_address_at_input(t:int, s:int, input_type, output_type):
+    """
+    Given non-nested space-time coordinates in input, get the non-nested
+    space-time coordinates for the output
+    :param s: non-nested space coordinate in input
+    :param t: non-nest time coordinate in output
+    :param input_type: input nested Space-Time type
+    :param output_type:  output nested Space-Time type
+    :return: SpaceTimeIndex non-nested coordinates
+    """
+    global next_idx
+    non_nested_input_ts_vals = dimensions_to_flat_idx(input_type)
+    value = non_nested_input_ts_vals[t][s]
+    next_idx = 0
+    output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)
+    return list(filter(lambda x: x.flat_idx == value, output_ts_value_triples))[0]
+
+def get_input_address_at_output(t:int, s:int, input_type, output_type):
+    """
+    Given non-nested space-time coordinates in output, get the non-nested
+    space-time coordinates for the inpput
+    :param s: non-nested space coordinate in input
+    :param t: non-nest time coordinate in output
+    :param input_type: input nested Space-Time type
+    :param output_type:  output nested Space-Time type
+    :return: SpaceTimeIndex with non-nested coordinates
+    """
+    global next_idx
+    non_nested_output_ts_vals = dimensions_to_flat_idx(output_type)
+    value = non_nested_output_ts_vals[t][s]
+    next_idx = 0
+    input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)
+    return list(filter(lambda x: x.flat_idx == value, input_ts_value_triples))[0]
+
 def dimensions_to_flat_idx(dims):
     """
     Convert a nested space-time type into a 2d space-time representation.
@@ -23,7 +56,6 @@ def dimensions_to_flat_idx(dims):
     Each inner dimension of the output array is a vector lane.
 
     :param dims: the space-time type to convert
-    :param time_dims: the
     """
     global next_idx
     next_idx = 0
@@ -34,7 +66,6 @@ def dimensions_to_flat_idx(dims):
     # sort by s within each group now
     flattened_ts = list(map(lambda g : sorted(g, key=lambda x: x.s), flattened_grouped_ts))
     return list(map(lambda l : list(map(lambda x : x.flat_idx, l)), flattened_ts))
-
 
 
 flatten = lambda l: [item for sublist in l for item in sublist]
