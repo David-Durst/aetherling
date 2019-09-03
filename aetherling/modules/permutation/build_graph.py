@@ -1,4 +1,4 @@
-from aetherling.modules.permutation.assign_addresses import *
+from aetherling.modules.permutation.assign_ts_addresses import *
 from dataclasses import dataclass
 from typing import List
 

@@ -1,4 +1,4 @@
-from aetherling.modules.permutation.assign_addresses import *
+from aetherling.modules.permutation.assign_ts_addresses import *
 from aetherling.modules.permutation.build_graph import *
 from itertools import accumulate, groupby
 from functools import reduce

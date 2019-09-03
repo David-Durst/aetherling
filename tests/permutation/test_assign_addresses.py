@@ -1,4 +1,4 @@
-from aetherling.modules.permutation.assign_addresses import *
+from aetherling.modules.permutation.assign_ts_addresses import *
 
 def test_flat_idxs_tseq_3_0():
     tseq_3_0 = ST_TSeq(3, 0, ST_Int())
