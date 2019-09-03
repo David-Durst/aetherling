@@ -21,11 +21,11 @@ def check_conflict(t: int, edge_banks: List[int]) -> BankConflict:
     :return: Whether a conflict exists and one of the elements to change to fix the conflict
     """
     used_banks_this_clock = []
-    for s in range(edge_banks):
+    for s in range(len(edge_banks)):
         if edge_banks[s] in used_banks_this_clock:
             return BankConflict(True, t, s, (s + 1) % len(edge_banks))
         else:
-            used_banks_this_clock += edge_banks[s]
+            used_banks_this_clock += [edge_banks[s]]
     return BankConflict(False, -1, -1, -1)
 
 def find_conflict(table: List[BipartiteNode]) -> BankConflict:
