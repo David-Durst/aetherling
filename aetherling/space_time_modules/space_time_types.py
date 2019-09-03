@@ -18,7 +18,7 @@ class ST_TSeq():
         return self.n * self.t.length()
 
     def time(self):
-        return (self.n + self.i) * self.t.length()
+        return (self.n + self.i) * self.t.time()
 
     def magma_repr(self):
         return self.t.magma_repr()
