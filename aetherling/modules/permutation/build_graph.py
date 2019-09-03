@@ -1,6 +1,6 @@
 from aetherling.modules.permutation.assign_ts_addresses import *
 from dataclasses import dataclass
-from typing import List
+from typing import List, Any
 
 @dataclass
 class BipartiteNode:
@@ -14,7 +14,8 @@ class BipartiteNode:
     flat_idxs: List[int]
     # a neighbor can appear multiple times, once per shared value
     neighbors: List[SpaceTimeIndex]
-    edge_colors: List[int]
+    # assigning a bank/color for the edge
+    edge_banks: List[int]
 
 @dataclass
 class InputOutputGraph:
@@ -22,7 +23,9 @@ class InputOutputGraph:
     A graph of input and output nodes representing the per clock operations of a permutation
     """
     input_nodes: List[BipartiteNode]
+    input_type: Any
     output_nodes: List[BipartiteNode]
+    output_type: Any
 
 def build_input_output_graph(input_type, output_type):
     """
@@ -40,8 +43,8 @@ def build_input_output_graph(input_type, output_type):
         raise Exception("input_type " ++ str(input_type) ++ " output_type " ++ str(output_type) ++ " port_widths don't match.")
     num_nodes_per_side = input_type.time()
     elements_per_clock = input_type.port_width()
-    graph = InputOutputGraph([BipartiteNode(t, [], [], []) for t in range(num_nodes_per_side)],
-                             [BipartiteNode(t, [], [], []) for t in range(num_nodes_per_side)])
+    graph = InputOutputGraph([BipartiteNode(t, [], [], []) for t in range(num_nodes_per_side)], input_type,
+                             [BipartiteNode(t, [], [], []) for t in range(num_nodes_per_side)], output_type)
     # for each t and s, add the edges
     for t in range(num_nodes_per_side):
         for s in range(elements_per_clock):
@@ -49,11 +52,11 @@ def build_input_output_graph(input_type, output_type):
             output_addr = get_output_address_at_input(t, s, input_type, output_type)
             graph.input_nodes[t].flat_idxs += [output_addr.flat_idx]
             graph.input_nodes[t].neighbors += [output_addr]
-            graph.input_nodes[t].edge_colors += [s]
+            graph.input_nodes[t].edge_banks += [s]
             # add data to output part of graph
             input_addr = get_input_address_at_output(t, s, input_type, output_type)
             graph.output_nodes[t].flat_idxs += [input_addr.flat_idx]
             graph.output_nodes[t].neighbors += [input_addr]
-            graph.output_nodes[t].edge_colors += [s]
+            graph.output_nodes[t].edge_banks += [s]
 
     return graph
