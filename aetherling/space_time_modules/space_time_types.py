@@ -11,7 +11,7 @@ def is_nested(st_type):
     else:
         return False
 
-@dataclass
+@dataclass(frozen=True)
 class ST_TSeq():
     n: int
     i: int
@@ -35,7 +35,7 @@ class ST_TSeq():
     def magma_repr(self):
         return self.t.magma_repr()
 
-@dataclass
+@dataclass(frozen=True)
 class ST_SSeq():
     n: int
     t: Kind
@@ -52,7 +52,7 @@ class ST_SSeq():
     def magma_repr(self):
         return Array[self.n, self.t.magma_repr()]
 
-@dataclass
+@dataclass(frozen=True)
 class ST_SSeq_Tuple():
     n: int
     t: Kind
@@ -69,7 +69,7 @@ class ST_SSeq_Tuple():
     def magma_repr(self):
         return Array[self.n, self.t.magma_repr()]
 
-@dataclass
+@dataclass(frozen=True)
 class ST_Atom_Tuple():
     t0: Kind
     t1: Kind
@@ -87,7 +87,7 @@ class ST_Atom_Tuple():
         return Tuple(self.t0.magma_repr(), self.t1.magma_repr())
 
 int_width = 8
-@dataclass
+@dataclass(frozen=True)
 class ST_Int():
     def length(self):
         return 8
@@ -101,7 +101,7 @@ class ST_Int():
     def magma_repr(self):
         return Array[int_width, Bit]
 
-@dataclass
+@dataclass(frozen=True)
 class ST_Bit():
     def length(self):
         return 1

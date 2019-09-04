@@ -2,6 +2,10 @@ from aetherling.space_time_modules.space_time_types import *
 from itertools import accumulate, groupby
 from functools import reduce
 from dataclasses import dataclass
+import functools
+
+from magma import cache_definition
+
 
 @dataclass
 class SpaceTimeIndex:
@@ -14,6 +18,9 @@ class SpaceTimeIndex:
     t: int
 
 next_idx = 0
+
+
+@functools.lru_cache(maxsize=None, typed=False)
 def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
     """
     Given non-nested space-time coordinates in input, get the non-nested
@@ -31,6 +38,7 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceT
     output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)
     return list(filter(lambda x: x.flat_idx == value, output_ts_value_triples))[0]
 
+@functools.lru_cache(maxsize=None, typed=False)
 def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
     """
     Given non-nested space-time coordinates in output, get the non-nested
@@ -48,6 +56,7 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)
     return list(filter(lambda x: x.flat_idx == value, input_ts_value_triples))[0]
 
+@functools.lru_cache(maxsize=None, typed=False)
 def dimensions_to_flat_idx(dims):
     """
     Convert a nested space-time type into a 2d space-time representation.

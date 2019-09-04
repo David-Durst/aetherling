@@ -36,7 +36,7 @@ def test_4_6_flip_banks():
 
 def test_T10_S6_T9_banks():
     t_len_1 = 10
-    t_len_2 = 9
+    t_len_2 = 20
     s_len = 6
     input_type = ST_TSeq(t_len_1, 0, ST_SSeq(s_len, ST_TSeq(t_len_2, 0, ST_Tombstone())))
     output_type = ST_TSeq(t_len_2, 0, ST_TSeq(t_len_1, 0, ST_SSeq(s_len, ST_Tombstone())))
