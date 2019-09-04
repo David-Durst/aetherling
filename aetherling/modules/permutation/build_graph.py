@@ -55,11 +55,15 @@ def build_input_output_graph(input_type, output_type):
             graph.input_nodes[t].flat_idxs += [output_addr.flat_idx]
             graph.input_nodes[t].neighbors += [output_addr]
             graph.input_nodes[t].edge_banks += [s]
+            # adding garbage edge_addr, will fix during assign_memory_addresses
+            graph.input_nodes[t].edge_addr += [-1]
             # add data to output part of graph
             input_addr = get_input_address_at_output(t, s, input_type, output_type)
             graph.output_nodes[t].flat_idxs += [input_addr.flat_idx]
             graph.output_nodes[t].neighbors += [input_addr]
             # using input_addr so that banks match
             graph.output_nodes[t].edge_banks += [input_addr.s]
+            # adding garbage edge_addr, will fix during assign_memory_addresses
+            graph.output_nodes[t].edge_addr += [-1]
 
     return graph
