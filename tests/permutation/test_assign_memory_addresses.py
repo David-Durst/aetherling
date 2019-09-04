@@ -9,7 +9,29 @@ def test_2_3_flip_mem_addresses():
     output_type = ST_TSeq(t_len, 0, ST_SSeq(s_len, ST_Tombstone()))
     graph = build_input_output_graph(input_type, output_type)
     fixed_graph = assign_memory_addresses(assign_banks(graph))
+    check_mem_addr(fixed_graph, s_len, t_len)
 
+def test_4_6_flip_mem_addresses():
+    t_len = 4
+    s_len = 6
+    input_type = ST_SSeq(s_len, ST_TSeq(t_len, 0, ST_Tombstone()))
+    output_type = ST_TSeq(t_len, 0, ST_SSeq(s_len, ST_Tombstone()))
+    graph = build_input_output_graph(input_type, output_type)
+    fixed_graph = assign_memory_addresses(assign_banks(graph))
+    check_mem_addr(fixed_graph, s_len, t_len)
+
+def test_T40_S6_T20_banks():
+    t_len_1 = 40
+    t_len_2 = 20
+    s_len = 6
+    input_type = ST_TSeq(t_len_1, 0, ST_SSeq(s_len, ST_TSeq(t_len_2, 0, ST_Tombstone())))
+    output_type = ST_TSeq(t_len_2, 0, ST_TSeq(t_len_1, 0, ST_SSeq(s_len, ST_Tombstone())))
+    graph = build_input_output_graph(input_type, output_type)
+    fixed_graph = assign_banks(graph)
+    check_mem_addr(fixed_graph, s_len, t_len_1*t_len_2)
+
+
+def check_mem_addr(fixed_graph, s_len, t_len):
     free_addresses = [[True] * get_bank_size(fixed_graph) for _ in range(s_len)]
     first_output_latency = get_output_latencies(fixed_graph)[0]
     for t in range(t_len):
@@ -27,7 +49,7 @@ def test_2_3_flip_mem_addresses():
             # output_addr = get_output_address_at_input(t, s, fixed_graph.input_type, fixed_graph.output_type)
             bank = fixed_graph.input_nodes[t].edge_banks[s]
             addr = fixed_graph.input_nodes[t].edge_addr[s]
-            output_addr = get_output_address_at_input(t, s, graph.input_type, graph.output_type)
+            output_addr = get_output_address_at_input(t, s, fixed_graph.input_type, fixed_graph.output_type)
             assert free_addresses[bank][addr]
             assert addr == fixed_graph.output_nodes[output_addr.t].edge_addr[output_addr.s]
             free_addresses[bank][addr] = False
