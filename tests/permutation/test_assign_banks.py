@@ -34,8 +34,8 @@ def test_4_6_flip_banks():
             assert fixed_graph.input_nodes[t].edge_banks[s] == \
                    fixed_graph.output_nodes[output_addr.t].edge_banks[output_addr.s]
 
-def test_T10_S6_T9_banks():
-    t_len_1 = 10
+def test_T40_S6_T20_banks():
+    t_len_1 = 40
     t_len_2 = 20
     s_len = 6
     input_type = ST_TSeq(t_len_1, 0, ST_SSeq(s_len, ST_TSeq(t_len_2, 0, ST_Tombstone())))

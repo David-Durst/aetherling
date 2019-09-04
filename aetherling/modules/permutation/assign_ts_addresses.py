@@ -79,27 +79,28 @@ def dimensions_to_flat_idx(dims):
 
 flatten = lambda l: [item for sublist in l for item in sublist]
 
-def dimensions_to_flat_idx_helper(dims, t_idx = [], t_len = [], s_idx = [], s_len = []):
+@functools.lru_cache(maxsize=None, typed=False)
+def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = ()):
     global next_idx
     if type(dims) == ST_SSeq or type(dims) == ST_SSeq_Tuple:
-        nested_result = [dimensions_to_flat_idx_helper(dims.t, t_idx, t_len, [s] + s_idx, [dims.n] + s_len)
+        nested_result = [dimensions_to_flat_idx_helper(dims.t, t_idx, t_len, tuple([s]) + s_idx, tuple([dims.n]) + s_len)
              for s in range(dims.n)]
         return flatten(nested_result)
     elif type(dims) == ST_TSeq:
-        nested_result = [dimensions_to_flat_idx_helper(dims.t, [t] + t_idx, [dims.n] + t_len, s_idx, s_len)
+        nested_result = [dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len, s_idx, s_len)
              for t in range(dims.n)]
         return flatten(nested_result)
     else:
         # track how much time each t_idx indicates due to nested index structure
         # drop the last value because each t_idx time is the product of all
         # time dimensions inside of it. No t_idx contains last dimension
-        time_per_t_len = list(accumulate([1] + t_len, lambda x,y : x*y))[:-1]
-        t_idx_with_time_per_len = zip(time_per_t_len, t_idx)
+        time_per_t_len = list(accumulate([1] + list(t_len), lambda x,y : x*y))[:-1]
+        t_idx_with_time_per_len = zip(time_per_t_len, list(t_idx))
         time_per_t_idx = list(map(lambda x: x[0]*x[1], t_idx_with_time_per_len))
         t = reduce(lambda x,y: x+y, [0] + time_per_t_idx)
         # do same computation for space
-        time_per_s_len = list(accumulate([1] + s_len, lambda x,y : x*y))
-        s_idx_with_time_per_len = zip(time_per_s_len, s_idx)
+        time_per_s_len = list(accumulate([1] + list(s_len), lambda x,y : x*y))
+        s_idx_with_time_per_len = zip(time_per_s_len, list(s_idx))
         time_per_s_idx = list(map(lambda x: x[0]*x[1], s_idx_with_time_per_len))
         s = reduce(lambda x,y: x+y, [0] + time_per_s_idx)
         next_idx += 1
