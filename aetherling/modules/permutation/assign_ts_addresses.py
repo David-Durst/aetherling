@@ -17,8 +17,6 @@ class SpaceTimeIndex:
     s: int
     t: int
 
-next_idx = 0
-
 @functools.lru_cache(maxsize=None, typed=False)
 def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
     """
@@ -30,11 +28,9 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceT
     :param output_type:  output nested Space-Time type
     :return: SpaceTimeIndex non-nested coordinates
     """
-    global next_idx
     non_nested_input_ts_vals = dimensions_to_flat_idx(input_type)
     value = non_nested_input_ts_vals[t][s]
-    next_idx = 0
-    output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)
+    output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)[0]
     return next(iter([idx for idx in output_ts_value_triples if idx.flat_idx == value]))
 
 @functools.lru_cache(maxsize=None, typed=False)
@@ -48,11 +44,9 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     :param output_type:  output nested Space-Time type
     :return: SpaceTimeIndex with non-nested coordinates
     """
-    global next_idx
     non_nested_output_ts_vals = dimensions_to_flat_idx(output_type)
     value = non_nested_output_ts_vals[t][s]
-    next_idx = 0
-    input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)
+    input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)[0]
     return next(iter([idx for idx in input_ts_value_triples if idx.flat_idx == value]))
 
 @functools.lru_cache(maxsize=None, typed=False)
@@ -65,9 +59,7 @@ def dimensions_to_flat_idx(dims):
 
     :param dims: the space-time type to convert
     """
-    global next_idx
-    next_idx = 0
-    flat_elems = dimensions_to_flat_idx_helper(dims)
+    flat_elems = dimensions_to_flat_idx_helper(dims)[0]
     # need to sort before groupby to get actual, sql like groupby
     flattened_sorted = sorted(flat_elems, key=lambda x: x.t)
     flattened_grouped_ts = [list(group) for _, group in groupby(flattened_sorted, lambda x: x.t)]
@@ -76,19 +68,25 @@ def dimensions_to_flat_idx(dims):
     return list(map(lambda l : list(map(lambda x : x.flat_idx, l)), flattened_ts))
 
 
-flatten = lambda l: [item for sublist in l for item in sublist]
+def flatten(l):
+    return [item for sublist in l for item in sublist]
 
 @functools.lru_cache(maxsize=None, typed=False)
-def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = ()):
-    global next_idx
+def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = (), next_idx = 0):
     if type(dims) == ST_SSeq or type(dims) == ST_SSeq_Tuple:
-        nested_result = [dimensions_to_flat_idx_helper(dims.t, t_idx, t_len, tuple([s]) + s_idx, tuple([dims.n]) + s_len)
-             for s in range(dims.n)]
-        return flatten(nested_result)
+        nested_result = []
+        for s in range(dims.n):
+            (res, next_idx) = dimensions_to_flat_idx_helper(dims.t, t_idx, t_len,
+                                                              tuple([s]) + s_idx, tuple([dims.n]) + s_len, next_idx)
+            nested_result += [res]
+        return flatten(nested_result), next_idx
     elif type(dims) == ST_TSeq:
-        nested_result = [dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len, s_idx, s_len)
-             for t in range(dims.n)]
-        return flatten(nested_result)
+        nested_result = []
+        for t in range(dims.n):
+            (res, next_idx) = dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len,
+                                                              s_idx, s_len, next_idx)
+            nested_result += [res]
+        return flatten(nested_result), next_idx
     else:
         # track how much time each t_idx indicates due to nested index structure
         # drop the last value because each t_idx time is the product of all
@@ -103,7 +101,7 @@ def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_le
         time_per_s_idx = list(map(lambda x: x[0]*x[1], s_idx_with_time_per_len))
         s = reduce(lambda x,y: x+y, [0] + time_per_s_idx)
         next_idx += 1
-        return [SpaceTimeIndex(next_idx - 1, s, t)]
+        return [SpaceTimeIndex(next_idx - 1, s, t)], next_idx
 
 
 
