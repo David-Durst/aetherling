@@ -19,7 +19,6 @@ class SpaceTimeIndex:
 
 next_idx = 0
 
-
 @functools.lru_cache(maxsize=None, typed=False)
 def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
     """
@@ -36,7 +35,7 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceT
     value = non_nested_input_ts_vals[t][s]
     next_idx = 0
     output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)
-    return list(filter(lambda x: x.flat_idx == value, output_ts_value_triples))[0]
+    return next(iter([idx for idx in output_ts_value_triples if idx.flat_idx == value]))
 
 @functools.lru_cache(maxsize=None, typed=False)
 def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
@@ -54,7 +53,7 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     value = non_nested_output_ts_vals[t][s]
     next_idx = 0
     input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)
-    return list(filter(lambda x: x.flat_idx == value, input_ts_value_triples))[0]
+    return next(iter([idx for idx in input_ts_value_triples if idx.flat_idx == value]))
 
 @functools.lru_cache(maxsize=None, typed=False)
 def dimensions_to_flat_idx(dims):
