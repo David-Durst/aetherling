@@ -1,7 +1,6 @@
 from aetherling.modules.permutation.build_graph import *
 from dataclasses import dataclass
 from typing import List
-import random
 
 @dataclass
 class BankConflict():
@@ -56,12 +55,6 @@ def find_conflict(table: List[BipartiteNode]) -> BankConflict:
         conflict = check_conflict(t, table[t].edge_banks)
         if conflict.is_conflict:
             return conflict
-#        used_banks_this_clock = []
-#        for s in range(len(table[t].edge_banks)):
-#            if table[t].edge_banks[s] in used_banks_this_clock:
-#                return BankConflict(True, t, s, (s + 1) % len(table[t].edge_banks))
-#            else:
-#                used_banks_this_clock += table[t].edge_banks[s]
     return BankConflict(False, -1, -1, -1)
 
 def resolve_conflict(graph: InputOutputGraph, conflict: BankConflict, is_input: bool) -> InputOutputGraph:
