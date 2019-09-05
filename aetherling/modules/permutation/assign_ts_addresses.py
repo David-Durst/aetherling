@@ -6,7 +6,7 @@ import functools
 from typing import List, Union
 import typing
 
-@dataclass(order=True)
+@dataclass(order=True, frozen=True)
 class FlatIndex:
     """
     Flat indexes for both invalids and valids.
@@ -41,7 +41,7 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceT
     non_nested_input_ts_vals = dimensions_to_flat_idx(input_type)
     value = non_nested_input_ts_vals[t][s]
     output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)[0]
-    return next(iter([idx for idx in output_ts_value_triples if idx.flat_idx == value]))
+    return next(iter([idx for idx in output_ts_value_triples if (idx.flat_idx.invalid == value.invalid) and (idx.flat_idx.idx == value.idx)]))
 
 @functools.lru_cache(maxsize=None, typed=False)
 def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
@@ -57,7 +57,7 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     non_nested_output_ts_vals = dimensions_to_flat_idx(output_type)
     value = non_nested_output_ts_vals[t][s]
     input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)[0]
-    return next(iter([idx for idx in input_ts_value_triples if idx.flat_idx == value]))
+    return next(iter([idx for idx in input_ts_value_triples if (idx.flat_idx.invalid == value.invalid) and (idx.flat_idx.idx == value.idx)]))
 
 @functools.lru_cache(maxsize=None, typed=False)
 def dimensions_to_flat_idx(dims) -> List[FlatIndex]:
