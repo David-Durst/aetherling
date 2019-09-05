@@ -38,11 +38,9 @@ def build_input_output_graph(input_type, output_type):
     :return: An InputOutputGraph
     """
     if input_type.time() != output_type.time():
-        raise Exception("input_type " ++ str(input_type) ++ " output_type " ++ str(output_type) ++ " times don't match.")
+        raise Exception("input_type " + str(input_type) + " output_type " + str(output_type) + " times don't match.")
     if input_type.length() != output_type.length():
-        raise Exception("input_type " ++ str(input_type) ++ " output_type " ++ str(output_type) ++ " lengths don't match.")
-    if input_type.port_width() != output_type.port_width():
-        raise Exception("input_type " ++ str(input_type) ++ " output_type " ++ str(output_type) ++ " port_widths don't match.")
+        raise Exception("input_type " + str(input_type) + " output_type " + str(output_type) + " lengths don't match.")
     num_nodes_per_side = input_type.time()
     elements_per_clock = max(input_type.port_width(), output_type.port_width())
     graph = InputOutputGraph([BipartiteNode(t, [], [], [], []) for t in range(num_nodes_per_side)], input_type,

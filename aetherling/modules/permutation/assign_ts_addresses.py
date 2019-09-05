@@ -58,7 +58,6 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     :param output_type:  output nested Space-Time type
     :return: SpaceTimeIndex with non-nested coordinates
     """
-    min_port_width = min(input_type.port_width(), output_type.port_width())
     max_port_width = max(input_type.port_width(), output_type.port_width())
     total_time = input_type.time()
     non_nested_output_flat_indexes = dimensions_to_flat_idx(output_type, min_port_width = output_type.port_width(),

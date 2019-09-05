@@ -18,7 +18,8 @@ def get_latency_for_output(o: BipartiteNode) -> int:
     :return: the latency, the first clock cycle where the output can be emitted without violating
     causality
     """
-    return max(list(map(lambda x: x.t, o.neighbors))) + l_memory + 2*l_network
+    # don't count nodes that are invalid, don't need to wait for them to arrive
+    return max(list(map(lambda x: x.t, [node for node in o.neighbors if not node.flat_idx.invalid])), default=0) + l_memory + 2*l_network
 
 def get_output_latencies(graph: InputOutputGraph) -> List[int]:
     """
