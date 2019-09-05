@@ -3,7 +3,7 @@ from itertools import accumulate, groupby
 from functools import reduce
 from dataclasses import dataclass
 import functools
-from typing import List, Union
+from typing import List, Union, Dict
 import typing
 
 @dataclass(order=True, frozen=True)
@@ -38,10 +38,10 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceT
     :param output_type:  output nested Space-Time type
     :return: SpaceTimeIndex non-nested coordinates
     """
-    non_nested_input_ts_vals = dimensions_to_flat_idx(input_type)
-    value = non_nested_input_ts_vals[t][s]
-    output_ts_value_triples = dimensions_to_flat_idx_helper(output_type)[0]
-    return next(iter([idx for idx in output_ts_value_triples if (idx.flat_idx.invalid == value.invalid) and (idx.flat_idx.idx == value.idx)]))
+    non_nested_input_flat_indexes = dimensions_to_flat_idx(input_type)
+    flat_index = non_nested_input_flat_indexes[t][s]
+    output_flat_to_st_lookup = get_flat_idx_to_space_time_idx_lookup_table(output_type)
+    return output_flat_to_st_lookup[flat_index]
 
 @functools.lru_cache(maxsize=None, typed=False)
 def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceTimeIndex:
@@ -54,10 +54,15 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     :param output_type:  output nested Space-Time type
     :return: SpaceTimeIndex with non-nested coordinates
     """
-    non_nested_output_ts_vals = dimensions_to_flat_idx(output_type)
-    value = non_nested_output_ts_vals[t][s]
-    input_ts_value_triples = dimensions_to_flat_idx_helper(input_type)[0]
-    return next(iter([idx for idx in input_ts_value_triples if (idx.flat_idx.invalid == value.invalid) and (idx.flat_idx.idx == value.idx)]))
+    non_nested_output_flat_indexes = dimensions_to_flat_idx(output_type)
+    flat_index = non_nested_output_flat_indexes[t][s]
+    input_flat_to_st_lookup = get_flat_idx_to_space_time_idx_lookup_table(input_type)
+    return input_flat_to_st_lookup[flat_index]
+
+@functools.lru_cache(maxsize=None, typed=False)
+def get_flat_idx_to_space_time_idx_lookup_table(dims) -> Dict[FlatIndex, SpaceTimeIndex]:
+    space_time_indexes = dimensions_to_space_time_index(dims)[0]
+    return {idx.flat_idx:idx for idx in space_time_indexes}
 
 @functools.lru_cache(maxsize=None, typed=False)
 def dimensions_to_flat_idx(dims) -> List[FlatIndex]:
@@ -69,7 +74,7 @@ def dimensions_to_flat_idx(dims) -> List[FlatIndex]:
 
     :param dims: the space-time type to convert
     """
-    flat_elems = dimensions_to_flat_idx_helper(dims)[0]
+    flat_elems = dimensions_to_space_time_index(dims)[0]
     # need to sort before groupby to get actual, sql like groupby
     flattened_sorted = sorted(flat_elems, key=lambda x: x.t)
     flattened_grouped_ts = [list(group) for _, group in groupby(flattened_sorted, lambda x: x.t)]
@@ -79,7 +84,7 @@ def dimensions_to_flat_idx(dims) -> List[FlatIndex]:
 
 def fix_invalid_indexes(indexes: List[SpaceTimeIndex]) -> SpaceTimeIndex:
     """
-    Given a list of FlatIndexes, convert all the invalid indexes from (t,s) to
+    Given a list of SpaceTimeIndexes, convert all the invalid indexs' FlatIndexes idx from (t,s) to
     ints that represent their order in time rather than flattened order.
     :param indexes: indexes that need their invalids converted from (t,s) to ints
     :return: the indexes after conversion
@@ -96,8 +101,8 @@ def flatten(l):
     return [item for sublist in l for item in sublist]
 
 @functools.lru_cache(maxsize=None, typed=False)
-def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = (),
-                                  next_idx_valid = 0, invalid = False, first_call = True) -> typing.Tuple[List[SpaceTimeIndex], int]:
+def dimensions_to_space_time_index(dims, t_idx = (), t_len = (), s_idx = (), s_len = (),
+                                   next_idx_valid = 0, invalid = False, first_call = True) -> typing.Tuple[List[SpaceTimeIndex], int]:
     """
     Convert a space-time Type to a flat list of SpaceTimeIndexs with the s and t values along with the flat_idx.
     This is a recursive function. The parameters other than dim are the statuses of the current call.
@@ -116,18 +121,18 @@ def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_le
         nested_result = []
         for s in range(dims.n):
             (res, next_idx_valid) = \
-                dimensions_to_flat_idx_helper(dims.t, t_idx, t_len,
-                                              tuple([s]) + s_idx, tuple([dims.n]) + s_len,
-                                              next_idx_valid, invalid, False)
+                dimensions_to_space_time_index(dims.t, t_idx, t_len,
+                                               tuple([s]) + s_idx, tuple([dims.n]) + s_len,
+                                               next_idx_valid, invalid, False)
             nested_result += [res]
         result = flatten(nested_result), next_idx_valid
     elif type(dims) == ST_TSeq:
         nested_result = []
         for t in range(dims.n + dims.i):
             (res, next_idx_valid) = \
-                dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n + dims.i]) + t_len,
-                                              s_idx, s_len, next_idx_valid,
-                                              invalid or (t >= dims.n), False)
+                dimensions_to_space_time_index(dims.t, tuple([t]) + t_idx, tuple([dims.n + dims.i]) + t_len,
+                                               s_idx, s_len, next_idx_valid,
+                                               invalid or (t >= dims.n), False)
             nested_result += [res]
         result = flatten(nested_result), next_idx_valid
     else:
