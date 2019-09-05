@@ -31,6 +31,17 @@ def test_T4_S2_T4_banks():
     fixed_graph = assign_banks(graph)
     check_banks(fixed_graph, s_len, t_len_1*t_len_2)
 
+def test_T4_2_S2_T4_banks():
+    t_len_1 = 4
+    i_len_1 = 2
+    t_len_2 = 4
+    s_len = 2
+    input_type = ST_TSeq(t_len_1, i_len_1, ST_SSeq(s_len, ST_TSeq(t_len_2, 0, ST_Tombstone())))
+    output_type = ST_TSeq(t_len_2, 0, ST_TSeq(t_len_1, i_len_1, ST_SSeq(s_len, ST_Tombstone())))
+    graph = build_input_output_graph(input_type, output_type)
+    fixed_graph = assign_banks(graph)
+    check_banks(fixed_graph, s_len, (t_len_1+i_len_1)*t_len_2)
+
 def test_T40_S6_T20_banks():
     t_len_1 = 40
     t_len_2 = 20
