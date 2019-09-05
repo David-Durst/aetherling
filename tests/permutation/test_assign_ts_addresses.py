@@ -9,7 +9,7 @@ def test_flat_idxs_tseq_3_3():
     tseq_3_0 = ST_TSeq(3, 3, ST_Int())
     flat_idxs = dimensions_to_flat_idx(tseq_3_0)
     assert flat_idxs == [[FlatIndex(False, 0)],[FlatIndex(False, 1)],[FlatIndex(False, 2)],
-                         [FlatIndex(True, (3, 0))],[FlatIndex(True, (4, 0))],[FlatIndex(True, (5, 0))]]
+                         [FlatIndex(True, 0)],[FlatIndex(True, 1)],[FlatIndex(True, 2)]]
 
 def test_flat_idxs_sseq_3():
     sseq_3 = ST_SSeq(3, ST_Int())
@@ -27,7 +27,14 @@ def test_flat_idxs_tseq_2_1_sseq_3():
     flat_idxs = dimensions_to_flat_idx(vals)
     assert flat_idxs == [[FlatIndex(False, 0), FlatIndex(False, 1), FlatIndex(False, 2)],
                          [FlatIndex(False, 3), FlatIndex(False, 4), FlatIndex(False, 5)],
-                         [FlatIndex(True, (2, 0)), FlatIndex(True, (2, 1)), FlatIndex(True, (2, 2))]]
+                         [FlatIndex(True, 0), FlatIndex(True, 1), FlatIndex(True, 2)]]
+
+def test_flat_idxs_sseq_3_tseq_2_1():
+    vals = ST_SSeq(3, ST_TSeq(2, 1, ST_Int()))
+    flat_idxs = dimensions_to_flat_idx(vals)
+    assert flat_idxs == [[FlatIndex(False, 0), FlatIndex(False, 2), FlatIndex(False, 4)],
+                         [FlatIndex(False, 1), FlatIndex(False, 3), FlatIndex(False, 5)],
+                         [FlatIndex(True, 0), FlatIndex(True, 1), FlatIndex(True, 2)]]
 
 def test_flat_idxs_tseq_2_0_sseq_3_tseq_2_0():
     vals = ST_TSeq(2, 0, ST_SSeq(3, ST_TSeq(2, 0, ST_Int())))

@@ -60,7 +60,7 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     return next(iter([idx for idx in input_ts_value_triples if idx.flat_idx == value]))
 
 @functools.lru_cache(maxsize=None, typed=False)
-def dimensions_to_flat_idx(dims) -> typing.Tuple[int, bool]:
+def dimensions_to_flat_idx(dims) -> List[FlatIndex]:
     """
     Convert a nested space-time type into a 2d space-time representation.
     This function tells me when each value should be read and written and if it's valid.
@@ -77,13 +77,27 @@ def dimensions_to_flat_idx(dims) -> typing.Tuple[int, bool]:
     flattened_ts = list(map(lambda g : sorted(g, key=lambda x: x.s), flattened_grouped_ts))
     return list(map(lambda l : list(map(lambda x : x.flat_idx, l)), flattened_ts))
 
+def fix_invalid_indexes(indexes: List[SpaceTimeIndex]) -> SpaceTimeIndex:
+    """
+    Given a list of FlatIndexes, convert all the invalid indexes from (t,s) to
+    ints that represent their order in time rather than flattened order.
+    :param indexes: indexes that need their invalids converted from (t,s) to ints
+    :return: the indexes after conversion
+    """
+    sorted_invalid_indexes = sorted([orig_idx.flat_idx.idx for orig_idx in indexes if orig_idx.flat_idx.invalid])
+    invalid_ts_to_flat_idx = {}
+    for i in range(len(sorted_invalid_indexes)):
+        invalid_ts_to_flat_idx[sorted_invalid_indexes[i]] = i
+    return [SpaceTimeIndex(FlatIndex(True, invalid_ts_to_flat_idx[orig_idx.flat_idx.idx]), orig_idx.s, orig_idx.t)
+            if orig_idx.flat_idx.invalid else orig_idx
+            for orig_idx in indexes]
 
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
 @functools.lru_cache(maxsize=None, typed=False)
 def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = (),
-                                  next_idx_valid = 0, invalid = False) -> typing.Tuple[List[SpaceTimeIndex], int]:
+                                  next_idx_valid = 0, invalid = False, first_call = True) -> typing.Tuple[List[SpaceTimeIndex], int]:
     """
     Convert a space-time Type to a flat list of SpaceTimeIndexs with the s and t values along with the flat_idx.
     This is a recursive function. The parameters other than dim are the statuses of the current call.
@@ -104,18 +118,18 @@ def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_le
             (res, next_idx_valid) = \
                 dimensions_to_flat_idx_helper(dims.t, t_idx, t_len,
                                               tuple([s]) + s_idx, tuple([dims.n]) + s_len,
-                                              next_idx_valid, invalid)
+                                              next_idx_valid, invalid, False)
             nested_result += [res]
-        return flatten(nested_result), next_idx_valid
+        result = flatten(nested_result), next_idx_valid
     elif type(dims) == ST_TSeq:
         nested_result = []
         for t in range(dims.n + dims.i):
             (res, next_idx_valid) = \
                 dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len,
                                               s_idx, s_len, next_idx_valid,
-                                              invalid or (t >= dims.n))
+                                              invalid or (t >= dims.n), False)
             nested_result += [res]
-        return flatten(nested_result), next_idx_valid
+        result = flatten(nested_result), next_idx_valid
     else:
         # track how much time each t_idx indicates due to nested index structure
         # drop the last value because each t_idx time is the product of all
@@ -130,10 +144,15 @@ def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_le
         time_per_s_idx = list(map(lambda x: x[0]*x[1], s_idx_with_time_per_len))
         s = reduce(lambda x,y: x+y, [0] + time_per_s_idx)
         if invalid:
-            return [SpaceTimeIndex(FlatIndex(True, (t, s)), s, t)], next_idx_valid
+            result = [SpaceTimeIndex(FlatIndex(True, (t, s)), s, t)], next_idx_valid
         else:
             next_idx_valid += 1
-            return [SpaceTimeIndex(FlatIndex(False, next_idx_valid - 1), s, t)], next_idx_valid
+            result = [SpaceTimeIndex(FlatIndex(False, next_idx_valid - 1), s, t)], next_idx_valid
+
+    if first_call:
+        return fix_invalid_indexes(result[0]), result[1]
+    else:
+        return result
 
 
 
