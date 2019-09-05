@@ -44,7 +44,7 @@ def build_input_output_graph(input_type, output_type):
     if input_type.port_width() != output_type.port_width():
         raise Exception("input_type " ++ str(input_type) ++ " output_type " ++ str(output_type) ++ " port_widths don't match.")
     num_nodes_per_side = input_type.time()
-    elements_per_clock = input_type.port_width()
+    elements_per_clock = max(input_type.port_width(), output_type.port_width())
     graph = InputOutputGraph([BipartiteNode(t, [], [], [], []) for t in range(num_nodes_per_side)], input_type,
                              [BipartiteNode(t, [], [], [], []) for t in range(num_nodes_per_side)], output_type)
     # for each t and s, add the edges
