@@ -29,6 +29,16 @@ def test_flat_idxs_tseq_2_1_sseq_3():
                          [FlatIndex(False, 3), FlatIndex(False, 4), FlatIndex(False, 5)],
                          [FlatIndex(True, 0), FlatIndex(True, 1), FlatIndex(True, 2)]]
 
+def test_flat_idxs_tseq_2_0_tseq_1_1():
+    vals = ST_TSeq(2, 0, ST_TSeq(1, 1, ST_Int()))
+    flat_idxs = dimensions_to_flat_idx(vals)
+    assert flat_idxs == [[FlatIndex(False, 0)], [FlatIndex(True, 0)], [FlatIndex(False, 1)], [FlatIndex(True, 1)]]
+
+def test_flat_idxs_tseq_2_2():
+    vals = ST_TSeq(2, 2, ST_Int())
+    flat_idxs = dimensions_to_flat_idx(vals)
+    assert flat_idxs == [[FlatIndex(False, 0)], [FlatIndex(False, 1)], [FlatIndex(True, 0)], [FlatIndex(True, 1)]]
+
 def test_flat_idxs_sseq_3_tseq_2_1():
     vals = ST_SSeq(3, ST_TSeq(2, 1, ST_Int()))
     flat_idxs = dimensions_to_flat_idx(vals)

@@ -125,7 +125,7 @@ def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_le
         nested_result = []
         for t in range(dims.n + dims.i):
             (res, next_idx_valid) = \
-                dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len,
+                dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n + dims.i]) + t_len,
                                               s_idx, s_len, next_idx_valid,
                                               invalid or (t >= dims.n), False)
             nested_result += [res]
