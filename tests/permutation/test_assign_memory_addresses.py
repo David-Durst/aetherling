@@ -59,6 +59,12 @@ def test_T2_1_S2_T2_banks():
     fixed_graph = assign_memory_addresses(assign_banks(graph))
     check_mem_addr(fixed_graph, s_len, (t_len_1+i_len_1)*t_len_2)
 
+def test_different_port_widths_banks():
+    input_type = ST_TSeq(2, 2, ST_SSeq(2, ST_Int()))
+    output_type = ST_SSeq(4, ST_TSeq(1, 3, ST_Int()))
+    graph = build_input_output_graph(input_type, output_type)
+    fixed_graph = assign_memory_addresses(assign_banks(graph))
+    check_mem_addr(fixed_graph, 4, 4)
 
 def test_T4_S2_T4_banks():
     t_len_1 = 4
@@ -82,7 +88,7 @@ def test_T40_S6_T20_banks():
 
 
 def check_mem_addr(fixed_graph, s_len, t_len):
-    free_addresses = [[True] * get_bank_size(fixed_graph) for _ in range(s_len)]
+    free_addresses = [[True for _ in range(bank_size)] for bank_size in get_bank_sizes(fixed_graph)]
     first_output_latency = get_output_latencies(fixed_graph)[0]
     for t in range(t_len):
         # free any address written to at this point, which for t - first_output_latency for output
@@ -90,9 +96,10 @@ def check_mem_addr(fixed_graph, s_len, t_len):
         output_t = t - first_output_latency
         if output_t >= 0:
             for s in range(s_len):
-                bank = fixed_graph.output_nodes[output_t].edge_banks[s]
-                addr = fixed_graph.output_nodes[output_t].edge_addr[s]
-                free_addresses[bank][addr] = True
+                if not fixed_graph.output_nodes[output_t].flat_idxs[s].invalid:
+                    bank = fixed_graph.output_nodes[output_t].edge_banks[s]
+                    addr = fixed_graph.output_nodes[output_t].edge_addr[s]
+                    free_addresses[bank][addr] = True
         for s in range(s_len):
             # ensure that only writting to an address if it hasn't been written to yet or is currently being read from
             # ensure address that currently writing to matches the address that will be ready from
@@ -100,6 +107,7 @@ def check_mem_addr(fixed_graph, s_len, t_len):
             bank = fixed_graph.input_nodes[t].edge_banks[s]
             addr = fixed_graph.input_nodes[t].edge_addr[s]
             output_addr = get_output_address_at_input(t, s, fixed_graph.input_type, fixed_graph.output_type)
-            assert free_addresses[bank][addr]
-            assert addr == fixed_graph.output_nodes[output_addr.t].edge_addr[output_addr.s]
-            free_addresses[bank][addr] = False
+            if not fixed_graph.input_nodes[t].flat_idxs[s].invalid:
+                assert free_addresses[bank][addr]
+                assert addr == fixed_graph.output_nodes[output_addr.t].edge_addr[output_addr.s]
+                free_addresses[bank][addr] = False
