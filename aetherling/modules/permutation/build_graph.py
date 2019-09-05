@@ -11,7 +11,7 @@ class BipartiteNode:
     idx: int
     # these arrays have corresponding values at same indices
     # must be same length
-    flat_idxs: List[int]
+    flat_idxs: List[FlatIndex]
     # a neighbor can appear multiple times, once per shared value
     neighbors: List[SpaceTimeIndex]
     # assigning a bank/color for the edge

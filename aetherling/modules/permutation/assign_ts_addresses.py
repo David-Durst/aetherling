@@ -3,9 +3,13 @@ from itertools import accumulate, groupby
 from functools import reduce
 from dataclasses import dataclass
 import functools
+from typing import List
+import typing
 
-from magma import cache_definition
-
+@dataclass(order=True)
+class FlatIndex:
+    invalid: bool
+    flat_idx: int
 
 @dataclass
 class SpaceTimeIndex:
@@ -13,7 +17,7 @@ class SpaceTimeIndex:
     Class for traccking the flat_idx and space and time indexes of a values
     in a space-time object
     """
-    flat_idx: int
+    flat_idx: FlatIndex
     s: int
     t: int
 
@@ -50,10 +54,10 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     return next(iter([idx for idx in input_ts_value_triples if idx.flat_idx == value]))
 
 @functools.lru_cache(maxsize=None, typed=False)
-def dimensions_to_flat_idx(dims):
+def dimensions_to_flat_idx(dims) -> typing.Tuple[int, bool]:
     """
     Convert a nested space-time type into a 2d space-time representation.
-    This function tells me when each value should be read and written
+    This function tells me when each value should be read and written and if it's valid.
     Each outer dimension of the output array is a clock cycle.
     Each inner dimension of the output array is a vector lane.
 
@@ -72,21 +76,41 @@ def flatten(l):
     return [item for sublist in l for item in sublist]
 
 @functools.lru_cache(maxsize=None, typed=False)
-def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = (), next_idx = 0):
+def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_len = (),
+                                  next_idx_valid = 0, next_idx_invalid = 0,
+                                  invalid = False) -> typing.Tuple[List[SpaceTimeIndex], int, int]:
+    """
+    Convert a space-time Type to a flat list of SpaceTimeIndexs with the s and t values along with the flat_idx.
+    This is a recursive function. The parameters other than dim are the statuses of the current call.
+    The values are needed to compute the flat t, s, and flat_idx of each inner value
+    :param dims: The type, it's space and time dimensions
+    :param t_idx: The index in each of the parent calls' that are TSeqs
+    :param t_len: The lengths of each of the parent calls' TSeqs
+    :param s_idx: The index in each of the parent calls' that are SSeqs
+    :param S_len: The lengths of each of the parent calls' SSeqs
+    :param next_idx_valid: The next flat_idx to use for valids
+    :param invalid: Whether this call is in and invalid part of a type. Any invalid parent makes all the children
+    invalid
+    :return: A list of SpaceTimeIndex
+    """
     if type(dims) == ST_SSeq or type(dims) == ST_SSeq_Tuple:
         nested_result = []
         for s in range(dims.n):
-            (res, next_idx) = dimensions_to_flat_idx_helper(dims.t, t_idx, t_len,
-                                                              tuple([s]) + s_idx, tuple([dims.n]) + s_len, next_idx)
+            (res, next_idx_valid, next_idx_invalid) = \
+                dimensions_to_flat_idx_helper(dims.t, t_idx, t_len,
+                                              tuple([s]) + s_idx, tuple([dims.n]) + s_len,
+                                              next_idx_valid, next_idx_invalid, invalid)
             nested_result += [res]
-        return flatten(nested_result), next_idx
+        return flatten(nested_result), next_idx_valid, next_idx_invalid
     elif type(dims) == ST_TSeq:
         nested_result = []
-        for t in range(dims.n):
-            (res, next_idx) = dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len,
-                                                              s_idx, s_len, next_idx)
+        for t in range(dims.n + dims.i):
+            (res, next_idx_valid, next_idx_invalid) = \
+                dimensions_to_flat_idx_helper(dims.t, tuple([t]) + t_idx, tuple([dims.n]) + t_len,
+                                              s_idx, s_len, next_idx_valid, next_idx_invalid,
+                                              invalid or (t >= dims.n))
             nested_result += [res]
-        return flatten(nested_result), next_idx
+        return flatten(nested_result), next_idx_valid, next_idx_invalid
     else:
         # track how much time each t_idx indicates due to nested index structure
         # drop the last value because each t_idx time is the product of all
@@ -100,8 +124,12 @@ def dimensions_to_flat_idx_helper(dims, t_idx = (), t_len = (), s_idx = (), s_le
         s_idx_with_time_per_len = zip(time_per_s_len, list(s_idx))
         time_per_s_idx = list(map(lambda x: x[0]*x[1], s_idx_with_time_per_len))
         s = reduce(lambda x,y: x+y, [0] + time_per_s_idx)
-        next_idx += 1
-        return [SpaceTimeIndex(next_idx - 1, s, t)], next_idx
+        if invalid:
+            next_idx_invalid += 1
+            return [SpaceTimeIndex(FlatIndex(True, next_idx_invalid - 1), s, t)], next_idx_valid, next_idx_invalid
+        else:
+            next_idx_valid += 1
+            return [SpaceTimeIndex(FlatIndex(False, next_idx_valid - 1), s, t)], next_idx_valid, next_idx_invalid
 
 
 

@@ -3,22 +3,39 @@ from aetherling.modules.permutation.assign_ts_addresses import *
 def test_flat_idxs_tseq_3_0():
     tseq_3_0 = ST_TSeq(3, 0, ST_Int())
     flat_idxs = dimensions_to_flat_idx(tseq_3_0)
-    assert flat_idxs == [[0],[1],[2]]
+    assert flat_idxs == [[FlatIndex(False, 0)],[FlatIndex(False, 1)],[FlatIndex(False, 2)]]
+
+def test_flat_idxs_tseq_3_3():
+    tseq_3_0 = ST_TSeq(3, 3, ST_Int())
+    flat_idxs = dimensions_to_flat_idx(tseq_3_0)
+    assert flat_idxs == [[FlatIndex(False, 0)],[FlatIndex(False, 1)],[FlatIndex(False, 2)],
+                         [FlatIndex(True, 0)],[FlatIndex(True, 1)],[FlatIndex(True, 2)]]
 
 def test_flat_idxs_sseq_3():
     sseq_3 = ST_SSeq(3, ST_Int())
     flat_idxs = dimensions_to_flat_idx(sseq_3)
-    assert flat_idxs == [[0, 1, 2]]
+    assert flat_idxs == [[FlatIndex(False, 0), FlatIndex(False, 1), FlatIndex(False, 2)]]
 
 def test_flat_idxs_tseq_2_0_sseq_3():
     vals = ST_TSeq(2, 0, ST_SSeq(3, ST_Int()))
     flat_idxs = dimensions_to_flat_idx(vals)
-    assert flat_idxs == [[0, 1, 2], [3,4,5]]
+    assert flat_idxs == [[FlatIndex(False, 0), FlatIndex(False, 1), FlatIndex(False, 2)],
+                         [FlatIndex(False, 3), FlatIndex(False, 4), FlatIndex(False, 5)]]
+
+def test_flat_idxs_tseq_2_1_sseq_3():
+    vals = ST_TSeq(2, 1, ST_SSeq(3, ST_Int()))
+    flat_idxs = dimensions_to_flat_idx(vals)
+    assert flat_idxs == [[FlatIndex(False, 0), FlatIndex(False, 1), FlatIndex(False, 2)],
+                         [FlatIndex(False, 3), FlatIndex(False, 4), FlatIndex(False, 5)],
+                         [FlatIndex(True, 0), FlatIndex(True, 1), FlatIndex(True, 2)]]
 
 def test_flat_idxs_tseq_2_0_sseq_3_tseq_2_0():
     vals = ST_TSeq(2, 0, ST_SSeq(3, ST_TSeq(2, 0, ST_Int())))
     flat_idxs = dimensions_to_flat_idx(vals)
-    assert flat_idxs == [[0, 2, 4], [1, 3, 5], [6, 8, 10], [7, 9, 11]]
+    assert flat_idxs == [[FlatIndex(False, 0), FlatIndex(False, 2), FlatIndex(False, 4)],
+                         [FlatIndex(False, 1), FlatIndex(False, 3), FlatIndex(False, 5)],
+                         [FlatIndex(False, 6), FlatIndex(False, 8), FlatIndex(False, 10)],
+                         [FlatIndex(False, 7), FlatIndex(False, 9), FlatIndex(False, 11)]]
 
 def test_input_addr_to_output_addr_flip():
     input_type = ST_TSeq(3, 0, ST_SSeq(2, ST_Int()))
