@@ -69,10 +69,17 @@ def test_input_addr_to_output_addr_flip_invalids():
     output_type = ST_SSeq(2, ST_TSeq(3, 1, ST_Int()))
     input_non_nested_ts = dimensions_to_flat_idx(input_type)
     output_non_nested_ts = dimensions_to_flat_idx(output_type)
-    for t in range(3):
+    for t in range(4):
         for s in range(2):
             output_addr = get_output_address_at_input(t, s, input_type, output_type)
             assert input_non_nested_ts[t][s] == output_non_nested_ts[output_addr.t][output_addr.s]
-            if output_addr.flat_idx.invalid:
-                assert output_addr.flat_idx.idx[0] == t
-                assert output_addr.flat_idx.idx[1] == s
+
+def test_input_to_output_addr_diff_width():
+    input_type = ST_TSeq(2, 2, ST_SSeq(2, ST_Int()))
+    output_type = ST_SSeq(4, ST_TSeq(1, 3, ST_Int()))
+    input_non_nested_ts = dimensions_to_flat_idx(input_type, min_port_width=2, max_port_width=4, total_time=4)
+    output_non_nested_ts = dimensions_to_flat_idx(output_type)
+    for t in range(4):
+        for s in range(4):
+            output_addr = get_output_address_at_input(t, s, input_type, output_type)
+            assert input_non_nested_ts[t][s] == output_non_nested_ts[output_addr.t][output_addr.s]

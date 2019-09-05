@@ -38,13 +38,12 @@ def get_output_address_at_input(t:int, s:int, input_type, output_type) -> SpaceT
     :param output_type:  output nested Space-Time type
     :return: SpaceTimeIndex non-nested coordinates
     """
-    min_port_width = min(input_type.port_width(), output_type.port_width())
     max_port_width = max(input_type.port_width(), output_type.port_width())
     total_time = input_type.time()
-    non_nested_input_flat_indexes = dimensions_to_flat_idx(input_type, min_port_width = min_port_width,
+    non_nested_input_flat_indexes = dimensions_to_flat_idx(input_type, min_port_width = input_type.port_width(),
                                                 max_port_width = max_port_width, total_time = total_time)
     flat_index = non_nested_input_flat_indexes[t][s]
-    output_flat_to_st_lookup = get_flat_idx_to_space_time_idx_lookup_table(output_type, min_port_width = min_port_width,
+    output_flat_to_st_lookup = get_flat_idx_to_space_time_idx_lookup_table(output_type, min_port_width = output_type.port_width(),
                                                 max_port_width = max_port_width, total_time = total_time)
     return output_flat_to_st_lookup[flat_index]
 
@@ -62,10 +61,10 @@ def get_input_address_at_output(t:int, s:int, input_type, output_type) -> SpaceT
     min_port_width = min(input_type.port_width(), output_type.port_width())
     max_port_width = max(input_type.port_width(), output_type.port_width())
     total_time = input_type.time()
-    non_nested_output_flat_indexes = dimensions_to_flat_idx(output_type, min_port_width = min_port_width,
+    non_nested_output_flat_indexes = dimensions_to_flat_idx(output_type, min_port_width = output_type.port_width(),
                                                 max_port_width = max_port_width, total_time = total_time)
     flat_index = non_nested_output_flat_indexes[t][s]
-    input_flat_to_st_lookup = get_flat_idx_to_space_time_idx_lookup_table(input_type, min_port_width = min_port_width,
+    input_flat_to_st_lookup = get_flat_idx_to_space_time_idx_lookup_table(input_type, min_port_width = input_type.port_width(),
                                                 max_port_width = max_port_width, total_time = total_time)
     return input_flat_to_st_lookup[flat_index]
 
