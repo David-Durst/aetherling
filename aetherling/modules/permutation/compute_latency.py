@@ -29,9 +29,13 @@ def get_output_latencies(graph: InputOutputGraph) -> List[int]:
     # latencies without accounting for misorderd outputs or holes
     per_node_min_latencies = list(map(get_latency_for_output, graph.output_nodes))
     # make sure that each output comes after its predecessors
-    latencies_with_causality = [per_node_min_latencies[0]] + \
-        [per_node_min_latencies[i-1] + 1 if per_node_min_latencies[i] <= per_node_min_latencies[i-1] else per_node_min_latencies[i]
-         for i in range(1,len(per_node_min_latencies))]
-    # remove all holes, reverse with [::-1] at end to get latencies in right order
-    return ([latencies_with_causality[-1]] +
-            [latencies_with_causality[i+1] - 1 for i in range(len(latencies_with_causality) - 2, -1, -1)])[::-1]
+    latencies_with_causality = [per_node_min_latencies[0]]
+    for i in range(1, len(per_node_min_latencies)):
+        if per_node_min_latencies[i] <= latencies_with_causality[-1]:
+            latencies_with_causality += [latencies_with_causality[-1] + 1]
+        else:
+            latencies_with_causality += [per_node_min_latencies[i]]
+    # remove all holes, last element in a fixed position, all others contiguous leading to it
+    last_element_latency = latencies_with_causality[-1]
+    first_element_latency = last_element_latency - (len(latencies_with_causality) - 1)
+    return list(range(first_element_latency, last_element_latency + 1))

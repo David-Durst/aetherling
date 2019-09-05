@@ -48,7 +48,7 @@ def assign_memory_addresses(graph: InputOutputGraph) -> InputOutputGraph:
         # not just input sequence s. Thus, get a list of the input sequences sorted by that
         cur_clock_input_node = graph.input_nodes[t]
         input_streams_and_banks_this_clock = [(cur_clock_input_node.edge_banks[s], s)
-                                              for s in range(len(graph.input_nodes[0].edge_banks))]
+                                              for s in range(num_banks)]
         input_s_sorted_by_banks_this_clock = sorted(input_streams_and_banks_this_clock)
         for s in range(num_banks):
             if len(used_addr_heaps[s]) > 0:
