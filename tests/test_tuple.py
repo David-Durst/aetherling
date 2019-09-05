@@ -1,5 +1,5 @@
-from aetherling.space_time_modules.tuple import AtomTupleCreator, SSeqTupleCreator, SSeqTupleAppender
-from aetherling.space_time_modules.space_time_types import ST_Int, ST_Bit, ST_TSeq, ST_SSeq_Tuple, ST_Atom_Tuple
+from aetherling.space_time.tuple import AtomTupleCreator, SSeqTupleCreator, SSeqTupleAppender
+from aetherling.space_time.space_time_types import ST_Int, ST_Bit, ST_TSeq, ST_SSeq_Tuple, ST_Atom_Tuple
 from magma import *
 from magma.clock import *
 from magma.bitutils import *

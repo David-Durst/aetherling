@@ -1,5 +1,5 @@
-from aetherling.space_time_modules.space_time_types import *
-from aetherling.space_time_modules.type_helpers import *
+from aetherling.space_time.space_time_types import *
+from aetherling.space_time.type_helpers import *
 
 def test_same_type():
     x = ST_TSeq(3, 0, ST_Int())

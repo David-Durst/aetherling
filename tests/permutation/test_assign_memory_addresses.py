@@ -1,6 +1,6 @@
 from aetherling.modules.permutation.assign_memory_addresses import *
 from aetherling.modules.permutation.assign_banks import assign_banks
-from aetherling.space_time_modules.type_helpers import ST_Tombstone
+from aetherling.space_time.type_helpers import ST_Tombstone
 
 def test_2_3_flip_mem_addresses():
     t_len = 3

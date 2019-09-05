@@ -1,5 +1,5 @@
 from aetherling.modules.permutation.compute_latency import *
-from aetherling.space_time_modules.type_helpers import ST_Tombstone
+from aetherling.space_time.type_helpers import ST_Tombstone
 
 def test_flip_latency():
     input_type = ST_SSeq(2, ST_TSeq(3, 0,  ST_Tombstone()))

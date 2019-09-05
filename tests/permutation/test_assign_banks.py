@@ -1,5 +1,5 @@
 from aetherling.modules.permutation.assign_banks import *
-from aetherling.space_time_modules.type_helpers import ST_Tombstone
+from aetherling.space_time.type_helpers import ST_Tombstone
 
 
 def test_2_3_flip_banks():

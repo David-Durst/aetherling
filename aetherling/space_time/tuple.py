@@ -3,7 +3,7 @@ from magma.circuit import DefineCircuitKind
 from mantle.coreir.arith import *
 from mantle.coreir.logic import *
 from mantle.coreir.compare import *
-from aetherling.space_time_modules.space_time_types import *
+from aetherling.space_time.space_time_types import *
 from aetherling.helpers.nameCleanup import cleanName
 
 @cache_definition

@@ -1,5 +1,5 @@
 from aetherling.modules.permutation.build_graph import *
-from aetherling.space_time_modules.type_helpers import ST_Tombstone
+from aetherling.space_time.type_helpers import ST_Tombstone
 
 
 def test_flip_graph():

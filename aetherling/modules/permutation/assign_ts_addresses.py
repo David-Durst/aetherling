@@ -1,4 +1,4 @@
-from aetherling.space_time_modules.space_time_types import *
+from aetherling.space_time.space_time_types import *
 from itertools import accumulate, groupby
 from functools import reduce
 from dataclasses import dataclass
