@@ -10,7 +10,7 @@ __all__ = ['DefineROMAnyType', 'ROMAnyType']
 @cache_definition
 def DefineROMAnyType(t: Kind, n: int, init: typing.Tuple):
     """
-    DO NOT USE. Don't KNOW WHERE IN COREIR THE ROM IS YET.
+    DO NOT USE. CAN'T PASS JSON ARGUMENTS YET
     """
 
     class _ROM(Circuit):
@@ -18,12 +18,12 @@ def DefineROMAnyType(t: Kind, n: int, init: typing.Tuple):
         addr_width = getRAMAddrWidth(n)
         IO = ['RADDR', In(Bits[addr_width]),
               'RDATA', Out(t),
-              'RE', In(Bit)
+              'REN', In(Bit)
               ] + ClockInterface()
         @classmethod
         def definition(cls):
             type_size_in_bits = GetCoreIRBackend().get_type(t).size
-            rom = DefineROM(n, type_size_in_bits, [list(el) for el in init])()
+            rom = DefineROM(n, type_size_in_bits)(coreir_configargs={"init": [list(el) for el in init]})
 
             bits_to_type = Hydrate(t)
             wire(rom.rdata, bits_to_type.I)
@@ -31,7 +31,7 @@ def DefineROMAnyType(t: Kind, n: int, init: typing.Tuple):
 
             wire(cls.RADDR, rom.raddr)
 
-            wire(cls.RE, rom.re)
+            wire(cls.REN, rom.ren)
 
     return _ROM
 
