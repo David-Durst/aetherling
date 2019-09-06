@@ -10,9 +10,7 @@ __all__ = ['DefineROMAnyType', 'ROMAnyType']
 @cache_definition
 def DefineROMAnyType(t: Kind, n: int, init: typing.Tuple):
     """
-    Generate a RAM that handles n of any type. Note that each value in init must already have been converted into bits.
-
-    RADDR : In(Array[log_2(n), Bit)], RDATA : Out(t), WADDR : In(Array(log_2(n), Bit)), WDATA : In(t), WE: In(Bit)
+    DO NOT USE. Don't KNOW WHERE IN COREIR THE ROM IS YET.
     """
 
     class _ROM(Circuit):

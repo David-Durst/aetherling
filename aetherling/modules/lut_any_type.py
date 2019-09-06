@@ -18,7 +18,7 @@ def DefineLUTAnyType(t: Kind, n: int, init: typing.Tuple):
     """
 
     class _ROM(Circuit):
-        name = 'ROM_{}t_{}n'.format(cleanName(str(t)), n)
+        name = 'LUT_{}t_{}n'.format(cleanName(str(t)), n)
         addr_width = getRAMAddrWidth(n)
         IO = ['addr', In(Bits[addr_width]),
               'data', Out(t),
