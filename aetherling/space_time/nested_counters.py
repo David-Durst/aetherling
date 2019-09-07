@@ -40,8 +40,8 @@ def DefineNestedCounters(t: ST_Type, has_cur_valid: bool = False, has_ce: bool =
         @classmethod
         def definition(cls):
             if type(t) == ST_TSeq:
-                outer_counter = SizedCounterModM(t.n + t.i, has_cur_valid=False, has_ce=True, has_reset=has_reset)
-                inner_counters = DefineNestedCounters(t.t, has_ce, has_reset, False)()
+                outer_counter = SizedCounterModM(t.n + t.i, has_ce=True, has_reset=has_reset)
+                inner_counters = DefineNestedCounters(t.t, has_cur_valid=False, has_ce=has_ce, has_reset=has_reset)()
                 is_last = Decode(t.n + t.i - 1, outer_counter.O.N)(outer_counter.O)
                 valid_length = DefineCoreirConst(outer_counter.O.N, t.n)()
                 is_valid = DefineCoreirUlt(outer_counter.O.N)()
