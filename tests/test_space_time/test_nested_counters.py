@@ -148,6 +148,36 @@ def test_nested_counters_TSeq_3_1_TSeq_2_2_ce_valid():
             cur_valid += 1 if valid_clocks[j] else 0
     compile_and_run(tester)
 
+def test_nested_counters_TSeq_3_1_TSeq_2_2_SSeq_3_reset_valid():
+    no = 3
+    io = 1
+    ni = 2
+    ii = 2
+    nii = 3
+    t = ST_TSeq(no, io, ST_TSeq(ni, ii, ST_SSeq(nii, ST_Int())))
+    testcircuit = DefineNestedCounters(t, has_cur_valid=True, has_reset=True)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    num_clocks = (no+io) * (ni+ii)
+    valid_clocks = [(o < no) and (i < ni) for o in range(no+io) for i in range(ni+ii)]
+
+    tester.circuit.RESET = 0
+    tester.eval()
+    cur_clk = 0
+    for k in range(2):
+        cur_valid = 0
+        for j in range((no+io) * (ni+ii)):
+            tester.print("clk: {} \n".format(cur_clk))
+            cur_clk += 1
+            tester.print("valid: %d\n", tester.circuit.valid)
+            tester.print("last: %d\n", tester.circuit.last)
+            tester.circuit.valid.expect(valid_clocks[j])
+            tester.circuit.last.expect(j == num_clocks - 1)
+            if valid_clocks[j]:
+                tester.circuit.cur_valid.expect(cur_valid)
+            tester.step(2)
+            cur_valid += 1 if valid_clocks[j] else 0
+    compile_and_run(tester)
+
 def test_nested_counters_TSeq_4_4_TSeq_1_1():
     no = 4
     io = 4

@@ -91,7 +91,7 @@ def DefineNestedCounters(t: ST_Type, has_cur_valid: bool = False, has_ce: bool =
                     wire(valid_and_last.O[0], cls.valid)
                 if has_reset:
                     reset_term = TermAnyType(Bit)
-                    wire(reset_term.I, cls.CE)
+                    wire(reset_term.I, cls.RESET)
 
     return _NestedCounters
 
