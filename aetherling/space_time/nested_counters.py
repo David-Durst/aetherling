@@ -60,14 +60,14 @@ def DefineNestedCounters(t: ST_Type, has_cur_valid: bool = False, has_ce: bool =
                     if has_cur_valid:
                         wire(cls.RESET, cur_valid_counter.RESET)
                 if has_ce:
-                    wire(cls.CE & inner_counters.last, outer_counter.CE)
+                    wire(bit(cls.CE) & inner_counters.last, outer_counter.CE)
                     wire(cls.CE, inner_counters.CE)
                     if has_cur_valid:
-                        wire(cls.CE & inner_counters.last, cur_valid_counter.CE)
+                        wire(bit(cls.CE) & inner_counters.valid & is_valid.O, cur_valid_counter.CE)
                 else:
                     wire(inner_counters.last, outer_counter.CE)
                     if has_cur_valid:
-                        wire(inner_counters.last, cur_valid_counter.CE)
+                        wire(inner_counters.valid & is_valid.O, cur_valid_counter.CE)
             elif is_nested(t):
                 inner_counters = DefineNestedCounters(t.t, has_cur_valid, has_ce, has_reset)()
 
@@ -82,10 +82,16 @@ def DefineNestedCounters(t: ST_Type, has_cur_valid: bool = False, has_ce: bool =
             else:
                 # only 1 element, so always last and valid element
                 valid_and_last = DefineCoreirConst(1, 1)()
-                wire(valid_and_last.O[0], cls.valid)
                 wire(valid_and_last.O[0], cls.last)
                 if has_cur_valid:
                     wire(valid_and_last.O, cls.cur_valid)
+                if has_ce:
+                    wire(cls.valid, cls.CE)
+                else:
+                    wire(valid_and_last.O[0], cls.valid)
+                if has_reset:
+                    reset_term = TermAnyType(Bit)
+                    wire(reset_term.I, cls.CE)
 
     return _NestedCounters
 

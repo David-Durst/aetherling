@@ -34,7 +34,7 @@ class ST_Type():
         """
         Number of valid clocks in .time() clocks
         """
-        self.time()
+        pass
 
     def magma_repr(self) -> Kind:
         """
@@ -66,7 +66,7 @@ class ST_TSeq(ST_Type):
         return (self.n + self.i) * self.t.time()
 
     def valid_clocks(self):
-        return self.n * self.t.time()
+        return self.n * self.t.valid_clocks()
 
     def magma_repr(self):
         return self.t.magma_repr()
@@ -88,6 +88,9 @@ class ST_SSeq(ST_Type):
     def time(self):
         return self.t.time()
 
+    def valid_clocks(self) -> int:
+        return self.t.valid_clocks()
+
     def magma_repr(self):
         return Array[self.n, self.t.magma_repr()]
 
@@ -107,6 +110,9 @@ class ST_SSeq_Tuple(ST_Type):
 
     def time(self):
         return self.t.time()
+
+    def valid_clocks(self) -> int:
+        return self.t.valid_clocks()
 
     def magma_repr(self):
         return Array[self.n, self.t.magma_repr()]
@@ -128,6 +134,9 @@ class ST_Atom_Tuple(ST_Type):
     def time(self):
         return 1
 
+    def valid_clocks(self) -> int:
+        return 1
+
     def magma_repr(self):
         return Tuple(self.t0.magma_repr(), self.t1.magma_repr())
 
@@ -146,6 +155,9 @@ class ST_Int(ST_Type):
     def time(self):
         return 1
 
+    def valid_clocks(self) -> int:
+        return 1
+
     def magma_repr(self):
         return Array[int_width, Bit]
 
@@ -161,6 +173,9 @@ class ST_Bit(ST_Type):
         return 1
 
     def time(self):
+        return 1
+
+    def valid_clocks(self) -> int:
         return 1
 
     def magma_repr(self):
