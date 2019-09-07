@@ -11,8 +11,41 @@ def is_nested(st_type):
     else:
         return False
 
+class ST_Type():
+    def length(self) -> int:
+        """
+        Total amount of data over the entire time of the ST type
+        """
+        pass
+
+    def port_width(self) -> int:
+        """
+        Number of atoms each active clock
+        """
+        pass
+
+    def time(self) -> int:
+        """
+        Number of clocks required for an operator to accept or emit this type
+        """
+        pass
+
+    def valid_clocks(self) -> int:
+        """
+        Number of valid clocks in .time() clocks
+        """
+        self.time()
+
+    def magma_repr(self) -> Kind:
+        """
+        A magma representation of this type as a nested array of bits.
+        Magma doesn't acount for time.
+        """
+        pass
+
+
 @dataclass(frozen=True)
-class ST_TSeq():
+class ST_TSeq(ST_Type):
     n: int
     i: int
     t: Kind
@@ -32,11 +65,17 @@ class ST_TSeq():
     def time(self):
         return (self.n + self.i) * self.t.time()
 
+    def valid_clocks(self):
+        return self.n * self.t.time()
+
     def magma_repr(self):
         return self.t.magma_repr()
 
+    def __str__(self):
+        return "TSeq({}, {}, {})".format(str(self.n), str(self.i), str(self.t))
+
 @dataclass(frozen=True)
-class ST_SSeq():
+class ST_SSeq(ST_Type):
     n: int
     t: Kind
 
@@ -52,8 +91,11 @@ class ST_SSeq():
     def magma_repr(self):
         return Array[self.n, self.t.magma_repr()]
 
+    def __str__(self):
+        return "SSeq({}, {})".format(str(self.n), str(self.t))
+
 @dataclass(frozen=True)
-class ST_SSeq_Tuple():
+class ST_SSeq_Tuple(ST_Type):
     n: int
     t: Kind
 
@@ -69,8 +111,11 @@ class ST_SSeq_Tuple():
     def magma_repr(self):
         return Array[self.n, self.t.magma_repr()]
 
+    def __str__(self):
+        return "STuple({}, {})".format(str(self.n), str(self.t))
+
 @dataclass(frozen=True)
-class ST_Atom_Tuple():
+class ST_Atom_Tuple(ST_Type):
     t0: Kind
     t1: Kind
 
@@ -86,9 +131,12 @@ class ST_Atom_Tuple():
     def magma_repr(self):
         return Tuple(self.t0.magma_repr(), self.t1.magma_repr())
 
+    def __str__(self):
+        return "ATuple({}, {})".format(str(self.t0), str(self.t1))
+
 int_width = 8
 @dataclass(frozen=True)
-class ST_Int():
+class ST_Int(ST_Type):
     def length(self):
         return 8
 
@@ -101,8 +149,11 @@ class ST_Int():
     def magma_repr(self):
         return Array[int_width, Bit]
 
+    def __str__(self):
+        return "Int"
+
 @dataclass(frozen=True)
-class ST_Bit():
+class ST_Bit(ST_Type):
     def length(self):
         return 1
 
@@ -114,6 +165,9 @@ class ST_Bit():
 
     def magma_repr(self):
         return Bit
+
+    def __str__(self):
+        return "Bit"
 
 def throughput(t):
     return t.length() / t.time()
