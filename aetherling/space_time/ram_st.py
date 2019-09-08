@@ -40,7 +40,9 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
               'WADDR', In(Bits[addr_width]),
               'WDATA', In(t.magma_repr()),
               'WE', In(Bit),
-              'RE', In(Bit)
+              'RE', In(Bit),
+              'ir', Out(Bits[getRAMAddrWidth(t.valid_clocks())]),
+              'iw', Out(Bits[getRAMAddrWidth(t.valid_clocks())])
               ] + ClockInterface(has_ce=False, has_reset=has_reset)
         @classmethod
         def definition(cls):
@@ -55,19 +57,21 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
             write_last_term = TermAnyType(Bit)
             read_selector = DefineMuxAnyType(t.magma_repr(), n)()
 
+            wire(read_time_position_counter.cur_valid, cls.ir)
+            wire(write_time_position_counter.cur_valid, cls.iw)
+
             for i in range(n):
                 wire(cls.WDATA, rams.WDATA[i])
                 wire(write_time_position_counter.cur_valid, rams.WADDR[i])
                 wire(read_selector.data[i], rams.RDATA[i])
                 wire(read_time_position_counter.cur_valid, rams.RADDR[i])
                 write_cur_ram = Decode(i, cls.WADDR.N)(cls.WADDR)
-                wire(write_cur_ram, rams.WE[i])
+                wire(write_cur_ram & write_time_position_counter.valid, rams.WE[i])
 
             wire(cls.RADDR, read_selector.sel)
             wire(cls.RDATA, read_selector.out)
 
             wire(cls.WE, write_time_position_counter.CE)
-            wire(cls.WE, rams.WE)
             wire(cls.RE, read_time_position_counter.CE)
 
             wire(read_time_position_counter.valid, read_valid_term.I)

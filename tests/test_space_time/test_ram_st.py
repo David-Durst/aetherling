@@ -11,7 +11,7 @@ def test_ram_st_TSeq_3_1():
     testcircuit = DefineRAM_ST(t, num)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
-    valid_clocks = [o for o in range(n+i)]
+    valid_clocks = [(o<n) for o in range(n+i)]
 
     tester.circuit.WE = True
     tester.circuit.RE = True
@@ -20,12 +20,44 @@ def test_ram_st_TSeq_3_1():
         for j in range(n+i):
             tester.print("clk: {}\n".format(clk))
             #tester.print("last: %d\n", tester.circuit.last)
+            tester.print("inner read counter: %d\n", tester.circuit.ir)
+            tester.print("inner write counter: %d\n", tester.circuit.iw)
             tester.circuit.WADDR = k
             tester.circuit.RADDR = k - 1
             tester.circuit.WDATA = j + k * (n+i)
             tester.eval()
-            if k == 1 and (j in valid_clocks):
+            if k == 1 and valid_clocks[j]:
                 tester.circuit.RDATA.expect(j)
+            tester.step(2)
+            clk += 1
+    compile_and_run(tester)
+
+def test_ram_st_TSeq_3_1_SSeq_2():
+    no = 3
+    io = 1
+    ni = 2
+    t = ST_TSeq(no, io, ST_SSeq(ni, ST_Int()))
+    num = 2
+    testcircuit = DefineRAM_ST(t, num)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    valid_clocks = [(o<no) for o in range(no+io)]
+
+    tester.circuit.WE = True
+    tester.circuit.RE = True
+    clk = 0
+    for k in range(num):
+        for j in range(no+io):
+            tester.print("clk: {}\n".format(clk))
+            #tester.print("last: %d\n", tester.circuit.last)
+            tester.print("inner read counter: %d\n", tester.circuit.ir)
+            tester.print("inner write counter: %d\n", tester.circuit.iw)
+            tester.circuit.WADDR = k
+            tester.circuit.RADDR = k - 1
+            tester.circuit.WDATA = [2*(j + k * (no+io)), 2*(j + k * (no+io)) + 1]
+            tester.eval()
+            if k == 1 and valid_clocks[j]:
+                tester.circuit.RDATA.expect([2*j, 2*j + 1])
             tester.step(2)
             clk += 1
     compile_and_run(tester)
