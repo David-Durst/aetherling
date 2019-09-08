@@ -95,5 +95,5 @@ def DefineNestedCounters(t: ST_Type, has_cur_valid: bool = False, has_ce: bool =
 
     return _NestedCounters
 
-def NestedCounters(t: ST_Type, has_ce=False, has_reset=False) -> Circuit:
-    return DefineRAMAnyType(t, has_ce=has_ce, has_reset=has_reset)()
+def NestedCounters(t: ST_Type, has_cur_valid=False, has_ce=False, has_reset=False) -> Circuit:
+    return DefineRAMAnyType(t, has_cur_valid=has_cur_valid, has_ce=has_ce, has_reset=has_reset)()
