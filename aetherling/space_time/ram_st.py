@@ -41,8 +41,6 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
               'WDATA', In(t.magma_repr()),
               'WE', In(Bit),
               'RE', In(Bit),
-              'ir', Out(Bits[getRAMAddrWidth(t.valid_clocks())]),
-              'iw', Out(Bits[getRAMAddrWidth(t.valid_clocks())])
               ] + ClockInterface(has_ce=False, has_reset=has_reset)
         @classmethod
         def definition(cls):
@@ -56,9 +54,6 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
             write_valid_term = TermAnyType(Bit)
             write_last_term = TermAnyType(Bit)
             read_selector = DefineMuxAnyType(t.magma_repr(), n)()
-
-            wire(read_time_position_counter.cur_valid, cls.ir)
-            wire(write_time_position_counter.cur_valid, cls.iw)
 
             for i in range(n):
                 wire(cls.WDATA, rams.WDATA[i])
