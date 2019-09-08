@@ -19,9 +19,9 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
 
 
     RADDR : In(Array[log_2(n), Bit)],
-    RDATA : Out(t),
+    RDATA : Out(t.magma_repr()),
     WADDR : In(Array(log_2(n), Bit)),
-    WDATA : In(t),
+    WDATA : In(t.magma_repr()),
     WE: In(Bit)
     RE: In(Bit)
 
@@ -33,9 +33,9 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
         name = 'RAM_ST_{}_hasReset{}'.format(cleanName(str(t)), str(has_reset))
         addr_width = getRAMAddrWidth(n)
         IO = ['RADDR', In(Bits[addr_width]),
-              'RDATA', Out(t),
+              'RDATA', Out(t.magma_repr()),
               'WADDR', In(Bits[addr_width]),
-              'WDATA', In(t),
+              'WDATA', In(t.magma_repr()),
               'WE', In(Bit),
               'RE', In(Bit)
               ] + ClockInterface(has_ce=False, has_reset=has_reset)
@@ -48,9 +48,9 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
             write_time_position_counter = DefineNestedCounters(t, has_cur_valid=True, has_ce=True, has_reset=has_reset)()
 
             wire(cls.WDATA, no_time_ram.WDATA)
-            wire(cls.WADDR + write_time_position_counter.cur_valid, no_time_ram.WADDR)
+            wire(concat(cls.WADDR, write_time_position_counter.cur_valid), no_time_ram.WADDR)
             wire(cls.RDATA, no_time_ram.RDATA)
-            wire(cls.RADDR + read_time_position_counter.cur_valid, no_time_ram.RADDR)
+            wire(concat(cls.RADDR, read_time_position_counter.cur_valid), no_time_ram.RADDR)
 
             wire(cls.WE, write_time_position_counter.CE)
             wire(cls.WE, no_time_ram.WE)
