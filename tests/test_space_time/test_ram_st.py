@@ -11,18 +11,21 @@ def test_ram_st_TSeq_3_1():
     testcircuit = DefineRAM_ST(t, num)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
 
+    valid_clocks = [o for o in range(n+i)]
+
     tester.circuit.WE = True
     tester.circuit.RE = True
+    clk = 0
     for k in range(2):
         for j in range(n+i):
+            tester.print("clk: {}\n".format(clk))
             #tester.print("last: %d\n", tester.circuit.last)
             tester.circuit.WADDR = k
             tester.circuit.RADDR = k - 1
             tester.circuit.WDATA = j + k * (n+i)
             tester.eval()
-            tester.circuit.valid.expect(j < n)
-            tester.circuit.last.expect(j == n+i - 1)
-            if k == 1:
+            if k == 1 and (j in valid_clocks):
                 tester.circuit.RDATA.expect(j)
             tester.step(2)
+            clk += 1
     compile_and_run(tester)

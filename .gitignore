@@ -7,3 +7,4 @@ aetherling.egg-info/
 *.json
 *.log
 *.aux
+vbuild/

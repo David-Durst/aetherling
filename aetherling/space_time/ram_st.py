@@ -1,6 +1,9 @@
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.modules.ram_any_type import *
+from aetherling.modules.term_any_type import TermAnyType
+from aetherling.modules.mux_any_type import DefineMuxAnyType
+from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
 from aetherling.helpers.nameCleanup import cleanName
 from mantle.coreir.memory import getRAMAddrWidth
 from mantle.common.countermod import Decode
@@ -43,18 +46,34 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
         def definition(cls):
             # each valid clock, going to get a magma_repr in
             # read or write each one of those to a location
-            no_time_ram = DefineRAMAnyType(Array[t.valid_clocks(), t.magma_repr()], n)()
+            rams = DefineNativeMapParallel(n, DefineRAMAnyType(t.magma_repr(), t.valid_clocks()))()
             read_time_position_counter = DefineNestedCounters(t, has_cur_valid=True, has_ce=True, has_reset=has_reset)()
+            read_valid_term = TermAnyType(Bit)
+            read_last_term = TermAnyType(Bit)
             write_time_position_counter = DefineNestedCounters(t, has_cur_valid=True, has_ce=True, has_reset=has_reset)()
+            write_valid_term = TermAnyType(Bit)
+            write_last_term = TermAnyType(Bit)
+            read_selector = DefineMuxAnyType(t.magma_repr(), n)()
 
-            wire(cls.WDATA, no_time_ram.WDATA)
-            wire(concat(cls.WADDR, write_time_position_counter.cur_valid), no_time_ram.WADDR)
-            wire(cls.RDATA, no_time_ram.RDATA)
-            wire(concat(cls.RADDR, read_time_position_counter.cur_valid), no_time_ram.RADDR)
+            for i in range(n):
+                wire(cls.WDATA, rams.WDATA[i])
+                wire(write_time_position_counter.cur_valid, rams.WADDR[i])
+                wire(read_selector.data[i], rams.RDATA[i])
+                wire(read_time_position_counter.cur_valid, rams.RADDR[i])
+                write_cur_ram = Decode(i, cls.WADDR.N)(cls.WADDR)
+                wire(write_cur_ram, rams.WE[i])
+
+            wire(cls.RADDR, read_selector.sel)
+            wire(cls.RDATA, read_selector.out)
 
             wire(cls.WE, write_time_position_counter.CE)
-            wire(cls.WE, no_time_ram.WE)
+            wire(cls.WE, rams.WE)
             wire(cls.RE, read_time_position_counter.CE)
+
+            wire(read_time_position_counter.valid, read_valid_term.I)
+            wire(read_time_position_counter.last, read_last_term.I)
+            wire(write_time_position_counter.valid, write_valid_term.I)
+            wire(write_time_position_counter.last, write_last_term.I)
 
             if has_reset:
                 wire(cls.RESET, write_time_position_counter.RESET)
