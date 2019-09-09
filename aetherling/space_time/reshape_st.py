@@ -43,8 +43,8 @@ def get_banks_addr_per_lane(graph_nodes: List[BipartiteNode]) -> List[List[LaneT
     lane_bank_data = [[] for _ in range(num_lanes)]
     for s in range(num_lanes):
         for t in range(num_clocks):
-            lane_bank_data[s] += LaneToBankPerClock(s, t, graph_nodes[t].edge_banks[s],
-                                                    graph_nodes[t].edge_addr[s], not graph_nodes[t].flat_idxs[s].invalid)
+            lane_bank_data[s].append(LaneToBankPerClock(s, t, graph_nodes[t].edge_banks[s],
+                                                    graph_nodes[t].edge_addr[s], not graph_nodes[t].flat_idxs[s].invalid))
     return lane_bank_data
 
 
@@ -58,12 +58,12 @@ def get_lane_addr_per_banks(graph_nodes: List[BipartiteNode]) -> List[List[LaneT
     num_banks = len(graph_nodes[0].edge_banks)
     # note: lanes include invalid lanes used to balance out input and output port widths
     num_lanes = num_banks
-    lane_bank_data = [[LaneToBankPerClock(0, 0, 0, 0) for _ in range(num_clocks)] for _ in range(num_banks)]
+    lane_bank_data = [[] for _ in range(num_banks)]
     for s in range(num_lanes):
         for t in range(num_clocks):
             bank = graph_nodes[t].edge_banks[s]
-            lane_bank_data[bank] = LaneToBankPerClock(s, t, bank, graph_nodes[t].edge_addr[s],
-                                                      not graph_nodes[t].flat_idxs[s].invalid)
+            lane_bank_data[bank].append(LaneToBankPerClock(s, t, bank, graph_nodes[t].edge_addr[s],
+                                                           not graph_nodes[t].flat_idxs[s].invalid))
     return lane_bank_data
 
 
@@ -79,11 +79,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
     CE : In(Bit)
     if has_reset:
     RESET : In(Bit)
+
+    Note: property output_delay indicates delay of output relative to input
     """
 
     class _Reshape_ST(Circuit):
         name = 'Reshape_ST{}_hasCE{}_hasReset{}'.format(cleanName(str(t)), str(has_ce), str(has_reset))
-        addr_width = getRAMAddrWidth(n)
         IO = ['I', In(t_in.magma_repr()),
               'O', Out(t_out.magma_repr())
               ] + ClockInterface(has_ce=has_ce, has_reset=has_reset)
@@ -108,7 +109,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
             # for bank, the addresses to write to each clock
             write_addr_for_bank_luts = []
-            for bank_idx in range(rams):
+            for bank_idx in range(len(rams)):
                 ram_addr_width = rams_addr_widths[bank_idx]
                 num_addrs = len(input_lane_write_addr_per_bank[bank_idx])
                 assert num_addrs == t_in_diff.time()
@@ -119,7 +120,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
             # for bank, whether to actually write this clock
             write_valid_for_bank_luts = []
-            for bank_idx in range(rams):
+            for bank_idx in range(len(rams)):
                 num_valids = len(input_lane_write_addr_per_bank[bank_idx])
                 assert num_valids == t_in_diff.time()
                 valids = [write_data_per_bank_per_clock.valid
@@ -140,7 +141,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
             # for each bank, the address to read from each clock
             read_addr_for_bank_luts = []
-            for bank_idx in range(rams):
+            for bank_idx in range(len(rams)):
                 ram_addr_width = rams_addr_widths[bank_idx]
                 num_addrs = len(output_lane_read_addr_per_bank[bank_idx])
                 assert num_addrs == t_in_diff.time()
@@ -154,7 +155,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             # number of lanes equals number of banks
             # some the lanes are just always invalid, added so input lane width equals output lane width
             lane_idx_width = getRAMAddrWidth(len(rams))
-            for bank_idx in range(rams):
+            for bank_idx in range(len(rams)):
                 num_lane_idxs = len(output_lane_read_addr_per_bank[bank_idx])
                 assert num_lane_idxs == t_in_diff.time()
                 lane_idxs = [int2seq(read_data_per_bank_per_clock.s)
@@ -173,6 +174,8 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             reshape_read_counter = SizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
 
             output_delay = get_output_latencies(graph)[0]
+            # this is present so testing knows the delay
+            cls.output_delay = output_delay
             reshape_read_delay_counter = DefineInitialDelayCounter(output_delay)()
             # outer counter the repeats the reshape
             repeat_reshape_counter = DefineNestedCounters(shared_and_diff_subtypes.shared_outer, has_ce=has_ce,
