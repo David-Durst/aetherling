@@ -9,10 +9,10 @@ class SharedDiffTypes:
     """
     The result of calling get_shared_and_diff_subtypes, which splits two types into their shard and different components
     """
-    shared_inner: Any
-    shared_outer: Any
-    diff_input: Any
-    diff_output: Any
+    shared_inner: ST_Type
+    shared_outer: ST_Type
+    diff_input: ST_Type
+    diff_output: ST_Type
 
 @dataclass(frozen=True)
 class ST_Tombstone:
@@ -32,7 +32,7 @@ class ST_Tombstone:
         raise Exception("shouldn't call magma_repr on tombstone.")
 
 
-def get_shared_and_diff_subtypes(input_type, output_type):
+def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> SharedDiffTypes:
     """
     Given two types that take equal amount of time, have the same length, but have different
     sseq/tseq outer components, split the types into a shared core and different outer components
