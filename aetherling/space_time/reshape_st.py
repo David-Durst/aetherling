@@ -10,6 +10,7 @@ from aetherling.modules.lut_any_type import DefineLUTAnyType
 from aetherling.helpers.nameCleanup import cleanName
 from mantle.coreir.memory import getRAMAddrWidth
 from mantle.common.countermod import Decode, SizedCounterModM
+from mantle.coreir import DefineCoreirConst
 from aetherling.modules.ram_any_type import *
 from magma import *
 from magma.bitutils import int2seq
@@ -156,7 +157,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             for bank_idx in range(rams):
                 num_lane_idxs = len(output_lane_read_addr_per_bank[bank_idx])
                 assert num_lane_idxs == t_in_diff.time()
-                lane_idxs = [int2seq(read_data_per_bank_per_clock.bank)
+                lane_idxs = [int2seq(read_data_per_bank_per_clock.s)
                              for read_data_per_bank_per_clock in output_lane_read_addr_per_bank[bank_idx]]
                 output_lane_for_bank_luts.append(
                     DefineLUTAnyType(Array[lane_idx_width, Bit], num_lane_idxs, builtins.tuple(lane_idxs)))
@@ -205,25 +206,52 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 wire(reshape_read_counter.O, lut.addr)
 
 
-
-            # third and final part creates the sorting networks that map lanes to banks
+            # third and final instance creation part creates the sorting networks that map lanes to banks
             input_sorting_network_t = Tuple({
                 "bank": Array[write_bank_for_input_lane_luts[0].O.N, Bit],
                 "value": shared_and_diff_subtypes.shared_inner.magma_repr()})
             input_sorting_network = DefineBitonicSort(input_sorting_network_t,
                                                       len(rams),
-                                                      lambda x: x.bank)
+                                                      lambda x: x.bank)()
 
             output_sorting_network_t = Tuple({
                 "lane": Array[output_lane_for_bank_luts[0].O.N, Bit],
                 "value": shared_and_diff_subtypes.shared_inner.magma_repr()})
             output_sorting_network = DefineBitonicSort(output_sorting_network_t,
                                                       len(rams),
-                                                      lambda x: x.lane)
+                                                      lambda x: x.lane)()
 
+            # wire luts, sorting networks, inputs, and rams
+            for idx in range(len(rams)):
+                # wire input and bank to input sorting network
+                wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
+                if idx < t_in_diff.port_width():
+                    wire(cls.I[idx], input_sorting_network.I[idx].value)
+                else:
+                    wire(DefineCoreirConst(shared_and_diff_subtypes.shared_inner.magma_repr().size(), 0),
+                         input_sorting_network.I[idx].value)
 
+                # wire input sorting network, write addr, and write valid luts to banks
+                wire(input_sorting_network.O[idx].value, rams[idx].WDATA)
+                wire(write_addr_for_bank_luts[idx].data, rams[idx].WADDR)
+                wire(write_valid_for_bank_luts[idx].valid & bit(cls.WE), rams[idx].WE)
 
+                # wire output sorting network, read addr, read bank, and read enable
+                wire(rams[idx].RDATA, output_sorting_network.I[idx].value)
+                wire(output_lane_for_bank_luts[idx].data, output_sorting_network.I[idx].lane)
+                wire(read_addr_for_bank_luts[idx].data, rams[idx].RADDR)
+                # ok to read invalid things, so in read value LUT
+                wire(bit(cls.WE), rams[idx].RE)
 
+                # wire output sorting network value to output or term
+                if idx < t_out_diff.port_width():
+                    wire(output_sorting_network.O[idx].value, cls.O[idx])
+                else:
+                    wire(output_sorting_network.O[idx].value, TermAnyType(type(output_sorting_network.O[idx].value)))
+
+                # wire sorting networks bank/lane to term as not used on outputs, just used for sorting
+                wire(input_sorting_network.O[idx].bank, type(TermAnyType(input_sorting_network.O[idx].bank)))
+                wire(output_sorting_network.O[idx].lane, type(TermAnyType(output_sorting_network.O[idx].lane)))
 
     return _Reshape_ST
 
