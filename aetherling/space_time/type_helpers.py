@@ -62,8 +62,8 @@ def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> S
             if inner_shared_diff.shared_outer != ST_Tombstone():
                 return None
             else:
-                input_diff = replace(input_copy, inner_shared_diff.diff_input)
-                output_diff = replace(output_copy, inner_shared_diff.diff_output)
+                input_diff = replace(input_copy, t=inner_shared_diff.diff_input)
+                output_diff = replace(output_copy, t=inner_shared_diff.diff_output)
                 return SharedDiffTypes(inner_shared_diff.shared_inner, ST_Tombstone(), input_diff, output_diff)
     else:
         return None
