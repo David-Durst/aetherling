@@ -32,8 +32,10 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, has_ce = False,
                     tester.circuit.I[k] = graph.input_nodes[j].flat_idxs[k].idx
             if j > delay:
                 for k in range(len(graph.output_nodes[output_counter].flat_idxs)):
-                    tester.circuit.O[k].expect(graph.input_nodes[output_counter].flat_idxs[k].idx)
+                    #tester.circuit.O[k].expect(graph.input_nodes[output_counter].flat_idxs[k].idx)
+                    tester.print("output {}: %d\n".format(k), tester.circuit.O[k])
                 output_counter += 1
             tester.step(2)
             clk += 1
+    tester.circuit.O[0].expect(1)
     compile_and_run(tester)
