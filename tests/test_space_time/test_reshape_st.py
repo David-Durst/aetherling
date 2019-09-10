@@ -21,20 +21,18 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, has_ce = False,
     if has_reset:
         tester.circuit.reset = False
     clk = 0
-    output_counter = 0
     for i in range(num_t):
+        output_counter = 0
         for j in range(clocks + delay):
             tester.print("clk: {}\n".format(clk))
             # tester.print("last: %d\n", tester.circuit.last)
-            tester.print("inner read counter: %d\n", tester.circuit.ir)
-            tester.print("inner write counter: %d\n", tester.circuit.iw)
             tester.eval()
             if j < clocks:
                 for k in range(len(graph.input_nodes[j].flat_idxs)):
-                    tester.circuit.I[k] = graph.input_nodes[j].flat_idxs[k]
+                    tester.circuit.I[k] = graph.input_nodes[j].flat_idxs[k].idx
             if j > delay:
-                for k in range(len(graph.output_nodes[j].flat_idxs)):
-                    tester.circuit.O[k].expect(graph.input_nodes[output_counter].flat_idxs[k])
+                for k in range(len(graph.output_nodes[output_counter].flat_idxs)):
+                    tester.circuit.O[k].expect(graph.input_nodes[output_counter].flat_idxs[k].idx)
                 output_counter += 1
             tester.step(2)
             clk += 1
