@@ -218,16 +218,16 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
 
             # third and final instance creation part creates the sorting networks that map lanes to banks
-            input_sorting_network_t = Tuple({
-                "bank": Array[write_bank_for_input_lane_luts[0].data.N, Bit],
-                "value": shared_and_diff_subtypes.shared_inner.magma_repr()})
+            input_sorting_network_t = Tuple(
+                bank=Array[write_bank_for_input_lane_luts[0].data.N, Bit],
+                val=shared_and_diff_subtypes.shared_inner.magma_repr())
             input_sorting_network = DefineBitonicSort(input_sorting_network_t,
                                                       len(rams),
                                                       lambda x: x.bank)()
 
-            output_sorting_network_t = Tuple({
-                "lane": Array[output_lane_for_bank_luts[0].data.N, Bit],
-                "value": shared_and_diff_subtypes.shared_inner.magma_repr()})
+            output_sorting_network_t = Tuple(
+                lane=Array[output_lane_for_bank_luts[0].data.N, Bit],
+                val=shared_and_diff_subtypes.shared_inner.magma_repr())
             output_sorting_network = DefineBitonicSort(output_sorting_network_t,
                                                       len(rams),
                                                       lambda x: x.lane)()
@@ -237,13 +237,13 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 # wire input and bank to input sorting network
                 wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
                 if idx < t_in_diff.port_width():
-                    wire(cls.I[idx], input_sorting_network.I[idx].value)
+                    wire(cls.I[idx], input_sorting_network.I[idx].val)
                 else:
                     wire(DefineCoreirConst(shared_and_diff_subtypes.shared_inner.magma_repr().size(), 0),
-                         input_sorting_network.I[idx].value)
+                         input_sorting_network.I[idx].val)
 
                 # wire input sorting network, write addr, and write valid luts to banks
-                wire(input_sorting_network.O[idx].value, rams[idx].WDATA)
+                wire(input_sorting_network.O[idx].val, rams[idx].WDATA)
                 wire(write_addr_for_bank_luts[idx].data, rams[idx].WADDR)
                 if has_ce:
                     wire(write_valid_for_bank_luts[idx].data & bit(cls.CE), rams[idx].WE)
@@ -251,7 +251,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                     wire(write_valid_for_bank_luts[idx].data, rams[idx].WE)
 
                 # wire output sorting network, read addr, read bank, and read enable
-                wire(rams[idx].RDATA, output_sorting_network.I[idx].value)
+                wire(rams[idx].RDATA, output_sorting_network.I[idx].val)
                 wire(output_lane_for_bank_luts[idx].data, output_sorting_network.I[idx].lane)
                 wire(read_addr_for_bank_luts[idx].data, rams[idx].RADDR)
                 # ok to read invalid things, so in read value LUT
@@ -262,9 +262,9 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
                 # wire output sorting network value to output or term
                 if idx < t_out_diff.port_width():
-                    wire(output_sorting_network.O[idx].value, cls.O[idx])
+                    wire(output_sorting_network.O[idx].val, cls.O[idx])
                 else:
-                    wire(output_sorting_network.O[idx].value, TermAnyType(type(output_sorting_network.O[idx].value)))
+                    wire(output_sorting_network.O[idx].val, TermAnyType(type(output_sorting_network.O[idx].val)))
 
                 # wire sorting networks bank/lane to term as not used on outputs, just used for sorting
                 wire(input_sorting_network.O[idx].bank, TermAnyType(type(input_sorting_network.O[idx].bank)))
