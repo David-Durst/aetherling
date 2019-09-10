@@ -1,4 +1,5 @@
 import os
+import magma
 
 def get_fault_log(callee_file, circuit_name):
     dirname = os.path.dirname(callee_file)
@@ -45,6 +46,12 @@ def print_nd_int_array_port(tester, port, name = None):
                 tester.print("], ")
     else:
         tester.print(f"%d, ", port)
+
+def compile(testcircuit):
+    magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
+                  passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
+                  namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
+
 
 def compile_and_run(tester):
     tester.compile_and_run(target="verilator", magma_opts={

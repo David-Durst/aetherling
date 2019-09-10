@@ -85,7 +85,8 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
     """
 
     class _Reshape_ST(Circuit):
-        name = 'Reshape_ST{}_{}_hasCE{}_hasReset{}'.format(cleanName(str(t_in)), str(t_out), str(has_ce), str(has_reset))
+        name = 'Reshape_ST{}_{}_hasCE{}_hasReset{}'.format(cleanName(str(t_in)), cleanName(str(t_out)),
+                                                           str(has_ce), str(has_reset))
         IO = ['I', In(t_in.magma_repr()),
               'O', Out(t_out.magma_repr())
               ] + ClockInterface(has_ce=has_ce, has_reset=has_reset)
@@ -177,10 +178,10 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             output_delay = get_output_latencies(graph)[0]
             # this is present so testing knows the delay
             cls.output_delay = output_delay
-            reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_reset=has_reset)()
+            reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=has_ce, has_reset=has_reset)()
             # outer counter the repeats the reshape
-            repeat_reshape_counter = DefineNestedCounters(shared_and_diff_subtypes.shared_outer, has_ce=has_ce,
-                                                          has_reset=has_reset)()
+            repeat_reshape_counter = DefineNestedCounters(shared_and_diff_subtypes.shared_outer, has_last=False,
+                                                          has_ce=has_ce, has_reset=has_reset)()
 
             if has_ce:
                 wire(cls.CE, elem_per_reshape_counter.CE)
@@ -190,6 +191,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 wire(bit(cls.CE) & repeat_reshape_counter.valid & end_cur_elem & reshape_read_delay_counter.valid,
                      reshape_read_counter.CE)
             else:
+                wire(repeat_reshape_counter.valid & end_cur_elem, reshape_write_counter.CE)
                 wire(repeat_reshape_counter.valid & end_cur_elem & reshape_read_delay_counter.valid, reshape_read_counter.CE)
 
             if has_reset:
@@ -257,6 +259,8 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 # ok to read invalid things, so in read value LUT
                 if has_ce:
                     wire(bit(cls.CE), rams[idx].RE)
+                else:
+                    wire(DefineCoreirConst(1,1)().O[0], rams[idx].RE)
                 if has_reset:
                     wire(cls.RESET, rams[idx].RESET)
 

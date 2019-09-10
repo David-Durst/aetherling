@@ -1,7 +1,7 @@
 from aetherling.modules.permutation.assign_banks import *
 from aetherling.space_time.type_helpers import ST_Tombstone
 from aetherling.space_time.reshape_st import DefineReshape_ST
-from aetherling.helpers.fault_helpers import compile_and_run
+from aetherling.helpers.fault_helpers import compile_and_run, compile
 import fault
 
 def test_2_3_flip_reshape():
