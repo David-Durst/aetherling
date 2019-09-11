@@ -19,9 +19,6 @@ def test_ram_st_TSeq_3_1():
     for k in range(2):
         for j in range(n+i):
             tester.print("clk: {}\n".format(clk))
-            #tester.print("last: %d\n", tester.circuit.last)
-            tester.print("inner read counter: %d\n", tester.circuit.ir)
-            tester.print("inner write counter: %d\n", tester.circuit.iw)
             tester.circuit.WADDR = k
             tester.circuit.RADDR = k - 1
             tester.circuit.WDATA = j + k * (n+i)
@@ -86,11 +83,6 @@ def check_ram_st(clocks, num_t, tester, valid_clocks, ints_per_clock):
             else:
                 tester.circuit.WDATA = j + k * clocks
             tester.eval()
-            for i in range(num_t):
-                tester.print("WE bank {}: %d \n".format(i), tester.circuit.ram_valid[i])
-                tester.print("read data address {}: %d \n".format(i), tester.circuit.rams_raddr[i])
-                tester.print("read data bank {}: %d \n".format(i), tester.circuit.rams_data[i])
-                tester.print("write data bank {}: %d \n".format(i), tester.circuit.rams_wdata[i])
             if k > 0 and valid_clocks[j]:
                 if ints_per_clock is not None:
                     tester.circuit.RDATA.expect([ints_per_clock * (j + (k-1) * clocks) + i for i in range(ints_per_clock)])
