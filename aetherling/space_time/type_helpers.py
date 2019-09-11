@@ -31,6 +31,18 @@ class ST_Tombstone:
     def magma_repr(self):
         raise Exception("shouldn't call magma_repr on tombstone.")
 
+def replace_tombstone(outer_type: ST_Type, inner_type: ST_Type) -> ST_Type:
+    """
+    Replace the ST_Tombstone in outer_type with inner_type
+    """
+    if outer_type == ST_Tombstone():
+        return inner_type
+    elif is_nested(outer_type):
+        inner_t = replace_tombstone(outer_type.t, inner_type)
+        return replace(outer_type, t=inner_t)
+    else:
+        raise Exception("Can't replace tomsbone for outer_type {} that has no tombstone. "
+                        "Inner type was {}.".format(str(outer_type), str(inner_type)))
 
 def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> SharedDiffTypes:
     """
@@ -57,14 +69,16 @@ def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> S
             return SharedDiffTypes(inner_shared_diff.shared_inner, shared_outer, inner_shared_diff.diff_input, inner_shared_diff.diff_output)
         # this case is for diff
         else:
-            # if already did a shared_outer, then problem as this doesnt match pattern of shared_outer, diff, shared_inner
+            # if already did a shared_outer, then the the shared outer is part of a larger diff
+            # take the shared outer and put it on top of both the diff_input and diff_output
             # so return none
             if inner_shared_diff.shared_outer != ST_Tombstone():
-                return None
-            else:
-                input_diff = replace(input_copy, t=inner_shared_diff.diff_input)
-                output_diff = replace(output_copy, t=inner_shared_diff.diff_output)
-                return SharedDiffTypes(inner_shared_diff.shared_inner, ST_Tombstone(), input_diff, output_diff)
+                new_diff_input = replace_tombstone(inner_shared_diff.shared_outer, inner_shared_diff.diff_input)
+                new_diff_output = replace_tombstone(inner_shared_diff.shared_outer, inner_shared_diff.diff_output)
+                inner_shared_diff = replace(inner_shared_diff, diff_input=new_diff_input, diff_output=new_diff_output)
+            input_diff = replace(input_copy, t=inner_shared_diff.diff_input)
+            output_diff = replace(output_copy, t=inner_shared_diff.diff_output)
+            return SharedDiffTypes(inner_shared_diff.shared_inner, ST_Tombstone(), input_diff, output_diff)
     else:
         return None
 

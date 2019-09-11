@@ -37,3 +37,12 @@ def test_diff_with_outer_same():
     assert shared_diff.diff_output == ST_TSeq(3, 0, ST_SSeq(6, ST_Tombstone()))
     assert shared_diff.shared_inner == x.t.t.t
     assert shared_diff.shared_outer == ST_TSeq(9, 2, ST_Tombstone())
+
+def test_diff_with_partially_diff_inner():
+    x = ST_TSeq(9, 2, ST_SSeq(6, ST_SSeq(7, ST_TSeq(3, 0,  ST_SSeq(4, ST_Int)))))
+    y = ST_TSeq(9, 2, ST_TSeq(3, 0, ST_SSeq(7, ST_SSeq(6, ST_SSeq(4, ST_Int)))))
+    shared_diff = get_shared_and_diff_subtypes(x,y)
+    assert shared_diff.diff_input == ST_SSeq(6, ST_SSeq(7, ST_TSeq(3, 0, ST_Tombstone())))
+    assert shared_diff.diff_output == ST_TSeq(3, 0, ST_SSeq(7, ST_SSeq(6, ST_Tombstone())))
+    assert shared_diff.shared_inner == x.t.t.t.t
+    assert shared_diff.shared_outer == ST_TSeq(9, 2, ST_Tombstone())
