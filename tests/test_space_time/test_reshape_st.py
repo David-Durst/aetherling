@@ -13,9 +13,43 @@ def test_2_3_flip_reshape():
     graph = build_permutation_graph(input_type, output_type)
     testcircuit = DefineReshape_ST(input_type, output_type)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
-    check_reshape(graph, 2, testcircuit.output_delay, tester)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
-def check_reshape(graph: InputOutputGraph, num_t, delay, tester, has_ce = False, has_reset = False):
+def test_2_3_shared_sseq_2_flip_reshape():
+    no = 3
+    io = 0
+    ni = 2
+    nii = 2
+    input_type = ST_TSeq(no, io, ST_SSeq(ni, ST_SSeq(nii, ST_Int())))
+    output_type = ST_SSeq(ni, ST_TSeq(no, io, ST_SSeq(nii, ST_Int())))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
+
+def test_sseq_2_tseq_2_to_sseq_4_tseq_1_reshape():
+    input_type = ST_SSeq(2, ST_TSeq(2, 0, ST_Int()))
+    output_type = ST_SSeq(4, ST_TSeq(1, 1, ST_Int()))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
+
+def test_2_3_shared_sseq_2_tseq_3_3_flip_reshape():
+    no = 3
+    io = 0
+    ni = 2
+    nii = 2
+    niii = 3
+    iiii = 3
+    input_type = ST_TSeq(no, io, ST_SSeq(ni, ST_SSeq(nii, ST_TSeq(niii, iiii, ST_Int()))))
+    output_type = ST_SSeq(ni, ST_TSeq(no, io, ST_SSeq(nii, ST_TSeq(niii, iiii, ST_Int()))))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
+
+def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
     clocks = len(graph.input_nodes)
     if has_ce:
         tester.circuit.CE = True
@@ -23,12 +57,22 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, has_ce = False,
         tester.circuit.reset = False
     clk = 0
     output_clock = 0
+
+    in_ports = tester.circuit.I
+    for i in range(num_flattens_in):
+        in_ports = flatten(in_ports)
+
+    out_ports = tester.circuit.O
+    for i in range(num_flattens_out):
+        out_ports = flatten(out_ports)
+
     for i in range(num_t * clocks + delay):
         input_clock = i % clocks
         tester.print("clk: {}\n".format(clk))
 
         for k in range(len(graph.input_nodes[input_clock].flat_idxs)):
-            tester.circuit.I[k] = graph.input_nodes[input_clock].flat_idxs[k].idx
+            tester.poke(in_ports[k].port, graph.input_nodes[input_clock].flat_idxs[k].idx)
+            tester.print("input {}: %d\n".format(k), in_ports[k])
 
         tester.eval()
 
@@ -43,7 +87,9 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, has_ce = False,
 
         if i >= delay:
             for k in range(len(graph.output_nodes[output_clock].flat_idxs)):
-                tester.circuit.O[k].expect(graph.output_nodes[output_clock].flat_idxs[k].idx)
+                tester.print("output {}: %d\n".format(k), out_ports[k])
+            for k in range(len(graph.output_nodes[output_clock].flat_idxs)):
+                out_ports[k].expect(graph.output_nodes[output_clock].flat_idxs[k].idx)
             output_clock = (output_clock + 1) % clocks
 
         #tester.print("ram first valid write: %d\n", tester.circuit.first_valid)
