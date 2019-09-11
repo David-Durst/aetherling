@@ -92,7 +92,8 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
                 if has_last:
                     wire(valid_and_last.O[0], cls.last)
                 if has_cur_valid:
-                    wire(valid_and_last.O, cls.cur_valid)
+                    cur_valid = DefineCoreirConst(1, 0)()
+                    wire(cur_valid.O, cls.cur_valid)
                 if has_ce:
                     wire(cls.valid, cls.CE)
                 else:

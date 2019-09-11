@@ -41,6 +41,11 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
               'WDATA', In(t.magma_repr()),
               'WE', In(Bit),
               'RE', In(Bit),
+              'ram_valid', Out(Array[5, Array[1, Bit]]),
+              'rams_raddr', Out(Array[5, Array[1, Bit]]),
+              'rams_waddr', Out(Array[5, Array[1, Bit]]),
+              'rams_data', Out(Array[n, t.magma_repr()]),
+              'rams_wdata', Out(Array[n, t.magma_repr()])
               ] + ClockInterface(has_ce=False, has_reset=has_reset)
         @classmethod
         def definition(cls):
@@ -61,7 +66,13 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
                 wire(read_selector.data[i], rams.RDATA[i])
                 wire(read_time_position_counter.cur_valid, rams.RADDR[i])
                 write_cur_ram = Decode(i, cls.WADDR.N)(cls.WADDR)
-                wire(write_cur_ram & write_time_position_counter.valid, rams.WE[i])
+                v = write_cur_ram & write_time_position_counter.valid
+                wire(v, rams.WE[i])
+                wire(v, cls.ram_valid[i][0])
+                wire(read_time_position_counter.cur_valid, cls.rams_raddr[i])
+                wire(write_time_position_counter.cur_valid, cls.rams_waddr[i])
+                wire(rams.RDATA[i], cls.rams_data[i])
+                wire(cls.WDATA, cls.rams_wdata[i])
 
             wire(cls.RADDR, read_selector.sel)
             wire(cls.RDATA, read_selector.out)
