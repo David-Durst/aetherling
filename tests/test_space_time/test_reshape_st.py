@@ -1,6 +1,6 @@
 from aetherling.modules.permutation.assign_banks import *
 from aetherling.modules.permutation import build_permutation_graph
-from aetherling.space_time.type_helpers import ST_Tombstone
+from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes
 from aetherling.space_time.reshape_st import DefineReshape_ST
 from aetherling.helpers.fault_helpers import compile_and_run, compile
 import fault
@@ -50,13 +50,18 @@ def test_2_3_shared_sseq_2_tseq_3_3_flip_reshape():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
-    clocks = len(graph.input_nodes)
+    shared_and_diff_subtypes = get_shared_and_diff_subtypes(graph.input_type, graph.output_type)
+    clocks_per_element = shared_and_diff_subtypes.shared_inner.time()
+    elements = len(graph.input_nodes)
+    clocks = len(graph.input_nodes) * clocks_per_element
     if has_ce:
         tester.circuit.CE = True
     if has_reset:
         tester.circuit.reset = False
     clk = 0
-    output_clock = 0
+    clock_cur_element = 0
+    input_element = -1
+    output_element = -1
 
     in_ports = tester.circuit.I
     for i in range(num_flattens_in):
@@ -66,18 +71,22 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
     for i in range(num_flattens_out):
         out_ports = flatten(out_ports)
 
-    for i in range(num_t * clocks + delay):
-        input_clock = i % clocks
+    for i in range(num_t * clocks + delay * clock_cur_element):
+        clock_cur_element = i % clocks_per_element
+        if clock_cur_element == 0:
+            input_element = (input_element + 1) % elements
+            if input_element >= delay or output_element != -1:
+                output_element = (output_element + 1) % elements
         tester.print("clk: {}\n".format(clk))
 
-        for k in range(len(graph.input_nodes[input_clock].flat_idxs)):
-            if not graph.input_nodes[input_clock].flat_idxs[k].invalid:
-                tester.poke(in_ports[k].port, graph.input_nodes[input_clock].flat_idxs[k].idx)
+        for k in range(len(graph.input_nodes[input_element].flat_idxs)):
+            if not graph.input_nodes[input_element].flat_idxs[k].invalid:
+                tester.poke(in_ports[k].port, graph.input_nodes[input_element].flat_idxs[k].idx)
                 tester.print("input {}: %d\n".format(k), in_ports[k])
 
         tester.eval()
 
-        #for k in range(len(graph.input_nodes[input_clock].flat_idxs)):
+        #for k in range(len(graph.input_nodes[input_element].flat_idxs)):
             #tester.print("ram_wr {}: %d\n".format(k), tester.circuit.ram_wr[k])
             #tester.print("addr_wr {}: %d\n".format(k), tester.circuit.addr_wr[k])
 
@@ -86,13 +95,12 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
             #tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd[k])
             #tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd[k])
 
-        if i >= delay:
-            for k in range(len(graph.output_nodes[output_clock].flat_idxs)):
+        if input_element >= delay:
+            for k in range(len(graph.output_nodes[output_element].flat_idxs)):
                 tester.print("output {}: %d\n".format(k), out_ports[k])
-            for k in range(len(graph.output_nodes[output_clock].flat_idxs)):
-                if not graph.output_nodes[output_clock].flat_idxs[k].invalid:
-                    out_ports[k].expect(graph.output_nodes[output_clock].flat_idxs[k].idx)
-            output_clock = (output_clock + 1) % clocks
+            for k in range(len(graph.output_nodes[output_element].flat_idxs)):
+                if not graph.output_nodes[output_element].flat_idxs[k].invalid:
+                    out_ports[k].expect(graph.output_nodes[output_element].flat_idxs[k].idx)
 
         #tester.print("ram first valid write: %d\n", tester.circuit.first_valid)
         tester.step(2)

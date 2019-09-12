@@ -87,6 +87,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
     class _Reshape_ST(Circuit):
         name = 'Reshape_ST{}_{}_hasCE{}_hasReset{}'.format(cleanName(str(t_in)), cleanName(str(t_out)),
                                                            str(has_ce), str(has_reset))
+        name = 'testy_namer'
         IO = ['I', In(t_in.magma_repr()),
               'O', Out(t_out.magma_repr())
               ] + ClockInterface(has_ce=has_ce, has_reset=has_reset)
