@@ -95,14 +95,14 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
 
         tester.eval()
 
-        #for k in range(len(graph.input_nodes[input_element].flat_idxs)):
-            #tester.print("ram_wr {}: %d\n".format(k), tester.circuit.ram_wr[k])
-            #tester.print("addr_wr {}: %d\n".format(k), tester.circuit.addr_wr[k])
+        for k in range(len(graph.input_nodes[input_element].flat_idxs)):
+            tester.print("ram_wr {}: %d\n".format(k), tester.circuit.ram_wr[k])
+            tester.print("addr_wr {}: %d\n".format(k), tester.circuit.addr_wr[k])
 
-        #for k in range(len(graph.output_nodes[output_clock].flat_idxs)):
-            #tester.print("output {}: %d\n".format(k), tester.circuit.O[k])
-            #tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd[k])
-            #tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd[k])
+        for k in range(len(graph.output_nodes[output_element].flat_idxs)):
+            tester.print("output {}: %d\n".format(k), tester.circuit.O[k])
+            tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd[k])
+            tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd[k])
 
         if i >= delay:
             for k in range(len(graph.output_nodes[output_element].flat_idxs)):
@@ -111,7 +111,8 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
                 if not graph.output_nodes[output_element].flat_idxs[k].invalid:
                     out_ports[k].expect(graph.output_nodes[output_element].flat_idxs[k].idx)
 
-        #tester.print("ram first valid write: %d\n", tester.circuit.first_valid)
+        tester.print("reshape write counter: %d\n", tester.circuit.reshape_write_counter)
+        tester.print("ram first valid write: %d\n \n", tester.circuit.first_valid)
         tester.step(2)
         clk += 1
     compile_and_run(tester)

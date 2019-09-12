@@ -89,7 +89,13 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                                                            str(has_ce), str(has_reset))
         name = 'testy_namer'
         IO = ['I', In(t_in.magma_repr()),
-              'O', Out(t_out.magma_repr())
+              'O', Out(t_out.magma_repr()),
+              'ram_wr', Out(t_in.magma_repr()),
+              'addr_wr', Out(Array[2, Array[1, Bit]]),
+              'ram_rd', Out(t_in.magma_repr()),
+              'addr_rd', Out(Array[2, Array[1, Bit]]),
+              'reshape_write_counter', Out(Array[2, Bit]),
+              'first_valid', Out(Bit)
               ] + ClockInterface(has_ce=has_ce, has_reset=has_reset)
         @classmethod
         def definition(cls):
@@ -176,13 +182,14 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             reshape_write_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
             reshape_read_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
 
-            output_delay = (get_output_latencies(graph)[0] - 1) * shared_and_diff_subtypes.shared_inner.time() + 1
+            output_delay = (get_output_latencies(graph)[0]) * shared_and_diff_subtypes.shared_inner.time()
             # this is present so testing knows the delay
             cls.output_delay = output_delay
             reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=has_ce, has_reset=has_reset)()
             # outer counter the repeats the reshape
             repeat_reshape_counter = DefineNestedCounters(shared_and_diff_subtypes.shared_outer, has_last=False,
                                                           has_ce=has_ce, has_reset=has_reset)()
+            wire(reshape_write_counter.O, cls.reshape_write_counter)
 
             if has_ce:
                 wire(cls.CE, elem_per_reshape_counter.CE)
@@ -239,8 +246,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             for idx in range(len(rams)):
                 # wire input and bank to input sorting network
                 wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
+                if idx == 0:
+                    wire(cls.first_valid, write_valid_for_bank_luts[idx].data)
                 if idx < t_in_diff.port_width():
                     wire(cls.I[idx], input_sorting_network.I[idx].val)
+                    wire(cls.ram_wr[idx], input_sorting_network.O[idx].val)
+                    wire(cls.ram_rd[idx], rams[idx].RDATA)
                 else:
                     wire(DefineCoreirConst(shared_and_diff_subtypes.shared_inner.magma_repr().size(), 0)().O,
                          input_sorting_network.I[idx].val)
@@ -248,6 +259,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 # wire input sorting network, write addr, and write valid luts to banks
                 wire(input_sorting_network.O[idx].val, rams[idx].WDATA)
                 wire(write_addr_for_bank_luts[idx].data, rams[idx].WADDR)
+                wire(write_addr_for_bank_luts[idx].data, cls.addr_wr[idx])
                 if has_ce:
                     wire(write_valid_for_bank_luts[idx].data & bit(cls.CE), rams[idx].WE)
                 else:
@@ -257,11 +269,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 wire(rams[idx].RDATA, output_sorting_network.I[idx].val)
                 wire(output_lane_for_bank_luts[idx].data, output_sorting_network.I[idx].lane)
                 wire(read_addr_for_bank_luts[idx].data, rams[idx].RADDR)
+                wire(read_addr_for_bank_luts[idx].data, cls.addr_rd[idx])
                 # ok to read invalid things, so in read value LUT
                 if has_ce:
                     wire(bit(cls.CE), rams[idx].RE)
                 else:
-                    wire(DefineCoreirConst(1,1)().O[0], rams[idx].RE)
+                    wire(DefineCoreirConst(1, 1)().O[0], rams[idx].RE)
                 if has_reset:
                     wire(cls.RESET, rams[idx].RESET)
 
