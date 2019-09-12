@@ -71,7 +71,7 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
     for i in range(num_flattens_out):
         out_ports = flatten(out_ports)
 
-    for i in range(num_t * clocks + delay * clock_cur_element):
+    for i in range(num_t * clocks + delay):
         clock_cur_element = i % clocks_per_element
         if clock_cur_element == 0:
             input_element = (input_element + 1) % elements
@@ -95,7 +95,7 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
             #tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd[k])
             #tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd[k])
 
-        if input_element >= delay:
+        if i >= delay:
             for k in range(len(graph.output_nodes[output_element].flat_idxs)):
                 tester.print("output {}: %d\n".format(k), out_ports[k])
             for k in range(len(graph.output_nodes[output_element].flat_idxs)):

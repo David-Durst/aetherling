@@ -176,7 +176,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             reshape_write_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
             reshape_read_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
 
-            output_delay = get_output_latencies(graph)[0]
+            output_delay = get_output_latencies(graph)[0] * shared_and_diff_subtypes.shared_inner.time()
             # this is present so testing knows the delay
             cls.output_delay = output_delay
             reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=has_ce, has_reset=has_reset)()
