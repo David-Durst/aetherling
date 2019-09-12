@@ -20,6 +20,21 @@ def test_nested_counters_TSeq_2_0():
         tester.step(2)
     compile_and_run(tester)
 
+def test_nested_counters_TSeq_2_0_no_last():
+    n = 2
+    i = 0
+    t = ST_TSeq(n, i, ST_Int())
+    testcircuit = DefineNestedCounters(t, has_last=False)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    tester.eval()
+    for j in range(n+i):
+        tester.print("clk: {}\n".format(str(j)))
+        tester.print("valid: %d\n", tester.circuit.valid)
+        tester.circuit.valid.expect(j < n)
+        tester.step(2)
+    compile_and_run(tester)
+
 def test_nested_counters_TSeq_3_1():
     n = 3
     i = 1

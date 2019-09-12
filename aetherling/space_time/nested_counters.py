@@ -58,6 +58,10 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
                 # always valid in this case, so just emit 1
                 if math.pow(2, outer_counter.O.N) - 1 < t.n:
                     is_valid = DefineCoreirConst(1, 1)().O[0]
+                    if not has_last:
+                        # never using the outer_counter is not has_last
+                        last_term = TermAnyType(type(outer_counter.O))
+                        wire(outer_counter.O, last_term.I)
                 else:
                     valid_length = DefineCoreirConst(outer_counter.O.N, t.n)()
                     is_valid_cmp = DefineCoreirUlt(outer_counter.O.N)()
