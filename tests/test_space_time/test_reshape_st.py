@@ -15,6 +15,19 @@ def test_2_3_flip_reshape():
     tester = fault.Tester(testcircuit, testcircuit.CLK)
     check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
+def test_2_3_shared_tseq_2_0_flip_reshape():
+    no = 3
+    io = 0
+    ni = 2
+    nii = 2
+    iii = 0
+    input_type = ST_TSeq(no, io, ST_SSeq(ni, ST_TSeq(nii, iii, ST_Int())))
+    output_type = ST_SSeq(ni, ST_TSeq(no, io, ST_TSeq(nii, iii, ST_Int())))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
+
 def test_2_3_shared_sseq_2_flip_reshape():
     no = 3
     io = 0
@@ -52,14 +65,12 @@ def test_2_3_shared_sseq_2_tseq_3_3_flip_reshape():
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
     shared_and_diff_subtypes = get_shared_and_diff_subtypes(graph.input_type, graph.output_type)
     clocks_per_element = shared_and_diff_subtypes.shared_inner.time()
-    elements = len(graph.input_nodes)
-    clocks = len(graph.input_nodes) * clocks_per_element
+    clocks = len(graph.input_nodes)
     if has_ce:
         tester.circuit.CE = True
     if has_reset:
         tester.circuit.reset = False
     clk = 0
-    clock_cur_element = 0
     input_element = -1
     output_element = -1
 
@@ -72,11 +83,9 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
         out_ports = flatten(out_ports)
 
     for i in range(num_t * clocks + delay):
-        clock_cur_element = i % clocks_per_element
-        if clock_cur_element == 0:
-            input_element = (input_element + 1) % elements
-            if input_element >= delay or output_element != -1:
-                output_element = (output_element + 1) % elements
+        input_element = (input_element + 1) % clocks
+        if input_element >= delay or output_element != -1:
+            output_element = (output_element + 1) % clocks
         tester.print("clk: {}\n".format(clk))
 
         for k in range(len(graph.input_nodes[input_element].flat_idxs)):
