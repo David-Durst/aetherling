@@ -241,7 +241,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 if idx < t_in_diff.port_width():
                     wire(cls.I[idx], input_sorting_network.I[idx].val)
                 else:
-                    wire(DefineCoreirConst(shared_and_diff_subtypes.shared_inner.magma_repr().size(), 0),
+                    wire(DefineCoreirConst(shared_and_diff_subtypes.shared_inner.magma_repr().size(), 0)().O,
                          input_sorting_network.I[idx].val)
 
                 # wire input sorting network, write addr, and write valid luts to banks
