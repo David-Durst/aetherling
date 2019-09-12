@@ -26,8 +26,7 @@ def test_shared_tseq_2_0_2_3_flip_reshape():
     graph = build_permutation_graph(input_type, output_type)
     testcircuit = DefineReshape_ST(input_type, output_type)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
-    compile(testcircuit)
-    #check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
 def test_2_3_shared_tseq_2_0_flip_reshape():
     no = 3
