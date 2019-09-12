@@ -10,6 +10,7 @@ from mantle.common.countermod import SizedCounterModM
 from magma import *
 from magma.circuit import DefineCircuitKind, Circuit
 from typing import List
+import math
 
 __all__ = ['DefineNestedCounters', 'NestedCounters']
 
@@ -48,16 +49,23 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
                                                       has_ce=has_ce, has_reset=has_reset)()
                 if has_last:
                     is_last = Decode(t.n + t.i - 1, outer_counter.O.N)(outer_counter.O)
-                valid_length = DefineCoreirConst(outer_counter.O.N, t.n)()
-                is_valid = DefineCoreirUlt(outer_counter.O.N)()
                 if has_cur_valid:
                     cur_valid_counter = SizedCounterModM(t.valid_clocks(), has_ce=True, has_reset=has_reset)
                     wire(cur_valid_counter.O, cls.cur_valid)
 
-                wire(is_valid.I0, outer_counter.O)
-                wire(is_valid.I1, valid_length.O)
+                # if t.n is a power of 2 and always valid, then outer_counter.O.N not enough bits
+                # for valid_length to contain t.n and for is_valid to get the right input
+                # always valid in this case, so just emit 1
+                if math.pow(2, outer_counter.O.N) - 1 < t.n:
+                    is_valid = DefineCoreirConst(1, 1)().O[0]
+                else:
+                    valid_length = DefineCoreirConst(outer_counter.O.N, t.n)()
+                    is_valid_cmp = DefineCoreirUlt(outer_counter.O.N)()
+                    wire(is_valid_cmp.I0, outer_counter.O)
+                    wire(is_valid_cmp.I1, valid_length.O)
+                    is_valid = is_valid_cmp.O
 
-                wire(inner_counters.valid & is_valid.O, cls.valid)
+                wire(inner_counters.valid & is_valid, cls.valid)
                 if has_last:
                     wire(is_last & inner_counters.last, cls.last)
                 if has_reset:
@@ -69,11 +77,11 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
                     wire(bit(cls.CE) & inner_counters.last, outer_counter.CE)
                     wire(cls.CE, inner_counters.CE)
                     if has_cur_valid:
-                        wire(bit(cls.CE) & inner_counters.valid & is_valid.O, cur_valid_counter.CE)
+                        wire(bit(cls.CE) & inner_counters.valid & is_valid, cur_valid_counter.CE)
                 else:
                     wire(inner_counters.last, outer_counter.CE)
                     if has_cur_valid:
-                        wire(inner_counters.valid & is_valid.O, cur_valid_counter.CE)
+                        wire(inner_counters.valid & is_valid, cur_valid_counter.CE)
             elif is_nested(t):
                 inner_counters = DefineNestedCounters(t.t, has_last, has_cur_valid, has_ce, has_reset)()
 
