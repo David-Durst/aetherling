@@ -30,7 +30,7 @@ def test_ram_st_TSeq_3_1():
     compile_and_run(tester)
 
 def test_ram_st_TSeq_2_0():
-    no = 3
+    no = 2
     io = 0
     t = ST_TSeq(no, io, ST_Int())
     num_t = 2
