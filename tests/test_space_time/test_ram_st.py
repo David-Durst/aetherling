@@ -29,6 +29,18 @@ def test_ram_st_TSeq_3_1():
             clk += 1
     compile_and_run(tester)
 
+def test_ram_st_TSeq_2_0():
+    no = 3
+    io = 0
+    t = ST_TSeq(no, io, ST_Int())
+    num_t = 2
+    testcircuit = DefineRAM_ST(t, num_t)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    valid_clocks = [(o<no) for o in range(no+io)]
+
+    check_ram_st(no+io, num_t, tester, valid_clocks, None)
+
 def test_ram_st_TSeq_3_1_SSeq_2():
     no = 3
     io = 1
