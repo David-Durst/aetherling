@@ -63,8 +63,6 @@ def test_2_3_shared_sseq_2_tseq_3_3_flip_reshape():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
-    shared_and_diff_subtypes = get_shared_and_diff_subtypes(graph.input_type, graph.output_type)
-    clocks_per_element = shared_and_diff_subtypes.shared_inner.time()
     clocks = len(graph.input_nodes)
     if has_ce:
         tester.circuit.CE = True
