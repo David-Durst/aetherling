@@ -44,6 +44,18 @@ def replace_tombstone(outer_type: ST_Type, inner_type: ST_Type) -> ST_Type:
         raise Exception("Can't replace tomsbone for outer_type {} that has no tombstone. "
                         "Inner type was {}.".format(str(outer_type), str(inner_type)))
 
+def remove_tseqs(t: ST_Type) -> ST_Type:
+    """
+    Get just the sseqs and the non-nested types, removing the tseqs
+    """
+    if type(t) == ST_SSeq:
+        inner_tseqs_removed = remove_tseqs(t.t)
+        return replace(t, t=inner_tseqs_removed)
+    elif is_nested(t):
+        return remove_tseqs(t.t)
+    else:
+        return t
+
 def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> SharedDiffTypes:
     """
     Given two types that take equal amount of time, have the same length, but have different

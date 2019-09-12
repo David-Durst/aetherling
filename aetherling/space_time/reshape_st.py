@@ -1,7 +1,7 @@
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.space_time.ram_st import DefineRAM_ST
-from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, ST_Tombstone
+from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, remove_tseqs, replace_tombstone, ST_Tombstone
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.flip.bitonic_sort import DefineBitonicSort
 from aetherling.modules.permutation import build_permutation_graph, BipartiteNode, get_output_latencies
@@ -113,7 +113,13 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             # but some of those writes don't happen as the data is invalid, so don't need storage for them
             max_ram_addrs = [max([bank_clock_data.addr for bank_clock_data in bank_data])
                                for bank_data in output_lane_read_addr_per_bank]
-            rams = [DefineRAM_ST(shared_and_diff_subtypes.shared_inner, ram_max_addr + 1)() for ram_max_addr in max_ram_addrs]
+            # rams also handle parallelism from outer_shared type as this affects all banks the same
+            outer_shared_sseqs = remove_tseqs(shared_and_diff_subtypes.shared_outer)
+            if outer_shared_sseqs == ST_Tombstone():
+                ram_element_type = shared_and_diff_subtypes.shared_inner
+            else:
+                ram_element_type = replace_tombstone(outer_shared_sseqs, shared_and_diff_subtypes.shared_inner)
+            rams = [DefineRAM_ST(ram_element_type, ram_max_addr + 1)() for ram_max_addr in max_ram_addrs]
             rams_addr_widths = [ram.WADDR.N for ram in rams]
 
             # for bank, the addresses to write to each clock
@@ -175,14 +181,14 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
             # second part creates the counters that index into the LUTs
             # elem_per counts time per element of the reshape
-            elem_per_reshape_counter = AESizedCounterModM(shared_and_diff_subtypes.shared_inner.time(), has_ce=has_ce)
-            end_cur_elem = Decode(shared_and_diff_subtypes.shared_inner.time() - 1,
+            elem_per_reshape_counter = AESizedCounterModM(ram_element_type.time(), has_ce=has_ce)
+            end_cur_elem = Decode(ram_element_type.time() - 1,
                                   elem_per_reshape_counter.O.N)(elem_per_reshape_counter.O)
             # reshape counts which element in the reshape
             reshape_write_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
             reshape_read_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
 
-            output_delay = (get_output_latencies(graph)[0]) * shared_and_diff_subtypes.shared_inner.time()
+            output_delay = (get_output_latencies(graph)[0]) * ram_element_type.time()
             # this is present so testing knows the delay
             cls.output_delay = output_delay
             reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=has_ce, has_reset=has_reset)()
@@ -230,14 +236,14 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             # third and final instance creation part creates the sorting networks that map lanes to banks
             input_sorting_network_t = Tuple(
                 bank=Array[write_bank_for_input_lane_luts[0].data.N, Bit],
-                val=shared_and_diff_subtypes.shared_inner.magma_repr())
+                val=ram_element_type.magma_repr())
             input_sorting_network = DefineBitonicSort(input_sorting_network_t,
                                                       len(rams),
                                                       lambda x: x.bank)()
 
             output_sorting_network_t = Tuple(
                 lane=Array[output_lane_for_bank_luts[0].data.N, Bit],
-                val=shared_and_diff_subtypes.shared_inner.magma_repr())
+                val=ram_element_type.magma_repr())
             output_sorting_network = DefineBitonicSort(output_sorting_network_t,
                                                       len(rams),
                                                       lambda x: x.lane)()
@@ -253,7 +259,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                     #wire(cls.ram_wr[idx], input_sorting_network.O[idx].val)
                     #wire(cls.ram_rd[idx], rams[idx].RDATA)
                 else:
-                    wire(DefineCoreirConst(shared_and_diff_subtypes.shared_inner.magma_repr().size(), 0)().O,
+                    wire(DefineCoreirConst(ram_element_type.magma_repr().size(), 0)().O,
                          input_sorting_network.I[idx].val)
 
                 # wire input sorting network, write addr, and write valid luts to banks
