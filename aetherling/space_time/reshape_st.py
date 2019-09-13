@@ -1,7 +1,8 @@
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.space_time.ram_st import DefineRAM_ST
-from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, remove_tseqs, replace_tombstone, ST_Tombstone
+from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, remove_tseqs, replace_tombstone, \
+    ST_Tombstone, num_nested_layers
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.flip.bitonic_sort import DefineBitonicSort
 from aetherling.modules.permutation import build_permutation_graph, BipartiteNode, get_output_latencies
@@ -18,6 +19,7 @@ from magma.bitutils import int2seq
 from magma.circuit import DefineCircuitKind, Circuit
 from typing import List
 import builtins
+import numpy as np
 
 __all__ = ['DefineReshape_ST', 'Reshape_ST']
 
@@ -67,6 +69,40 @@ def get_lane_addr_per_banks(graph_nodes: List[BipartiteNode]) -> List[List[LaneT
                                                            not graph_nodes[t].flat_idxs[s].invalid)
     return lane_bank_data
 
+def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Type, inner_dimensions: ST_Type,
+                               ports_to_transpose: List) -> Kind:
+    """
+    Transpose the outer dimensions of a set of ports, move them inside the diff dimensions. The outer dimensions
+    that are sseqs are the same for all elements, so treat as inner dimensions.
+    :param outer_dimensions: The outer dimensions that need to be moved inside
+    :param diff_dimensions: The dimensions that need to be moved outside
+    :param inner_dimensions: The inner dimensions that need to stay where they are
+    :param ports_to_transpose: The ports
+    :return:
+    """
+    # always remove tseqs as they don't affect the magma types
+    num_outer_dimensions = num_nested_layers(remove_tseqs(outer_dimensions))
+    num_diff_dimensions = num_nested_layers(remove_tseqs(diff_dimensions))
+    num_inner_dimensions = num_nested_layers(remove_tseqs(inner_dimensions))
+    orig_arr = np.asarray(ports_to_transpose)
+
+    # these are the indexes of the dimensions on the untransposed type
+    outer_dimensions_indexes_untransposed = list(range(num_outer_dimensions))
+    diff_dimensions_indexes_untransposed = list(range(num_outer_dimensions, num_outer_dimensions + num_diff_dimensions))
+    inner_dimensions_indexes_untransposed = list(range(num_outer_dimensions + num_diff_dimensions,
+                                                       num_outer_dimensions + num_diff_dimensions + num_inner_dimensions))
+
+    transposed_arr = orig_arr.transpose(diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed +
+                                        inner_dimensions_indexes_untransposed)
+    return transposed_arr.tolist()
+
+def flatten_ports(ports_to_flatten: List) -> List:
+    """
+    Convert a nested list of ports to a flat list of ports
+    """
+    ports_arr = np.asarray(ports_to_flatten)
+    flattened_arr = ports_arr.flatten()
+    return flattened_arr.tolist()
 
 @cache_definition
 def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=False) -> DefineCircuitKind:
@@ -249,13 +285,15 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                                                       lambda x: x.lane)()
 
             # wire luts, sorting networks, inputs, and rams
+            input_ports = flatten_ports(cls.I)
+            output_ports = flatten_ports(cls.O)
             for idx in range(len(rams)):
                 # wire input and bank to input sorting network
                 wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
                 #if idx == 0:
                 #    wire(cls.first_valid, write_valid_for_bank_luts[idx].data)
                 if idx < t_in_diff.port_width():
-                    wire(cls.I[idx], input_sorting_network.I[idx].val)
+                    wire(input_ports[idx], input_sorting_network.I[idx].val)
                     #wire(cls.ram_wr[idx], input_sorting_network.O[idx].val)
                     #wire(cls.ram_rd[idx], rams[idx].RDATA)
                 else:
@@ -286,7 +324,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
                 # wire output sorting network value to output or term
                 if idx < t_out_diff.port_width():
-                    wire(output_sorting_network.O[idx].val, cls.O[idx])
+                    wire(output_sorting_network.O[idx].val, output_ports[idx])
                 else:
                     wire(output_sorting_network.O[idx].val, TermAnyType(type(output_sorting_network.O[idx].val)))
 
