@@ -118,7 +118,7 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
 
     for i in range(num_t * clocks + delay):
         input_element = (input_element + 1) % clocks
-        if input_element >= delay or output_element != -1:
+        if i >= delay or output_element != -1:
             output_element = (output_element + 1) % clocks
         tester.print("clk: {}\n".format(clk))
 
