@@ -91,16 +91,12 @@ def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Ty
     diff_dimensions_indexes_untransposed = list(range(num_outer_dimensions, num_outer_dimensions + num_diff_dimensions))
     inner_dimensions_indexes_untransposed = list(range(num_outer_dimensions + num_diff_dimensions,
                                                        num_outer_dimensions + num_diff_dimensions + num_inner_dimensions))
-
-    # need to get dimensions used for ints and other atoms, put those at end as well
     sseq_dims_transposed = diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed + \
         inner_dimensions_indexes_untransposed
-    sseq_dim_lengths = get_dim_lengths(ports_to_transpose, len(sseq_dims_transposed))
-    flattened_sseq_dims = flatten_ports(ports_to_transpose, len(sseq_dims_transposed))
+
+    # performing the transpose with blockers added so right dimensions not converted
     ports_to_transpose_with_block = add_blocker(ports_to_transpose, len(sseq_dims_transposed))
-    #orig_arr = np.asarray(ports_to_transpose, dtype=get_atom_port_type(ports_to_transpose, len(sseq_dims_transposed)))
     orig_arr = np.asarray(ports_to_transpose_with_block)
-    atom_dims = list(range(len(sseq_dims_transposed), orig_arr.ndim))
     transposed_arr = orig_arr.transpose(diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed +
                                         inner_dimensions_indexes_untransposed)
     transposed_list_with_blocks = transposed_arr.tolist()
@@ -108,15 +104,25 @@ def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Ty
 
 @dataclass
 class NP_Blocker:
+    """
+    A helper class. np.asarray walks a nested list and converts all iterables to lists.
+    This prevents the conversion of inner iterables, which are ports, to lists since it isn't iterable.
+    """
     el: List
 
 def add_blocker(ports: List, layers_until_blocker: int):
+    """
+    Add NP_Blockers so that np.asarray ignores the inner lists
+    """
     if layers_until_blocker == 0:
         return NP_Blocker(ports)
     else:
         return [add_blocker(el, layers_until_blocker - 1) for el in ports]
 
 def remove_blocker(ports):
+    """
+    Remove NP_Blockers after finishing using numpy
+    """
     if type(ports) == NP_Blocker:
         return ports.el
     else:
@@ -141,13 +147,6 @@ def flatten_ports(ports_to_flatten: List, layers_to_flatten: int) -> List:
     else:
         partially_flattened = ts_addr_assign.flatten(ports_to_flatten)
         return flatten_ports(partially_flattened, layers_to_flatten - 1)
-
-def get_atom_port_type(ports: List, sseq_layers: int):
-    if sseq_layers == 0:
-        return type(ports)
-    else:
-        return get_atom_port_type(ports[0], sseq_layers-1)
-
 
 @cache_definition
 def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=False) -> DefineCircuitKind:
