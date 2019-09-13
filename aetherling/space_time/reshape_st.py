@@ -70,35 +70,28 @@ def get_lane_addr_per_banks(graph_nodes: List[BipartiteNode]) -> List[List[LaneT
                                                            not graph_nodes[t].flat_idxs[s].invalid)
     return lane_bank_data
 
-def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Type, inner_dimensions: ST_Type,
-                               ports_to_transpose: List) -> Kind:
+def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Type, ports_to_transpose: List) -> Kind:
     """
     Transpose the outer dimensions of a set of ports, move them inside the diff dimensions. The outer dimensions
     that are sseqs are the same for all elements, so treat as inner dimensions.
     :param outer_dimensions: The outer dimensions that need to be moved inside
     :param diff_dimensions: The dimensions that need to be moved outside
-    :param inner_dimensions: The inner dimensions that need to stay where they are
     :param ports_to_transpose: The ports
     :return:
     """
     # always remove tseqs as they don't affect the magma types
     num_outer_dimensions = num_nested_layers(remove_tseqs(outer_dimensions))
     num_diff_dimensions = num_nested_layers(remove_tseqs(diff_dimensions))
-    num_inner_dimensions = num_nested_layers(remove_tseqs(inner_dimensions))
 
     # these are the indexes of the dimensions on the untransposed type
     outer_dimensions_indexes_untransposed = list(range(num_outer_dimensions))
     diff_dimensions_indexes_untransposed = list(range(num_outer_dimensions, num_outer_dimensions + num_diff_dimensions))
-    inner_dimensions_indexes_untransposed = list(range(num_outer_dimensions + num_diff_dimensions,
-                                                       num_outer_dimensions + num_diff_dimensions + num_inner_dimensions))
-    sseq_dims_transposed = diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed + \
-        inner_dimensions_indexes_untransposed
+    sseq_dims_transposed = diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed
 
     # performing the transpose with blockers added so right dimensions not converted
     ports_to_transpose_with_block = add_blocker(ports_to_transpose, len(sseq_dims_transposed))
     orig_arr = np.asarray(ports_to_transpose_with_block)
-    transposed_arr = orig_arr.transpose(diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed +
-                                        inner_dimensions_indexes_untransposed)
+    transposed_arr = orig_arr.transpose(sseq_dims_transposed)
     transposed_list_with_blocks = transposed_arr.tolist()
     return remove_blocker(transposed_list_with_blocks)
 
@@ -334,13 +327,11 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 #num_sseq_layers_outputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
                 input_ports = flatten_ports(
                     transpose_outer_dimensions(shared_and_diff_subtypes.shared_outer,
-                                               shared_and_diff_subtypes.diff_input,
-                                               shared_and_diff_subtypes.shared_inner, cls.I),
+                                               shared_and_diff_subtypes.diff_input, cls.I),
                     num_sseq_layers_inputs - 1)
                 output_ports = flatten_ports(
                     transpose_outer_dimensions(shared_and_diff_subtypes.shared_outer,
-                                               shared_and_diff_subtypes.diff_output,
-                                               shared_and_diff_subtypes.shared_inner, cls.O),
+                                               shared_and_diff_subtypes.diff_output, cls.O),
                     num_sseq_layers_outputs - 1)
             else:
                 input_ports = flatten_ports(cls.I, num_sseq_layers_inputs - 1)
