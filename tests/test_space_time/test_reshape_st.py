@@ -187,15 +187,22 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
     for i in range(num_flattens_out):
         out_ports = flatten(out_ports)
 
+    in_iterations = -1
+    out_iterations = -1
+
     for i in range(num_t * clocks + delay):
         input_element = (input_element + 1) % clocks
+        if input_element == 0:
+            in_iterations += 1
         if i >= delay or output_element != -1:
             output_element = (output_element + 1) % clocks
+            if output_element == 0:
+                out_iterations += 1
         tester.print("clk: {}\n".format(clk))
 
         for k in range(len(graph.input_nodes[input_element].flat_idxs)):
             if not graph.input_nodes[input_element].flat_idxs[k].invalid:
-                tester.poke(in_ports[k].port, graph.input_nodes[input_element].flat_idxs[k].idx)
+                tester.poke(in_ports[k].port, graph.input_nodes[input_element].flat_idxs[k].idx + in_iterations)
                 tester.print("input {}: %d\n".format(k), in_ports[k])
 
         tester.eval()
@@ -213,7 +220,7 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
                 tester.print("output {}: %d\n".format(k), out_ports[k])
             for k in range(len(graph.output_nodes[output_element].flat_idxs)):
                 if not graph.output_nodes[output_element].flat_idxs[k].invalid:
-                    out_ports[k].expect(graph.output_nodes[output_element].flat_idxs[k].idx)
+                    out_ports[k].expect(graph.output_nodes[output_element].flat_idxs[k].idx + out_iterations)
 
 #        tester.print("reshape write counter: %d\n", tester.circuit.reshape_write_counter)
 #        tester.print("ram first valid write: %d\n \n", tester.circuit.first_valid)

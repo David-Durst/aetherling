@@ -176,7 +176,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             shared_and_diff_subtypes = get_shared_and_diff_subtypes(t_in, t_out)
             t_in_diff = shared_and_diff_subtypes.diff_input
             t_out_diff = shared_and_diff_subtypes.diff_output
-            graph = build_permutation_graph(t_in_diff, t_out_diff)
+            graph = build_permutation_graph(ST_TSeq(2, 0, t_in_diff), ST_TSeq(2, 0, t_out_diff))
             banks_write_addr_per_input_lane = get_banks_addr_per_lane(graph.input_nodes)
             input_lane_write_addr_per_bank = get_lane_addr_per_banks(graph.input_nodes)
             output_lane_read_addr_per_bank = get_lane_addr_per_banks(graph.output_nodes)
@@ -200,7 +200,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             for bank_idx in range(len(rams)):
                 ram_addr_width = rams_addr_widths[bank_idx]
                 num_addrs = len(input_lane_write_addr_per_bank[bank_idx])
-                assert num_addrs == t_in_diff.time()
+                #assert num_addrs == t_in_diff.time()
                 addrs = [builtins.tuple(int2seq(write_data_per_bank_per_clock.addr, ram_addr_width))
                          for write_data_per_bank_per_clock in input_lane_write_addr_per_bank[bank_idx]]
                 write_addr_for_bank_luts.append(
@@ -210,7 +210,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             write_valid_for_bank_luts = []
             for bank_idx in range(len(rams)):
                 num_valids = len(input_lane_write_addr_per_bank[bank_idx])
-                assert num_valids == t_in_diff.time()
+                #assert num_valids == t_in_diff.time()
                 valids = [builtins.tuple([write_data_per_bank_per_clock.valid])
                          for write_data_per_bank_per_clock in input_lane_write_addr_per_bank[bank_idx]]
                 write_valid_for_bank_luts.append(
@@ -221,7 +221,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             bank_idx_width = getRAMAddrWidth(len(rams))
             for lane_idx in range(len(banks_write_addr_per_input_lane)):
                 num_bank_idxs = len(banks_write_addr_per_input_lane[lane_idx])
-                assert num_bank_idxs == t_in_diff.time()
+                #assert num_bank_idxs == t_in_diff.time()
                 bank_idxs = [builtins.tuple(int2seq(write_data_per_lane_per_clock.bank, bank_idx_width))
                              for write_data_per_lane_per_clock in banks_write_addr_per_input_lane[lane_idx]]
                 write_bank_for_input_lane_luts.append(
@@ -232,7 +232,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             for bank_idx in range(len(rams)):
                 ram_addr_width = rams_addr_widths[bank_idx]
                 num_addrs = len(output_lane_read_addr_per_bank[bank_idx])
-                assert num_addrs == t_in_diff.time()
+                #assert num_addrs == t_in_diff.time()
                 addrs = [builtins.tuple(int2seq(read_data_per_bank_per_clock.addr, ram_addr_width))
                          for read_data_per_bank_per_clock in output_lane_read_addr_per_bank[bank_idx]]
                 read_addr_for_bank_luts.append(
@@ -245,7 +245,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             lane_idx_width = getRAMAddrWidth(len(rams))
             for bank_idx in range(len(rams)):
                 num_lane_idxs = len(output_lane_read_addr_per_bank[bank_idx])
-                assert num_lane_idxs == t_in_diff.time()
+                #assert num_lane_idxs == t_in_diff.time()
                 lane_idxs = [builtins.tuple(int2seq(read_data_per_bank_per_clock.s, lane_idx_width))
                              for read_data_per_bank_per_clock in output_lane_read_addr_per_bank[bank_idx]]
                 output_lane_for_bank_luts.append(
@@ -258,8 +258,9 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             end_cur_elem = Decode(ram_element_type.time() - 1,
                                   elem_per_reshape_counter.O.N)(elem_per_reshape_counter.O)
             # reshape counts which element in the reshape
-            reshape_write_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
-            reshape_read_counter = AESizedCounterModM(t_in_diff.time(), has_ce=True, has_reset=has_reset)
+            num_clocks = len(output_lane_read_addr_per_bank[0])
+            reshape_write_counter = AESizedCounterModM(num_clocks, has_ce=True, has_reset=has_reset)
+            reshape_read_counter = AESizedCounterModM(num_clocks, has_ce=True, has_reset=has_reset)
 
             output_delay = (get_output_latencies(graph)[0]) * ram_element_type.time()
             # this is present so testing knows the delay
