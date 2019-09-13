@@ -273,25 +273,21 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             cls.output_delay = output_delay
             reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=has_ce, has_reset=has_reset)()
             # outer counter the repeats the reshape
-            repeat_reshape_counter = DefineNestedCounters(shared_and_diff_subtypes.shared_outer, has_last=False,
-                                                          has_ce=has_ce, has_reset=has_reset)()
             #wire(reshape_write_counter.O, cls.reshape_write_counter)
 
             if has_ce:
                 wire(cls.CE, elem_per_reshape_counter.CE)
                 wire(cls.CE, reshape_read_delay_counter.CE)
-                wire(cls.CE, repeat_reshape_counter.CE)
-                wire(bit(cls.CE) & repeat_reshape_counter.valid & end_cur_elem, reshape_write_counter.CE)
-                wire(bit(cls.CE) & repeat_reshape_counter.valid & end_cur_elem & reshape_read_delay_counter.valid,
+                wire(bit(cls.CE) & end_cur_elem, reshape_write_counter.CE)
+                wire(bit(cls.CE) & end_cur_elem & reshape_read_delay_counter.valid,
                      reshape_read_counter.CE)
             else:
-                wire(repeat_reshape_counter.valid & end_cur_elem, reshape_write_counter.CE)
-                wire(repeat_reshape_counter.valid & end_cur_elem & reshape_read_delay_counter.valid, reshape_read_counter.CE)
+                wire(end_cur_elem, reshape_write_counter.CE)
+                wire(end_cur_elem & reshape_read_delay_counter.valid, reshape_read_counter.CE)
 
             if has_reset:
                 wire(cls.RESET, elem_per_reshape_counter.RESET)
                 wire(cls.RESET, reshape_read_delay_counter.RESET)
-                wire(cls.RESET, repeat_reshape_counter.RESET)
                 wire(cls.RESET, reshape_write_counter.RESET)
                 wire(cls.RESET, reshape_read_counter.RESET)
 
