@@ -350,13 +350,22 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             else:
                 input_ports = flatten_ports(cls.I, num_sseq_layers_inputs - 1)
                 output_ports = flatten_ports(cls.O, num_sseq_layers_outputs - 1)
+            # this is only used if the shared outer layers contains any sseqs
+            sseq_layers_to_flatten = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer)) - 1
             for idx in range(len(rams)):
                 # wire input and bank to input sorting network
                 wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
                 #if idx == 0:
                 #    wire(cls.first_valid, write_valid_for_bank_luts[idx].data)
                 if idx < t_in_diff.port_width():
-                    wire(input_ports[idx], input_sorting_network.I[idx].val)
+                    # since the input_ports are lists, need to wire them individually to the sorting ports
+                    if remove_tseqs(shared_and_diff_subtypes.shared_outer) != ST_Tombstone():
+                        cur_input_port = flatten_ports(input_ports[idx], sseq_layers_to_flatten)
+                        cur_sort_port = flatten_ports(input_sorting_network.I[idx].val, sseq_layers_to_flatten)
+                        for i in range(len(cur_input_port)):
+                            wire(cur_input_port[i], cur_sort_port[i])
+                    else:
+                        wire(input_ports[idx], input_sorting_network.I[idx].val)
                     #wire(cls.ram_wr[idx], input_sorting_network.O[idx].val)
                     #wire(cls.ram_rd[idx], rams[idx].RDATA)
                 else:
@@ -387,7 +396,14 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
                 # wire output sorting network value to output or term
                 if idx < t_out_diff.port_width():
-                    wire(output_sorting_network.O[idx].val, output_ports[idx])
+                    # since the output_ports are lists, need to wire them individually to the sorting ports
+                    if remove_tseqs(shared_and_diff_subtypes.shared_outer) != ST_Tombstone():
+                        cur_output_port = flatten_ports(output_ports[idx], sseq_layers_to_flatten)
+                        cur_sort_port = flatten_ports(output_sorting_network.O[idx].val, sseq_layers_to_flatten)
+                        for i in range(len(cur_output_port)):
+                            wire(cur_output_port[i], cur_sort_port[i])
+                    else:
+                        wire(output_sorting_network.O[idx].val, output_ports[idx])
                 else:
                     wire(output_sorting_network.O[idx].val, TermAnyType(type(output_sorting_network.O[idx].val)))
 
