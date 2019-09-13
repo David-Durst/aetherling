@@ -85,7 +85,6 @@ def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Ty
     num_outer_dimensions = num_nested_layers(remove_tseqs(outer_dimensions))
     num_diff_dimensions = num_nested_layers(remove_tseqs(diff_dimensions))
     num_inner_dimensions = num_nested_layers(remove_tseqs(inner_dimensions))
-    orig_arr = np.asarray(ports_to_transpose)
 
     # these are the indexes of the dimensions on the untransposed type
     outer_dimensions_indexes_untransposed = list(range(num_outer_dimensions))
@@ -93,9 +92,45 @@ def transpose_outer_dimensions(outer_dimensions: ST_Type, diff_dimensions: ST_Ty
     inner_dimensions_indexes_untransposed = list(range(num_outer_dimensions + num_diff_dimensions,
                                                        num_outer_dimensions + num_diff_dimensions + num_inner_dimensions))
 
+    # need to get dimensions used for ints and other atoms, put those at end as well
+    sseq_dims_transposed = diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed + \
+        inner_dimensions_indexes_untransposed
+    sseq_dim_lengths = get_dim_lengths(ports_to_transpose, len(sseq_dims_transposed))
+    flattened_sseq_dims = flatten_ports(ports_to_transpose, len(sseq_dims_transposed))
+    ports_to_transpose_with_block = add_blocker(ports_to_transpose, len(sseq_dims_transposed))
+    #orig_arr = np.asarray(ports_to_transpose, dtype=get_atom_port_type(ports_to_transpose, len(sseq_dims_transposed)))
+    orig_arr = np.asarray(ports_to_transpose_with_block)
+    atom_dims = list(range(len(sseq_dims_transposed), orig_arr.ndim))
     transposed_arr = orig_arr.transpose(diff_dimensions_indexes_untransposed + outer_dimensions_indexes_untransposed +
                                         inner_dimensions_indexes_untransposed)
-    return transposed_arr.tolist()
+    transposed_list_with_blocks = transposed_arr.tolist()
+    return remove_blocker(transposed_list_with_blocks)
+
+@dataclass
+class NP_Blocker:
+    el: List
+
+def add_blocker(ports: List, layers_until_blocker: int):
+    if layers_until_blocker == 0:
+        return NP_Blocker(ports)
+    else:
+        return [add_blocker(el, layers_until_blocker - 1) for el in ports]
+
+def remove_blocker(ports):
+    if type(ports) == NP_Blocker:
+        return ports.el
+    else:
+        return [remove_blocker(el) for el in ports]
+
+def get_dim_lengths(ports: List, layers_to_count: int) -> List[int]:
+    """
+    Get the lengths of the desired top layers of ports.
+    This assumes all arrays have the same element at each index.
+    """
+    if layers_to_count == 0:
+        return []
+    else:
+        return [len(ports)] + get_dim_lengths(ports[0], layers_to_count - 1)
 
 def flatten_ports(ports_to_flatten: List, layers_to_flatten: int) -> List:
     """
@@ -106,6 +141,13 @@ def flatten_ports(ports_to_flatten: List, layers_to_flatten: int) -> List:
     else:
         partially_flattened = ts_addr_assign.flatten(ports_to_flatten)
         return flatten_ports(partially_flattened, layers_to_flatten - 1)
+
+def get_atom_port_type(ports: List, sseq_layers: int):
+    if sseq_layers == 0:
+        return type(ports)
+    else:
+        return get_atom_port_type(ports[0], sseq_layers-1)
+
 
 @cache_definition
 def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=False) -> DefineCircuitKind:
@@ -291,9 +333,23 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             # flatten all the sseq_layers to get flat magma type of inputs and outputs
             # tseqs don't affect magma types
             num_sseq_layers_inputs = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.diff_input))
-            input_ports = flatten_ports(cls.I, num_sseq_layers_inputs - 1)
             num_sseq_layers_outputs = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.diff_output))
-            output_ports = flatten_ports(cls.O, num_sseq_layers_outputs - 1)
+            if remove_tseqs(shared_and_diff_subtypes.shared_outer) != ST_Tombstone():
+                #num_sseq_layers_inputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
+                #num_sseq_layers_outputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
+                input_ports = flatten_ports(
+                    transpose_outer_dimensions(shared_and_diff_subtypes.shared_outer,
+                                               shared_and_diff_subtypes.diff_input,
+                                               shared_and_diff_subtypes.shared_inner, cls.I),
+                    num_sseq_layers_inputs - 1)
+                output_ports = flatten_ports(
+                    transpose_outer_dimensions(shared_and_diff_subtypes.shared_outer,
+                                               shared_and_diff_subtypes.diff_output,
+                                               shared_and_diff_subtypes.shared_inner, cls.O),
+                    num_sseq_layers_outputs - 1)
+            else:
+                input_ports = flatten_ports(cls.I, num_sseq_layers_inputs - 1)
+                output_ports = flatten_ports(cls.O, num_sseq_layers_outputs - 1)
             for idx in range(len(rams)):
                 # wire input and bank to input sorting network
                 wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
