@@ -85,7 +85,10 @@ def assign_memory_addresses(graph: InputOutputGraph) -> InputOutputGraph:
             while (soonest_expiring_addr is not None) and (soonest_expiring_addr.expire_time == t):
                 soonest_expiring_addr = heappop(used_addr_heaps[s])
                 free_addr_stacks[s].add_free_addr(soonest_expiring_addr)
-                soonest_expiring_addr = nsmallest(1, used_addr_heaps[s])[0]
+                if len(used_addr_heaps[s]) > 0:
+                    soonest_expiring_addr = nsmallest(1, used_addr_heaps[s])[0]
+                else:
+                    soonest_expiring_addr = None
 
             # get an address to write to
             if graph.input_nodes[t].flat_idxs[s].invalid:

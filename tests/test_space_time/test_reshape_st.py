@@ -6,6 +6,9 @@ from aetherling.helpers.fault_helpers import compile_and_run, compile
 import fault
 
 def test_2_3_flip_reshape():
+    """
+    Tests the most basic flip
+    """
     t_len = 3
     s_len = 2
     input_type = ST_SSeq(s_len, ST_TSeq(t_len, 0, ST_Int()))
@@ -16,6 +19,9 @@ def test_2_3_flip_reshape():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
 def test_2_2_3_flip_reshape():
+    """
+    Tests the flip where moving two sseqs at the same time
+    """
     t_len = 3
     s_len_0 = 2
     s_len_1 = 2
@@ -27,6 +33,9 @@ def test_2_2_3_flip_reshape():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
 def test_shared_tseq_2_0_2_3_flip_reshape():
+    """
+    Tests flip with a shared tseq on the outside
+    """
     no = 2
     io = 0
     ni = 3
@@ -40,6 +49,9 @@ def test_shared_tseq_2_0_2_3_flip_reshape():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
 def test_shared_sseq_2_2_3_flip_reshape():
+    """
+    Tests flip with a shared sseq on the outside
+    """
     no = 2
     ni = 3
     ii = 0
@@ -51,7 +63,40 @@ def test_shared_sseq_2_2_3_flip_reshape():
     tester = fault.Tester(testcircuit, testcircuit.CLK)
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
+def test_shared_sseq_2_sseq_6_diff_2_3_flip_reshape():
+    """
+    Tests flip with multiple shared sseq on the outside
+    """
+    no = 2
+    ni = 3
+    ii = 0
+    nii = 2
+    input_type = ST_SSeq(no, ST_SSeq(6, ST_TSeq(ni, ii, ST_SSeq(nii, ST_Int()))))
+    output_type = ST_SSeq(no, ST_SSeq(6, ST_SSeq(nii, ST_TSeq(ni, ii, ST_Int()))))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 2, 2)
+
+def test_shared_sseq_2_tseq_3_1_diff_2_3_flip_reshape():
+    """
+    Tests flip with shared sseq and tseq on the outside
+    """
+    no = 2
+    ni = 3
+    ii = 0
+    nii = 2
+    input_type = ST_SSeq(no, ST_TSeq(3, 1, ST_TSeq(ni, ii, ST_SSeq(nii, ST_Int()))))
+    output_type = ST_SSeq(no, ST_TSeq(3, 1, ST_SSeq(nii, ST_TSeq(ni, ii, ST_Int()))))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
+
 def test_2_3_shared_tseq_2_0_flip_reshape():
+    """
+    Tests flip with a shared tseq on the inside
+    """
     no = 3
     io = 0
     ni = 2
@@ -65,6 +110,9 @@ def test_2_3_shared_tseq_2_0_flip_reshape():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
 def test_2_3_shared_sseq_2_flip_reshape():
+    """
+    Tests flip with a shared sseq on the inside
+    """
     no = 3
     io = 0
     ni = 2
@@ -76,15 +124,10 @@ def test_2_3_shared_sseq_2_flip_reshape():
     tester = fault.Tester(testcircuit, testcircuit.CLK)
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
-def test_sseq_2_tseq_2_to_sseq_4_tseq_1_reshape():
-    input_type = ST_SSeq(2, ST_TSeq(2, 0, ST_Int()))
-    output_type = ST_SSeq(4, ST_TSeq(1, 1, ST_Int()))
-    graph = build_permutation_graph(input_type, output_type)
-    testcircuit = DefineReshape_ST(input_type, output_type)
-    tester = fault.Tester(testcircuit, testcircuit.CLK)
-    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
-
 def test_2_3_shared_sseq_2_tseq_3_3_flip_reshape():
+    """
+    Tests reshape with both sseq and tseq on inside
+    """
     no = 3
     io = 0
     ni = 2
@@ -97,6 +140,34 @@ def test_2_3_shared_sseq_2_tseq_3_3_flip_reshape():
     testcircuit = DefineReshape_ST(input_type, output_type)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
+
+def test_shared_outer_sseq_2_tseq_3_1_diff_2_3_shared_inner_sseq_2_tseq_3_3_flip_reshape():
+    """
+    Tests reshape with both sseq and tseq on inside and outside
+    """
+    no = 3
+    io = 0
+    ni = 2
+    nii = 2
+    niii = 3
+    iiii = 3
+    input_type = ST_SSeq(2, ST_TSeq(3, 1, ST_TSeq(no, io, ST_SSeq(ni, ST_SSeq(nii, ST_TSeq(niii, iiii, ST_Int()))))))
+    output_type = ST_SSeq(2, ST_TSeq(3, 1, ST_SSeq(ni, ST_TSeq(no, io, ST_SSeq(nii, ST_TSeq(niii, iiii, ST_Int()))))))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 2, 2)
+
+def test_sseq_2_tseq_2_to_sseq_4_tseq_1_reshape():
+    """
+    Tests reshape with different input and output ports
+    """
+    input_type = ST_SSeq(2, ST_TSeq(2, 0, ST_Int()))
+    output_type = ST_SSeq(4, ST_TSeq(1, 1, ST_Int()))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0)
 
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
     clocks = len(graph.input_nodes)

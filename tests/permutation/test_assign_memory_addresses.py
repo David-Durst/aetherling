@@ -86,6 +86,16 @@ def test_T40_S6_T20_banks():
     fixed_graph = assign_memory_addresses(assign_banks(graph))
     check_mem_addr(fixed_graph, s_len, t_len_1*t_len_2)
 
+def test_shared_sseq_2_tseq_3_1_diff_2_3_flip_banks():
+    no = 2
+    ni = 3
+    ii = 0
+    nii = 2
+    input_type = ST_SSeq(no, ST_TSeq(3, 1, ST_TSeq(ni, ii, ST_SSeq(nii, ST_Int()))))
+    output_type = ST_SSeq(no, ST_TSeq(3, 1, ST_SSeq(nii, ST_TSeq(ni, ii, ST_Int()))))
+    graph = build_input_output_graph(input_type, output_type)
+    fixed_graph = assign_memory_addresses(assign_banks(graph))
+    check_mem_addr(fixed_graph, no*nii, (3+1)*(3+0))
 
 def check_mem_addr(fixed_graph, s_len, t_len):
     free_addresses = [[True for _ in range(bank_size)] for bank_size in get_bank_sizes(fixed_graph)]

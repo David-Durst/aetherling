@@ -56,3 +56,14 @@ def test_T2_1_S2_T2_latency():
     graph = build_input_output_graph(input_type, output_type)
     output_latencies = get_output_latencies(graph)
     assert output_latencies == list(range(2,8))
+
+def test_shared_sseq_2_tseq_3_1_diff_2_3_flip_latency():
+    no = 2
+    ni = 3
+    ii = 0
+    nii = 2
+    input_type = ST_SSeq(no, ST_TSeq(3, 1, ST_TSeq(ni, ii, ST_SSeq(nii, ST_Int()))))
+    output_type = ST_SSeq(no, ST_TSeq(3, 1, ST_SSeq(nii, ST_TSeq(ni, ii, ST_Int()))))
+    graph = build_input_output_graph(input_type, output_type)
+    output_latencies = get_output_latencies(graph)
+    assert output_latencies == list(range(2, 14))
