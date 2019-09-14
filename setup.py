@@ -1,26 +1,33 @@
 from setuptools import setup
-try: # for pip >= 10
-    from pip._internal.req import parse_requirements
-except ImportError: # for pip <= 9.0.3
-    from pip.req import parse_requirements
 
-# parse_requirements() returns generator of pip.req.InstallRequirement objects
+with open("README.md", "r") as fh:
+    LONG_DESCRIPTION = fh.read()
 
-install_requires = []
-extra_requires = {}
-for item in parse_requirements("requirements.txt", session=False):
-    req = str(item.req)
-    if item.markers is not None:
-        req += ";" + str(item.markers)
-    install_requires.append(req)
+DESCRIPTION = """\
+A Python package for testing hardware (part of the magma ecosystem)\
+"""
 
 setup(
     name='aetherling',
     version='0.0.1',
-    description='The python component of Aetherling\'s, the library for data-parallel programming using the Stanford coreir and magma projects',
+    description='Aetherling: a DSL for compiling data-parallel programs to hardware accelerators.',
     packages=["aetherling"],
+    install_requires=[
+        "magma-lang>=1.0.18",
+        "coreir",
+        "fault",
+        "mantle",
+        "numpy",
+        "Pillow",
+        "bitarray",
+        "colorlog",
+        "pytest"
+    ],
     license='BSD License',
     url='https://github.com/David-Durst/aetherling',
     author='David Durst',
-    author_email='durst@cs.stanford.edu'
+    python_requires='>=3.7',
+    author_email='davidbdurst@gmail.com',
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown"
 )
