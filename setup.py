@@ -9,7 +9,7 @@ A Python package for testing hardware (part of the magma ecosystem)\
 
 setup(
     name='aetherling',
-    version='0.0.1',
+    version='0.0.2',
     description='Aetherling: a DSL for compiling data-parallel programs to hardware accelerators.',
     packages=["aetherling"],
     install_requires=[
