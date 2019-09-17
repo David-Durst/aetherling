@@ -35,6 +35,7 @@ def DefineMap_T(n: int, inv: int, op: DefineCircuitKind) -> DefineCircuitKind:
                          for i in range(op_num_ports) if op_port_names[i] != 0]
         has_valid = 'valid_in' in op_port_names
         IO = non_clk_ports + ClockInterface(has_ce=False, has_reset=False)
+        binary_op = False
         st_in_t = ST_TSeq(n, inv, op.st_in_t)
         st_out_t = ST_TSeq(n, inv, op.st_out_t)
 
@@ -73,6 +74,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
         assert type(op.st_in_t) == ST_Atom_Tuple
         name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
         atom_type = op.st_in_t.t0
+        binary_op = False
         st_in_t = ST_TSeq(n, i, atom_type)
         st_out_t = ST_TSeq(1, n+i-1, atom_type)
         IO = ['I', st_in_t.magma_repr(), 'O', st_out_t.magma_repr(),

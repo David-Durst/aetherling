@@ -57,8 +57,8 @@ def DefineAdd_Atom():
         @classmethod
         def definition(cls):
             op = DefineAdd(int_width)
-            wire(cls.I.t0, op.I0)
-            wire(cls.I.t1, op.I1)
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
     return _Add
 
@@ -74,8 +74,8 @@ def DefineSub_Atom():
         @classmethod
         def definition(cls):
             op = DefineSub(int_width)
-            wire(cls.I.t0, op.I0)
-            wire(cls.I.t1, op.I1)
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
     return _Sub
 
@@ -91,8 +91,8 @@ def DefineMul_Atom():
         @classmethod
         def definition(cls):
             op = DefineMul(int_width)
-            wire(cls.I.t0, op.I0)
-            wire(cls.I.t1, op.I1)
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
     return _Mul
 
@@ -108,8 +108,8 @@ def DefineDiv_Atom():
         @classmethod
         def definition(cls):
             op = DefineUDiv(int_width)
-            wire(cls.I.t0, op.I0)
-            wire(cls.I.t1, op.I1)
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
     return _Div
 
@@ -125,7 +125,7 @@ def DefineEq_Atom(t: ST_Type):
         @classmethod
         def definition(cls):
             op = DefineEQ(t.magma_repr().size())
-            wire(cls.I.t0, op.I0)
-            wire(cls.I.t1, op.I1)
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
     return _Eq

@@ -6,4 +6,4 @@ The modules and types in this package do not create any hardware. They are just 
 to simplify calling the real Magma modules in aetherling.modules.
 """
 from .space_time_types import *
-from .tuple import *
+from aetherling.space_time.modules.tuple import *
