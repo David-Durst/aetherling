@@ -18,6 +18,3 @@ from aetherling.modules.downsample import *
 from aetherling.modules.reduce import *
 from aetherling.modules.native_linebuffer.two_dimensional_native_linebuffer import DefineTwoDimensionalLineBuffer
 
-c = coreir.Context()
-cirb = CoreIRBackend(c)
-
