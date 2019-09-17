@@ -24,8 +24,26 @@ def DefineMap_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
     return map_s
 
 @cache_definition
+def DefineMap2_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
+    assert op.binary_op == True
+    map_s = DefineNativeMapParallel(n, op, True)
+    map_s.binary_op = True
+    map_s.st_in_t = [ST_SSeq(n, op.st_in_t[0]), ST_SSeq(n, op.st_in_t[1])]
+    map_s.st_out_t = ST_SSeq(n, op.st_out_t)
+    return map_s
+
+@cache_definition
 def DefineMap_T(n: int, inv: int, op: DefineCircuitKind) -> DefineCircuitKind:
     assert op.binary_op == False
+    return DefineMap_T_1_or_2(n, inv, op, True)
+
+@cache_definition
+def DefineMap2_T(n: int, inv: int, op: DefineCircuitKind) -> DefineCircuitKind:
+    assert op.binary_op == True
+    return DefineMap_T_1_or_2(n, inv, op, False)
+
+@cache_definition
+def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) -> DefineCircuitKind:
     class _Map_T(Circuit):
         name = "Map_T_n{}_i{}_op{}".format(str(n), str(inv), cleanName(str(op)))
         op_num_ports = len(op.IO.Decl) // 2
@@ -35,8 +53,11 @@ def DefineMap_T(n: int, inv: int, op: DefineCircuitKind) -> DefineCircuitKind:
                          for i in range(op_num_ports) if op_port_names[i] != 0]
         has_valid = 'valid_in' in op_port_names
         IO = non_clk_ports + ClockInterface(has_ce=False, has_reset=False)
-        binary_op = False
-        st_in_t = ST_TSeq(n, inv, op.st_in_t)
+        binary_op = not is_unary
+        if is_unary:
+            st_in_t = ST_TSeq(n, inv, op.st_in_t)
+        else:
+            st_in_t = [ST_TSeq(n, inv, op.st_in_t[0]), ST_TSeq(n, inv, op.st_in_t[1])]
         st_out_t = ST_TSeq(n, inv, op.st_out_t)
 
         @classmethod
