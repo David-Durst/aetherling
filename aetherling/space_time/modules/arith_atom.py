@@ -13,6 +13,9 @@ def DefineAbs_Atom():
     class _Abs(Circuit):
         name = "Abs_Atom"
         IO = ['I', In(ST_Int().magma_repr()), 'O', Out(ST_Int().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Int()
+        st_out_t = ST_Int()
         @classmethod
         def definition(cls):
             neg = DefineNegate(int_width)
@@ -32,6 +35,9 @@ def DefineNot_Atom():
     class _Not(Circuit):
         name = "Not_Atom"
         IO = ['I', In(ST_Bit().magma_repr()), 'O', Out(ST_Bit().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Bit()
+        st_out_t = ST_Bit()
         @classmethod
         def definition(cls):
             op = DefineNegate(bit_width)
@@ -45,6 +51,9 @@ def DefineAdd_Atom():
         name = "Add_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_out_t = ST_Int()
         @classmethod
         def definition(cls):
             op = DefineAdd(int_width)
@@ -59,6 +68,9 @@ def DefineSub_Atom():
         name = "Sub_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_out_t = ST_Int()
         @classmethod
         def definition(cls):
             op = DefineSub(int_width)
@@ -73,6 +85,9 @@ def DefineMul_Atom():
         name = "Mul_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_out_t = ST_Int()
         @classmethod
         def definition(cls):
             op = DefineMul(int_width)
@@ -87,6 +102,9 @@ def DefineDiv_Atom():
         name = "Div_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_out_t = ST_Int()
         @classmethod
         def definition(cls):
             op = DefineUDiv(int_width)
@@ -101,6 +119,9 @@ def DefineEq_Atom(t: ST_Type):
         name = "Eq_Atom"
         IO = ['I', In(ST_Atom_Tuple(t, t).magma_repr()),
               'O', Out(ST_Bit().magma_repr())]
+        binary_op = False
+        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_out_t = ST_Bit()
         @classmethod
         def definition(cls):
             op = DefineEQ(t.magma_repr().size())
