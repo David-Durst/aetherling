@@ -7,3 +7,4 @@ to simplify calling the real Magma modules in aetherling.modules.
 """
 from .space_time_types import *
 from aetherling.space_time.modules.tuple import *
+from .modules import *
