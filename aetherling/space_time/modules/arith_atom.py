@@ -18,16 +18,16 @@ def DefineAbs_Atom():
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
-            neg = DefineNegate(int_width)
+            neg = DefineNegate(int_width)()
             cmp = DefineCoreirUgt(int_width)()
-            mux = DefineMuxAnyType(ST_Int().magma_repr(), 2)
-            wire(cls.I, mux.I[0])
+            mux = DefineMuxAnyType(ST_Int().magma_repr(), 2)()
+            wire(cls.I, mux.data[0])
             wire(cls.I, neg.I)
-            wire(neg.O, mux.I[1])
+            wire(neg.O, mux.data[1])
             wire(cls.I, cmp.I0)
             wire(neg.O, cmp.I1)
             wire(cmp.O, mux.sel[0])
-            wire(mux.O, cls.O)
+            wire(mux.out, cls.O)
     return _Abs
 
 @cache_definition
@@ -40,7 +40,7 @@ def DefineNot_Atom():
         st_out_t = ST_Bit()
         @classmethod
         def definition(cls):
-            op = DefineNegate(bit_width)
+            op = DefineNegate(bit_width)()
             wire(cls.I, op.I)
             wire(op.O, cls.O)
     return _Not
@@ -56,7 +56,7 @@ def DefineAdd_Atom():
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
-            op = DefineAdd(int_width)
+            op = DefineAdd(int_width)()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
@@ -73,7 +73,7 @@ def DefineSub_Atom():
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
-            op = DefineSub(int_width)
+            op = DefineSub(int_width)()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
@@ -90,7 +90,7 @@ def DefineMul_Atom():
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
-            op = DefineMul(int_width)
+            op = DefineMul(int_width)()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
@@ -107,7 +107,7 @@ def DefineDiv_Atom():
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
-            op = DefineUDiv(int_width)
+            op = DefineUDiv(int_width)()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
@@ -124,7 +124,7 @@ def DefineEq_Atom(t: ST_Type):
         st_out_t = ST_Bit()
         @classmethod
         def definition(cls):
-            op = DefineEQ(t.magma_repr().size())
+            op = DefineEQ(t.magma_repr().size())()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
