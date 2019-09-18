@@ -48,7 +48,8 @@ def MapParallel(numInputs: int, op: DefineCircuitKind) -> Circuit:
     return DefineMapParallel(numInputs, op)()
 
 @cache_definition
-def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_valid_ce_reset: bool = False) -> DefineCircuitKind:
+def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_valid_ce_reset: bool = False,
+                            has_ready: bool = True, has_valid: bool = True) -> DefineCircuitKind:
     class _Map(Circuit):
         name = "NativeMapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
         num_ports = len(op.IO.Decl) // 2
@@ -61,8 +62,14 @@ def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_v
         add_ce = False
         add_rv = False
         add_reset = False
-        rv_out_ports = ['ready_up', 'valid_down']
-        rv_in_ports = ['valid_up', 'ready_down']
+        rv_out_ports = []
+        rv_in_ports = []
+        if has_ready:
+            rv_in_ports += ['ready_down']
+            rv_out_ports += ['ready_up']
+        if has_valid:
+            rv_in_ports += ['valid_up']
+            rv_out_ports += ['valid_down']
         clock_ports = ['CLK', 'CE', 'RESET']
 
         if merge_ready_valid_ce_reset:
@@ -90,8 +97,10 @@ def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_v
             IO += ['RESET', In(Reset)]
         if add_clk:
             IO += ClockInterface()
-        if add_rv:
-            IO += ready_valid_interface
+        if add_rv and has_ready:
+            IO += ['ready_up', Out(Bit), 'ready_down', In(Bit)]
+        if add_rv and has_valid:
+            IO += ['valid_up', In(Bit), 'valid_down', Out(Bit)]
 
         @classmethod
         def definition(cls):

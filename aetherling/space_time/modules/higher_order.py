@@ -17,7 +17,7 @@ bit_width = ST_Bit().magma_repr().size()
 @cache_definition
 def DefineMap_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
     assert op.binary_op == False
-    map_s = DefineNativeMapParallel(n, op, True)
+    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=False)
     map_s.binary_op = False
     map_s.st_in_t = ST_SSeq(n, op.st_in_t)
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
@@ -26,7 +26,7 @@ def DefineMap_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
 @cache_definition
 def DefineMap2_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
     assert op.binary_op == True
-    map_s = DefineNativeMapParallel(n, op, True)
+    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=False)
     map_s.binary_op = True
     map_s.st_in_t = [ST_SSeq(n, op.st_in_t[0]), ST_SSeq(n, op.st_in_t[1])]
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
