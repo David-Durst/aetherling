@@ -1,4 +1,4 @@
-from aetherling.space_time.tuple import AtomTupleCreator, SSeqTupleCreator, SSeqTupleAppender
+from aetherling.space_time.modules.tuple import AtomTupleCreator, SSeqTupleCreator, SSeqTupleAppender
 from aetherling.space_time.space_time_types import ST_Int, ST_Bit, ST_TSeq, ST_SSeq_Tuple, ST_Atom_Tuple
 from magma import *
 from magma.clock import *
@@ -16,7 +16,7 @@ def test_sseqTupleCreator():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    sseqTupleCreator = SSeqTupleCreator(T_magma)
+    sseqTupleCreator = SSeqTupleCreator(T)
 
     wire(testcircuit.I0, sseqTupleCreator.I0)
     wire(testcircuit.I1, sseqTupleCreator.I1)
@@ -44,7 +44,7 @@ def test_sseqTupleAppender():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    sseqTupleAppender = SSeqTupleAppender(T_inner.magma_repr(), 2)
+    sseqTupleAppender = SSeqTupleAppender(T_inner, 2)
 
     wire(testcircuit.I0, sseqTupleAppender.I0)
     wire(testcircuit.I1, sseqTupleAppender.I1)
@@ -62,7 +62,7 @@ def test_sseqTupleAppender():
         assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testvals[i]
 
 
-def test_atomTupleAppender():
+def test_atomTupleCreator():
     width = 8
     scope = Scope()
     T0 = ST_Int()
@@ -73,11 +73,11 @@ def test_atomTupleAppender():
 
     testcircuit = DefineCircuit('Test', *args)
 
-    sseqTupleAppender = AtomTupleCreator(T0.magma_repr(), T1.magma_repr())
+    atomTupleAppender = AtomTupleCreator(T0, T1)
 
-    wire(testcircuit.I0, sseqTupleAppender.I0)
-    wire(testcircuit.I1, sseqTupleAppender.I1)
-    wire(testcircuit.O, sseqTupleAppender.O)
+    wire(testcircuit.I0, atomTupleAppender.I0)
+    wire(testcircuit.I1, atomTupleAppender.I1)
+    wire(testcircuit.O, atomTupleAppender.O)
 
     EndCircuit()
 
