@@ -47,6 +47,21 @@ def print_nd_int_array_port(tester, port, name = None):
     else:
         tester.print(f"%d, ", port)
 
+def wire_nested_port(tester, fault_port, value):
+    if type(value) is list or type(value) is tuple:
+        for i in range(len(value)):
+            wire_nested_port(tester, fault_port[i], value[i])
+    else:
+        tester.poke(fault_port.port, value)
+
+def expect_nested_port(fault_port, value):
+    if type(value) is list or type(value) is tuple:
+        for i in range(len(value)):
+            expect_nested_port(fault_port[i], value[i])
+    else:
+        fault_port.expect(value)
+
+
 def compile(testcircuit):
     magma.compile("vBuild/" + testcircuit.name, testcircuit, output="coreir-verilog",
                   passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
