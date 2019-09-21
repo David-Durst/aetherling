@@ -49,8 +49,11 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
         op_num_ports = len(op.IO.Decl) // 2
         op_port_names = op.IO.Decl[::2]
         op_port_types = op.IO.Decl[1::2]
-        non_clk_ports = [[op_port_names[i], op_port_types[i]]
-                         for i in range(op_num_ports) if op_port_names[i] != 0]
+        non_clk_ports = []
+        for i in range(op_num_ports):
+            if (op_port_names[i] is 'CLK'):
+                continue
+            non_clk_ports += [op_port_names[i], op_port_types[i]]
         has_valid = 'valid_in' in op_port_names
         IO = non_clk_ports + ClockInterface(has_ce=False, has_reset=False)
         binary_op = not is_unary
