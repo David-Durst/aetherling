@@ -11,13 +11,6 @@ The current overview of Aetherling is: https://github.com/David-Durst/embeddedHa
 1. Install the following components in the proscribed order:
     1. [CoreIR](https://github.com/rdaly525/coreir/tree/master)
         1. How to install: https://github.com/rdaly525/coreir/blob/master/INSTALL.md
-    1. [Fault](https://github.com/leonardt/fault)
-        1. How to install:
-        ```Shell
-            git clone git@github.com:leonardt/fault.git
-            cd fault
-            pip install -e .
-        ```
     1. [Mantle](https://github.com/phanrahan/mantle)
         1. This is a library of useful Magma components.
         1. How to install: https://github.com/phanrahan/mantle#setup
