@@ -6,7 +6,7 @@ from mantle.coreir.memory import getRAMAddrWidth
 from mantle.common.countermod import Decode
 from aetherling.modules.ram_any_type import *
 from aetherling.helpers.nameCleanup import cleanName
-from mantle.common.countermod import SizedCounterModM
+from aetherling.modules.counter import AESizedCounterModM
 from magma import *
 from magma.circuit import DefineCircuitKind, Circuit
 from typing import List
@@ -44,13 +44,13 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
         @classmethod
         def definition(cls):
             if type(t) == ST_TSeq:
-                outer_counter = SizedCounterModM(t.n + t.i, has_ce=True, has_reset=has_reset)
+                outer_counter = AESizedCounterModM(t.n + t.i, has_ce=True, has_reset=has_reset)
                 inner_counters = DefineNestedCounters(t.t, has_last=True, has_cur_valid=False,
                                                       has_ce=has_ce, has_reset=has_reset)()
                 if has_last:
                     is_last = Decode(t.n + t.i - 1, outer_counter.O.N)(outer_counter.O)
                 if has_cur_valid:
-                    cur_valid_counter = SizedCounterModM(t.valid_clocks(), has_ce=True, has_reset=has_reset)
+                    cur_valid_counter = AESizedCounterModM(t.valid_clocks(), has_ce=True, has_reset=has_reset)
                     wire(cur_valid_counter.O, cls.cur_valid)
 
                 # if t.n is a power of 2 and always valid, then outer_counter.O.N not enough bits
