@@ -58,7 +58,7 @@ def DefineUp_T(n: int, i: int, elem_t: ST_Type,
     valid_down : Out(Bit)
     """
     class _Up_T(Circuit):
-        name = "Up_T_n{}_i{}_tEl{}__hasCE{}_hasReset{}_hasValid{}".format(str(n), str(i),
+        name = "Up_T_n{}_i{}_tEl{}_hasCE{}_hasReset{}_hasValid{}".format(str(n), str(i),
                                                                           cleanName(str(elem_t)),
                                                                           str(has_ce), str(has_reset),
                                                                           str(has_valid))
