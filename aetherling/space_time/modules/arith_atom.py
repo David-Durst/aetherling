@@ -3,16 +3,19 @@ from mantle.coreir.logic import *
 from mantle.coreir.compare import *
 from mantle.coreir import DefineCoreirConst
 from aetherling.space_time.space_time_types import *
+from aetherling.space_time.type_helpers import valid_ports
 from aetherling.modules.mux_any_type import DefineMuxAnyType
 
 int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
 
 @cache_definition
-def DefineAbs_Atom():
+def DefineAbs_Atom(has_valid: bool = False):
     class _Abs(Circuit):
         name = "Abs_Atom"
         IO = ['I', In(ST_Int().magma_repr()), 'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Int()
         st_out_t = ST_Int()
@@ -28,13 +31,17 @@ def DefineAbs_Atom():
             wire(neg.O, cmp.I1)
             wire(cmp.O, mux.sel[0])
             wire(mux.out, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Abs
 
 @cache_definition
-def DefineNot_Atom():
+def DefineNot_Atom(has_valid: bool = False):
     class _Not(Circuit):
         name = "Not_Atom"
         IO = ['I', In(ST_Bit().magma_repr()), 'O', Out(ST_Bit().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Bit()
         st_out_t = ST_Bit()
@@ -43,14 +50,18 @@ def DefineNot_Atom():
             op = DefineNegate(bit_width)()
             wire(cls.I, op.I)
             wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Not
 
 @cache_definition
-def DefineAdd_Atom():
+def DefineAdd_Atom(has_valid: bool = False):
     class _Add(Circuit):
         name = "Add_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
         st_out_t = ST_Int()
@@ -60,14 +71,18 @@ def DefineAdd_Atom():
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Add
 
 @cache_definition
-def DefineSub_Atom():
+def DefineSub_Atom(has_valid: bool = False):
     class _Sub(Circuit):
         name = "Sub_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
         st_out_t = ST_Int()
@@ -77,14 +92,18 @@ def DefineSub_Atom():
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Sub
 
 @cache_definition
-def DefineMul_Atom():
+def DefineMul_Atom(has_valid: bool = False):
     class _Mul(Circuit):
         name = "Mul_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
         st_out_t = ST_Int()
@@ -94,14 +113,18 @@ def DefineMul_Atom():
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Mul
 
 @cache_definition
-def DefineDiv_Atom():
+def DefineDiv_Atom(has_valid: bool = False):
     class _Div(Circuit):
         name = "Div_Atom"
         IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
               'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
         st_out_t = ST_Int()
@@ -111,14 +134,18 @@ def DefineDiv_Atom():
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Div
 
 @cache_definition
-def DefineEq_Atom(t: ST_Type):
+def DefineEq_Atom(t: ST_Type, has_valid: bool = False):
     class _Eq(Circuit):
         name = "Eq_Atom"
         IO = ['I', In(ST_Atom_Tuple(t, t).magma_repr()),
               'O', Out(ST_Bit().magma_repr())]
+        if has_valid:
+            IO += valid_ports
         binary_op = False
         st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
         st_out_t = ST_Bit()
@@ -128,4 +155,6 @@ def DefineEq_Atom(t: ST_Type):
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Eq

@@ -1,8 +1,10 @@
 from aetherling.space_time.space_time_types import *
 from dataclasses import dataclass, replace
+from magma import In, Out, Circuit
 from typing import Any
 import copy
 
+valid_ports = ['valid_up', In(Bit), 'valid_down', Out(Bit)]
 
 @dataclass
 class SharedDiffTypes:

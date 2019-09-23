@@ -17,7 +17,7 @@ bit_width = ST_Bit().magma_repr().size()
 @cache_definition
 def DefineMap_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
     assert op.binary_op == False
-    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=False)
+    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=True)
     map_s.binary_op = False
     map_s.st_in_t = ST_SSeq(n, op.st_in_t)
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
@@ -26,7 +26,7 @@ def DefineMap_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
 @cache_definition
 def DefineMap2_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
     assert op.binary_op == True
-    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=False)
+    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=True)
     map_s.binary_op = True
     map_s.st_in_t = [ST_SSeq(n, op.st_in_t[0]), ST_SSeq(n, op.st_in_t[1])]
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
@@ -54,7 +54,6 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
             if (op_port_names[i] is 'CLK'):
                 continue
             non_clk_ports += [op_port_names[i], op_port_types[i]]
-        has_valid = 'valid_in' in op_port_names
         IO = non_clk_ports + ClockInterface(has_ce=False, has_reset=False)
         binary_op = not is_unary
         if is_unary:
@@ -69,9 +68,6 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
             for i in range(cls.op_num_ports):
                 port_name = cls.op_port_names[i]
                 wire(getattr(cls, port_name), getattr(op_instance, port_name))
-            if cls.has_valid:
-                wire(cls.valid_in, op_instance.CE)
-                wire(op_instance.valid_out, cls.valid_out)
     return _Map_T
 
 @cache_definition
