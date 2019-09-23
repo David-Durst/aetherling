@@ -49,32 +49,60 @@ def test_fault_rshift_parallel():
         tester.circuit.O[i + shift_amount].expect(test_vals[i])
     tester.circuit.valid_down.expect(1)
     compile_and_run(tester)
-"""
-def test_rshift_sequential_rv_always_true_no_ce():
-    width = 5
+
+def test_rshift_sequential_v_always_true_no_ce():
+    num_in = 4
     test_vals = [2,5,3,8]
     shift_amount = 1
+    in_type = ST_TSeq(num_in, 0, ST_Int())
     num_clocks_per_iteration = len(test_vals)
     num_iterations = 2
-    scope = Scope()
 
-    testcircuit = DefineRShiftSequential(len(test_vals), 1, shift_amount, Array[width, Bit])
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+    testcircuit = DefineShift_T(in_type.n, in_type.i, shift_amount, in_type.t, has_valid=True)
 
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
 
-    sim.set_value(testcircuit.valid_up, True, scope)
-    sim.set_value(testcircuit.ready_down, True, scope)
+    tester.circuit.valid_up = 1
     for i in range(num_iterations):
         for clk in range(num_clocks_per_iteration):
-            sim.set_value(testcircuit.I, int2seq(test_vals[clk] + i, width), scope)
-            sim.evaluate()
+            tester.circuit.I = test_vals[clk] + i
+            tester.eval()
             if clk >= shift_amount:
-                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[clk - shift_amount] + i
-            assert sim.get_value(testcircuit.ready_up, scope) == True
-            assert sim.get_value(testcircuit.valid_down, scope) == True
-            sim.advance_cycle()
-            sim.evaluate()
+                tester.circuit.O.expect(test_vals[clk - shift_amount] + i)
+            tester.circuit.valid_down.expect(1)
+            tester.step(2)
+    compile_and_run(tester)
 
+def test_rshift_sequential_invalid_v_delayed_true_no_ce():
+    delay = 3
+    num_in = 5
+    test_vals = [2,5,3,8,10]
+    shift_amount = 1
+    in_type = ST_TSeq(num_in, 1, ST_Int())
+    num_clocks_per_iteration = num_in
+    num_iterations = 2
+
+    testcircuit = DefineShift_T(in_type.n, in_type.i, shift_amount, in_type.t, has_valid=True)
+
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    tester.circuit.valid_up = 0
+    for i in range(delay):
+        tester.step(2)
+        tester.circuit.valid_down.expect(0)
+    tester.circuit.valid_up = 1
+    for i in range(num_iterations):
+        for clk in range(num_clocks_per_iteration):
+            val_idx = min(clk, len(test_vals) - 1)
+            tester.circuit.I = test_vals[val_idx] + i
+            tester.eval()
+            if clk >= shift_amount:
+                tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
+            tester.circuit.valid_down.expect(1)
+            tester.step(2)
+    compile_and_run(tester)
+
+"""
 def test_rshift_sequential_rv_and_ce_flicker():
     width = 5
     test_vals = [2,5,3,8]

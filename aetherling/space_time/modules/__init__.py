@@ -4,4 +4,4 @@ from .higher_order import DefineMap_S, DefineMap_T, DefineMap2_S, \
     DefineMap2_T, DefineReduce_S, DefineReduce_T
 from .tuple import DefineAtomTupleCreator, DefineSSeqTupleCreator, \
     DefineSSeqTupleAppender
-from .shift import DefineShift_S
+from .shift import DefineShift_S, DefineShift_T
