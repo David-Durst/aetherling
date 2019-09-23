@@ -39,7 +39,6 @@ def DefineFIFO(t: ST_Type, delay: int,
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                wire(cls.valid_up, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
@@ -49,10 +48,10 @@ def DefineFIFO(t: ST_Type, delay: int,
             fifo_buffer = DefineRAMAnyType(per_clock_type, delay)()
 
             # delay read for delay clocks
-            internal_delay_counter = DefineInitialDelayCounter(delay, has_ce=True, has_reset=has_reset)
-            advance_read_counter = Decode(delay - 1, internal_delay_counter.O.N)(internal_delay_counter.O)
+            internal_delay_counter = DefineInitialDelayCounter(delay, has_ce=True, has_reset=has_reset)()
+            advance_read_counter = internal_delay_counter.valid
             wire(enabled, internal_delay_counter.CE)
-            wire(advance_read_counter.O & enabled, read_counter.CE)
+            wire(advance_read_counter & enabled, read_counter.CE)
             wire(enabled, write_counter.CE)
 
             if has_reset:
