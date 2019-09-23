@@ -42,4 +42,4 @@ def DefineLUTAnyType(t: Kind, n: int, init: typing.Tuple):
     return _ROM
 
 def LUTAnyType(t: Kind, n: int, init: typing.Tuple):
-    return DefineROMAnyType(t, n, init)()
+    return DefineLUTAnyType(t, n, init)()

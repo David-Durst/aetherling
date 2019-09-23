@@ -1,6 +1,4 @@
-from mantle import Decode
 from aetherling.modules.counter import AESizedCounterModM
-from aetherling.modules.ram_any_type import DefineRAMAnyType
 from aetherling.modules.initial_delay_counter import DefineInitialDelayCounter
 from mantle.coreir import DefineCoreirConst
 from magma import *
