@@ -3,6 +3,7 @@ from aetherling.space_time.type_helpers import valid_ports
 from mantle import Decode
 from mantle.coreir import DefineCoreirConst
 from magma import *
+from magma.circuit import DefineCircuitKind
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.mux_any_type import DefineMuxAnyType
@@ -25,15 +26,15 @@ def DefineUp_S(n: int, elem_t: ST_Type, has_valid: bool = False) -> DefineCircui
     """
     class _Up_S(Circuit):
         name = "Up_S_n{}_tEl{}_v{}".format(str(n), cleanName(str(elem_t)), str(has_valid))
-        IO = ['I', In(ST_SSeq(1, elem_t).magma_repr()), 'O', Out(ST_SSeq(n, elem_t).magma_repr())]
+        IO = ['I', In(ST_SSeq(1, elem_t).magma_repr()), 'O', Out(ST_SSeq(n, elem_t).magma_repr())] + \
+             ClockInterface(False, False)
         if has_valid:
             IO += valid_ports
         @classmethod
         def definition(cls):
             for i in range(n):
-                cls.wire = wire(cls.I, cls.O[i])
+                cls.wire = wire(cls.I[0], cls.O[i])
             if has_valid:
-                wire(cls.ready_up, cls.ready_down)
                 wire(cls.valid_up, cls.valid_down)
     return _Up_S
 

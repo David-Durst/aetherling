@@ -5,3 +5,4 @@ from .higher_order import DefineMap_S, DefineMap_T, DefineMap2_S, \
 from .tuple import DefineAtomTupleCreator, DefineSSeqTupleCreator, \
     DefineSSeqTupleAppender
 from .shift import DefineShift_S, DefineShift_T
+from .upsample import DefineUp_S, DefineUp_T
