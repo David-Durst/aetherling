@@ -1,3 +1,4 @@
+from aetherling.space_time import flatten
 from aetherling.space_time.space_time_types import *
 from itertools import accumulate, groupby
 from functools import reduce
@@ -196,9 +197,6 @@ def fix_invalid_indexes(indexes: List[SpaceTimeIndex]) -> SpaceTimeIndex:
     return [SpaceTimeIndex(FlatIndex(True, invalid_ts_to_flat_idx[orig_idx.flat_idx.idx]), orig_idx.s, orig_idx.t)
             if orig_idx.flat_idx.invalid else orig_idx
             for orig_idx in indexes]
-
-def flatten(l):
-    return [item for sublist in l for item in sublist]
 
 
 

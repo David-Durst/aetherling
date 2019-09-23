@@ -105,3 +105,6 @@ def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> S
     else:
         return None
 
+
+def flatten(l):
+    return [item for sublist in l for item in sublist]

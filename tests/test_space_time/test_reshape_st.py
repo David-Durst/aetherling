@@ -1,8 +1,8 @@
 from aetherling.modules.permutation.assign_banks import *
 from aetherling.modules.permutation import build_permutation_graph
-from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes
+from aetherling.space_time import flatten
 from aetherling.space_time.reshape_st import DefineReshape_ST
-from aetherling.helpers.fault_helpers import compile_and_run, compile
+from aetherling.helpers.fault_helpers import compile_and_run
 import fault
 
 def test_2_3_flip_reshape():

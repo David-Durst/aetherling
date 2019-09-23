@@ -1,3 +1,4 @@
+import aetherling.space_time.type_helpers
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.space_time.ram_st import DefineRAM_ST
@@ -138,7 +139,7 @@ def flatten_ports(ports_to_flatten: List, layers_to_flatten: int) -> List:
     if layers_to_flatten == 0:
         return ports_to_flatten
     else:
-        partially_flattened = ts_addr_assign.flatten(ports_to_flatten)
+        partially_flattened = aetherling.space_time.type_helpers.flatten(ports_to_flatten)
         return flatten_ports(partially_flattened, layers_to_flatten - 1)
 
 @cache_definition
