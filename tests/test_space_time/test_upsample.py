@@ -5,7 +5,7 @@ from magma.bitutils import *
 import fault
 from aetherling.helpers.fault_helpers import compile_and_run
 
-def test_up_parallel():
+def test_up_s():
     num_out = 2
     test_val = 3
     elem_t = ST_Int()
@@ -22,64 +22,53 @@ def test_up_parallel():
         tester.circuit.O[i].expect(test_val)
     tester.circuit.valid_down.expect(1)
     compile_and_run(tester)
+
+def test_up_t_v_always_true_no_ce():
+    num_out = 4
+    test_val = 3
+    elem_t = ST_Int()
+
+    up = DefineUp_T(num_out, 0, elem_t, has_valid=True)
+
+    tester = fault.Tester(up, up.CLK)
+
+    tester.circuit.valid_up = 1
+    for i in range(num_out):
+        if i == 0:
+            tester.circuit.I = test_val
+        else:
+            tester.circuit.I = test_val + 1
+        tester.eval()
+        tester.circuit.O.expect(test_val)
+        tester.circuit.valid_down.expect(1)
+        tester.step(2)
+    compile_and_run(tester)
+
+def test_up_t_invalids_v_always_true_no_ce():
+    iterations = 2
+    num_out = 4
+    invalids = 2
+    test_val = 3
+    elem_t = ST_Int()
+
+    up = DefineUp_T(num_out, invalids, elem_t, has_valid=True)
+
+    tester = fault.Tester(up, up.CLK)
+
+    tester.circuit.valid_up = 1
+    for i in range(iterations):
+        for j in range(num_out + invalids):
+            if j == 0:
+                tester.circuit.I = test_val + i
+            else:
+                tester.circuit.I = test_val + 4
+            tester.eval()
+            if j < num_out:
+                tester.circuit.O.expect(test_val + i)
+            tester.circuit.valid_down.expect(1)
+            tester.step(2)
+    compile_and_run(tester)
 """
-def test_up_parallel_alternate_rv():
-    width = 5
-    numOut = 2
-    testVal = 3
-    num_clocks = 12
-    scope = Scope()
-    inType = Array[width, In(BitIn)]
-    outType = Array[numOut, Out(inType)]
-    args = ['I', inType, 'O', outType, 'ready_up', Out(Bit), 'valid_up', In(Bit), 'ready_down', In(Bit),
-            'valid_down', Out(Bit)] + ClockInterface(False, False)
-
-    testcircuit = DefineCircuit('Test', *args)
-
-    upParallel = UpsampleParallel(numOut, inType, has_ready_valid=True)
-    wire(upParallel.I, testcircuit.I)
-    wire(testcircuit.O, upParallel.O)
-    wire(testcircuit.ready_up, upParallel.ready_up)
-    wire(testcircuit.valid_up, upParallel.valid_up)
-    wire(testcircuit.ready_down, upParallel.ready_down)
-    wire(testcircuit.valid_down, upParallel.valid_down)
-
-    EndCircuit()
-
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-    sim.set_value(testcircuit.I, int2seq(testVal, width), scope)
-    for clk in range(num_clocks):
-        sim.set_value(testcircuit.valid_up, clk % 3 == 0, scope)
-        sim.set_value(testcircuit.ready_down, clk % 2 == 0, scope)
-        sim.evaluate()
-        for i in range(numOut):
-            assert seq2int(sim.get_value(testcircuit.O[i], scope)) == testVal
-        assert sim.get_value(testcircuit.valid_down, scope) == (clk % 3 == 0)
-        assert sim.get_value(testcircuit.ready_up, scope) == (clk % 2 == 0)
-        sim.advance_cycle()
-        sim.evaluate()
-
-def test_modm_counter():
-    width = 5
-    numCycles = 4
-    maxCounter = 4
-    scope = Scope()
-    args = ['O', Out(Bit)] + ClockInterface(False, False)
-    testcircuit = DefineCircuit('TestModM', *args)
-    counter = CounterModM(maxCounter, width, cout=False)
-    decode = Decode(0, width)
-    wire(decode.I, counter.O)
-    wire(testcircuit.O, decode.O)
-    EndCircuit()
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-    for i in range(maxCounter * numCycles):
-        sim.evaluate()
-        sim.advance_cycle()
-
-    assert sim.get_value(testcircuit.O, scope) == True
-
 
 def test_up_sequential_rv_always_true_no_ce():
     width = 5

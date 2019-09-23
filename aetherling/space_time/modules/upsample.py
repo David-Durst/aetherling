@@ -45,7 +45,7 @@ def Up_S(n: int, elem_t: ST_Type, has_valid: bool = False) -> Circuit:
 def DefineUp_T(n: int, i: int, elem_t: ST_Type,
                has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> DefineCircuitKind:
     """
-    Convert a TSeq 1 (n-1) elem_t to TSeq n 0 elem_t
+    Convert a TSeq 1 (i+n-1) elem_t to TSeq n i elem_t
 
     I : In(T)
     O : Out(Array[n, T])
@@ -62,7 +62,8 @@ def DefineUp_T(n: int, i: int, elem_t: ST_Type,
                                                                           cleanName(str(elem_t)),
                                                                           str(has_ce), str(has_reset),
                                                                           str(has_valid))
-        IO = ['I', In(T), 'O', Out(T)] + ClockInterface(has_ce, has_reset)
+        IO = ['I', In(ST_TSeq(n, i, elem_t).magma_repr()),
+              'O', Out(ST_TSeq(n, i, elem_t).magma_repr())] + ClockInterface(has_ce, has_reset)
         if has_valid:
             IO += valid_ports
         @classmethod
@@ -78,10 +79,10 @@ def DefineUp_T(n: int, i: int, elem_t: ST_Type,
 
             # write to value_store for first element, read for next
             element_time_counter = DefineNestedCounters(elem_t, has_ce=True, has_reset=has_reset)()
-            element_idx_counter = AESizedCounterModM(n, has_ce=True, has_reset=has_reset)
+            element_idx_counter = AESizedCounterModM(n + i, has_ce=True, has_reset=has_reset)
             is_first_element = Decode(0, element_idx_counter.O.N)(element_idx_counter.O)
 
-            zero_addr = DefineCoreirConst(1, 0)().O[0]
+            zero_addr = DefineCoreirConst(1, 0)().O
             wire(zero_addr, value_store.WADDR)
             wire(zero_addr, value_store.RADDR)
 
