@@ -1,62 +1,49 @@
-from mantle import Register, Decode
-from mantle.common.arith import UMod
+from aetherling.space_time import *
+from aetherling.space_time.type_helpers import valid_ports
 from mantle.common.countermod import SizedCounterModM
-from mantle.common.operator import *
-from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.ram_any_type import DefineRAMAnyType
 from aetherling.modules.register_any_type import DefineRegisterAnyType
-from aetherling.modules.mux_any_type import DefineMuxAnyType
 from magma import *
 from magma.circuit import DefineCircuitKind
-from .hydrate import Dehydrate, Hydrate
-from .map_fully_parallel_sequential import MapParallel
-from ..helpers.nameCleanup import cleanName
-from ..helpers.magma_helpers import ready_valid_interface
+from aetherling.helpers.nameCleanup import cleanName
+from aetherling.helpers.magma_helpers import ready_valid_interface
 
-__all__ = ['DefineRShiftParallel', 'RShiftParallel',
-           'DefineRShiftSequential', 'RShiftSequential']
+#__all__ = ['DefineShift_S', 'Shift_S', 'DefineShift_T', 'RShift_T']
 
 @cache_definition
-def DefineRShiftParallel(n: int, shift_amount: int, T: Kind, has_ready_valid=False):
+def DefineShift_S(n: int, shift_amount: int, elem_t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
     """
     Shifts the elements in SSeq n T' by shift_amount to the right.
     THe first shift_amount elements are undefined.
 
-    The time_per_element clock cycles in a period is not relevant for this operator as it is combinational.
-
-    Note that the T passed to this operator just the Magma type each clock cycle.
-    You can get T by calling magma_repr on a space-time type T'.
-
     I : In(Array[n, T])
     O : Out(Array[n, T])
-    if has_ready_valid:
-    ready_up : Out(Bit)
+    if has_valid:
     valid_up : In(Bit)
-    ready_down : In(Bit)
     valid_down : Out(Bit)
     """
-    class RShiftParallel(Circuit):
-        name = "RShiftParallel_n{}_amt{}_T_rv{}".format(str(n), str(shift_amount), cleanName(str(T)),
-                                                                        str(has_ready_valid))
-        IO = ['I', In(Array[n, T]), 'O', Out(Array[n, T])]
-        if has_ready_valid:
-            IO += ready_valid_interface
+    class _ShiftS(Circuit):
+        name = "Shift_S_n{}_amt{}_t{}_v{}".format(str(n), str(shift_amount), cleanName(str(elem_t)),
+                                                                        str(has_valid))
+        IO = ['I', In(ST_SSeq(n, elem_t).magma_repr()), 'O', Out(ST_SSeq(n, elem_t).magma_repr())] + \
+             ClockInterface(False, False)
+        if has_valid:
+            IO += valid_ports
         @classmethod
-        def definition(rshiftParallel):
+        def definition(cls):
             for i in range(n):
                 # wrap around. first shift_amount outputs undefined, so anything can go out there
-                wire(rshiftParallel.I[i], rshiftParallel.O[(i + shift_amount) % n])
-            if has_ready_valid:
-                wire(rshiftParallel.ready_up, rshiftParallel.ready_down)
-                wire(rshiftParallel.valid_up, rshiftParallel.valid_down)
-    return RShiftParallel
+                wire(cls.I[i], cls.O[(i + shift_amount) % n])
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _ShiftS
 
-def RShiftParallel(n: int, shift_amount: int, T: Kind, has_ready_valid=False):
-    return DefineRShiftParallel(n, shift_amount, T, has_ready_valid)()
-
+def Shift_S(n: int, shift_amount: int, elem_t: ST_Type, has_valid: bool = False) -> Circuit:
+    return DefineShift_S(n, shift_amount, elem_t, has_valid)()
+"""
 @cache_definition
 def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: Kind, has_ce=False, has_reset=False):
-    """
+    " ""
     Produces the bank  the elements in TSeq n T' by shift_amount to the right.
     The first shift_amount elements are undefined
 
@@ -73,7 +60,7 @@ def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: 
     valid_up : In(Bit)
     ready_down : In(Bit)
     valid_down : Out(Bit)
-    """
+    " ""
     class _RShiftSequential(Circuit):
         name = "RShiftSequential_n{}_tEl{}_amt{}_T{}_hasCE{}_hasReset{}".format(str(n), str(time_per_element),
                                                                                        str(shift_amount),
@@ -128,3 +115,4 @@ def DefineRShiftSequential(n: int, time_per_element: int, shift_amount: int, T: 
 
 def RShiftSequential(n: int, time_per_element: int, shift_amount: int, T: Kind, has_ce=False, has_reset=False):
     return DefineRShiftSequential(n, time_per_element, shift_amount, T, has_ce, has_reset)()
+"""
