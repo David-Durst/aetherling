@@ -68,6 +68,37 @@ def test_up_t_invalids_v_always_true_no_ce():
             tester.circuit.valid_down.expect(1)
             tester.step(2)
     compile_and_run(tester)
+
+def test_up_t_invalids_v_delated_true_ce():
+    iterations = 2
+    delay = 5
+    num_out = 4
+    invalids = 2
+    test_val = 3
+    elem_t = ST_Int()
+
+    up = DefineUp_T(num_out, invalids, elem_t, has_ce=True, has_valid=True)
+
+    tester = fault.Tester(up, up.CLK)
+
+    tester.circuit.valid_up = 0
+    tester.circuit.CE = 1
+    tester.circuit.I = test_val + 4
+    for i in range(delay):
+        tester.step(2)
+    tester.circuit.valid_up = 1
+    for i in range(iterations):
+        for j in range(num_out + invalids):
+            if j == 0:
+                tester.circuit.I = test_val + i
+            else:
+                tester.circuit.I = test_val + 4
+            tester.eval()
+            if j < num_out:
+                tester.circuit.O.expect(test_val + i)
+            tester.circuit.valid_down.expect(1)
+            tester.step(2)
+    compile_and_run(tester)
 """
 
 def test_up_sequential_rv_always_true_no_ce():
