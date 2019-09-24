@@ -47,19 +47,21 @@ def print_nd_int_array_port(tester, port, name = None):
     else:
         tester.print(f"%d, ", port)
 
-def wire_nested_port(tester, fault_port, value):
-    if type(value) is list or type(value) is tuple:
-        for i in range(len(value)):
-            wire_nested_port(tester, fault_port[i], value[i])
+def wire_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
+    if nesting_layers > 0:
+        for sub_port in fault_port:
+            cur_idx = wire_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
     else:
-        tester.poke(fault_port.port, value)
+        tester.poke(fault_port.port, value[cur_idx])
+        return cur_idx + 1
 
-def expect_nested_port(fault_port, value):
-    if type(value) is list or type(value) is tuple:
-        for i in range(len(value)):
-            expect_nested_port(fault_port[i], value[i])
+def expect_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
+    if nesting_layers > 0:
+        for sub_port in fault_port:
+            cur_idx = wire_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
     else:
-        fault_port.expect(value)
+        fault_port.expect(value[cur_idx])
+        return cur_idx + 1
 
 
 def compile(testcircuit, name=None):

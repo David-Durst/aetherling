@@ -23,6 +23,27 @@ def test_up_s():
     tester.circuit.valid_down.expect(1)
     compile_and_run(tester)
 
+def test_up_s_sseq():
+    n = 2
+    num_out = 2
+    test_vals = [3,5]
+    elem_t = ST_SSeq(n, ST_Int())
+
+
+    up = DefineUp_S(num_out, elem_t, True)
+
+    tester = fault.Tester(up, up.CLK)
+
+    tester.circuit.valid_up = 1
+    for i, v in enumerate(test_vals):
+        tester.circuit.I[0][i] = v
+    tester.eval()
+    for i in range(num_out):
+        for j, v in enumerate(test_vals):
+            tester.circuit.O[i][j].expect(v)
+    tester.circuit.valid_down.expect(1)
+    compile_and_run(tester)
+
 def test_up_t_v_always_true_no_ce():
     num_out = 4
     test_val = 3
