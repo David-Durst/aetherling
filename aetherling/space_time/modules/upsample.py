@@ -18,8 +18,8 @@ def DefineUp_S(n: int, elem_t: ST_Type, has_valid: bool = False) -> DefineCircui
     """
     Convert a SSeq 1 elem_t to SSeq n elem_t
 
-    I : In(T)
-    O : Out(Array[n, T])
+    I : In(SSeq(1, elem_t).magma_repr())
+    O : Out(SSeq(n, elem_t).magma_repr())
     if has_valid:
     valid_up : In(Bit)
     valid_down : Out(Bit)
@@ -47,8 +47,8 @@ def DefineUp_T(n: int, i: int, elem_t: ST_Type,
     """
     Convert a TSeq 1 (i+n-1) elem_t to TSeq n i elem_t
 
-    I : In(T)
-    O : Out(Array[n, T])
+    I : In(TSeq(1, i+n-1, elem_t).magma_repr())
+    O : Out(TSeq(n, i, elem_t).magma_repr())
     if has_ce:
     CE : In(Bit)
     if has_reset:
