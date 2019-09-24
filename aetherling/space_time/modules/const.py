@@ -1,6 +1,6 @@
 from aetherling.modules.counter import AESizedCounterModM
-from aetherling.modules.initial_delay_counter import DefineInitialDelayCounter
 from aetherling.modules.lut_any_type import DefineLUTAnyType
+from aetherling.modules.term_any_type import TermAnyType
 from mantle.coreir import DefineCoreirConst
 from magma import *
 from magma.bitutils import int2seq
@@ -63,7 +63,7 @@ def DefineConst(t: ST_Type, ts_values: Tuple,
                                                                 str(has_reset), str(has_valid))
         IO = ['O', Out(t.magma_repr())] + ClockInterface(has_ce, has_reset)
         if has_valid:
-            IO += valid_ports[2:4]
+            IO += valid_ports
         @classmethod
         def definition(cls):
             enabled = DefineCoreirConst(1, 1)().O[0]
@@ -80,6 +80,8 @@ def DefineConst(t: ST_Type, ts_values: Tuple,
             if has_reset:
                 wire(cls.RESET, lut_position_counter.RESET)
             if has_valid:
+                valid_up_term = TermAnyType(Bit)
+                wire(cls.valid_up, valid_up_term.I)
                 wire(enabled, cls.valid_down)
 
 
