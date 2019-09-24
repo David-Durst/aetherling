@@ -5,9 +5,10 @@ from mantle.coreir.logic import *
 from mantle.coreir.compare import *
 from aetherling.space_time.space_time_types import *
 from aetherling.helpers.nameCleanup import cleanName
+from aetherling.space_time.type_helpers import valid_ports
 
 @cache_definition
-def DefineSSeqTupleCreator(t: ST_Type) -> DefineCircuitKind:
+def DefineSSeqTupleCreator(t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
     """
     A module for creating an SSeq Tuple of length 2.
     The T is producer by calling magma_repr on Space-Time type T'.
@@ -25,11 +26,15 @@ def DefineSSeqTupleCreator(t: ST_Type) -> DefineCircuitKind:
         st_out_t = ST_SSeq_Tuple(2, t)
 
         IO = ["I0", In(t.magma_repr()), "I1", In(t.magma_repr()), "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
 
         @classmethod
         def definition(sseq_tuple_creator):
             wire(sseq_tuple_creator.I0, sseq_tuple_creator.O[0])
             wire(sseq_tuple_creator.I1, sseq_tuple_creator.O[1])
+            if has_valid:
+                wire(sseq_tuple_creator.valid_up, sseq_tuple_creator.valid_down)
 
     return _SeqTupleCreator
 
@@ -37,7 +42,7 @@ def SSeqTupleCreator(t: ST_Type):
     return DefineSSeqTupleCreator(t)()
 
 @cache_definition
-def DefineSSeqTupleAppender(t: ST_Type, n: int) -> DefineCircuitKind:
+def DefineSSeqTupleAppender(t: ST_Type, n: int, has_valid: bool = False) -> DefineCircuitKind:
     """
     A module for creating an SSeq Tuple of length (n+1) out of one of length n.
     The T is producer by calling magma_repr on Space-Time type T'.
@@ -57,12 +62,16 @@ def DefineSSeqTupleAppender(t: ST_Type, n: int) -> DefineCircuitKind:
         IO = ["I0", In(st_in_t[0].magma_repr()),
               "I1", In(st_in_t[1].magma_repr()),
               "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
 
         @classmethod
         def definition(sseq_tuple_appender):
             for i in range(n):
                 wire(sseq_tuple_appender.I0[i], sseq_tuple_appender.O[i])
             wire(sseq_tuple_appender.I1, sseq_tuple_appender.O[n])
+            if has_valid:
+                wire(sseq_tuple_appender.valid_up, sseq_tuple_appender.valid_down)
 
     return _SeqTupleAppender
 
@@ -70,7 +79,7 @@ def SSeqTupleAppender(t: ST_Type, n: int):
     return DefineSSeqTupleAppender(t, n)()
 
 @cache_definition
-def DefineAtomTupleCreator(t0: ST_Type, t1: ST_Type) -> DefineCircuitKind:
+def DefineAtomTupleCreator(t0: ST_Type, t1: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
     """
     A module for creating an Atom Tuple
     The Ts are producer by calling magma_repr on Space-Time types T's.
@@ -90,11 +99,15 @@ def DefineAtomTupleCreator(t0: ST_Type, t1: ST_Type) -> DefineCircuitKind:
         IO = ["I0", In(st_in_t[0].magma_repr()),
               "I1", In(st_in_t[1].magma_repr()),
               "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
 
         @classmethod
         def definition(atom_tuple_creator):
             wire(atom_tuple_creator.I0, atom_tuple_creator.O[0])
             wire(atom_tuple_creator.I1, atom_tuple_creator.O[1])
+            if has_valid:
+                wire(atom_tuple_creator.valid_up, atom_tuple_creator.valid_down)
 
     return _AtomTupleCreator
 
