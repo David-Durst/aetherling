@@ -63,7 +63,8 @@ def DefineFIFO(t: ST_Type, delay: int,
             wire(fifo_buffer.RDATA, cls.O)
             wire(fifo_buffer.WE, enabled)
 
-            wire(advance_read_counter, cls.valid_down)
+            if has_valid:
+                wire(advance_read_counter, cls.valid_down)
 
     return _FIFO
 

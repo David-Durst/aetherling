@@ -27,7 +27,7 @@ def test_fifo_basic():
             if i == 0 and j < delay_amount:
                 tester.circuit.valid_down.expect(0)
             else:
-                tester.circuit.valid_up.expect(1)
+                tester.circuit.valid_down.expect(1)
                 tester.circuit.O.expect(test_vals[output_counter])
                 output_counter = min(output_counter + 1, len(test_vals))
             input_counter = min(input_counter + 1, len(test_vals))
@@ -58,7 +58,7 @@ def test_fifo_invalids():
             if i == 0 and j < delay_amount:
                 tester.circuit.valid_down.expect(0)
             else:
-                tester.circuit.valid_up.expect(1)
+                tester.circuit.valid_down.expect(1)
                 if (output_counter % (num_in + 1) < num_in):
                     tester.circuit.O.expect(test_vals[output_counter])
                 output_counter = min(output_counter + 1, len(test_vals))
@@ -96,7 +96,7 @@ def test_fifo_invalids_initial_delay():
             if i == 0 and j < delay_amount:
                 tester.circuit.valid_down.expect(0)
             else:
-                tester.circuit.valid_up.expect(1)
+                tester.circuit.valid_down.expect(1)
                 if (output_counter % (num_in + invalids) < num_in):
                     tester.circuit.O.expect(test_vals[output_counter])
                 output_counter = min(output_counter + 1, len(test_vals))
