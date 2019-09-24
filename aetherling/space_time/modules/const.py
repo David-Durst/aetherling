@@ -1,5 +1,6 @@
 from aetherling.modules.counter import AESizedCounterModM
 from aetherling.modules.initial_delay_counter import DefineInitialDelayCounter
+from aetherling.modules.lut_any_type import DefineLUTAnyType
 from mantle.coreir import DefineCoreirConst
 from magma import *
 from magma.bitutils import int2seq
@@ -10,8 +11,9 @@ from aetherling.space_time.type_helpers import valid_ports, flatten as ae_flatte
 from aetherling.modules.ram_any_type import DefineRAMAnyType
 from collections.abc import Iterable
 import builtins
+from typing import Union, Tuple
 
-def atom_or_sseq_to_bits(atom):
+def atom_or_sseq_to_bits(atom: Union[int, bool, Tuple]) -> Tuple:
     """
     This converts atoms or SSeqs of atoms to flat bits
     :return:
@@ -29,10 +31,11 @@ def atom_or_sseq_to_bits(atom):
         raise NotImplementedError("Type {} not supported".format(str(type(atom))))
 
 
-def ts_arrays_to_bits(ts_xss):
+def ts_arrays_to_bits(ts_xss: Tuple) -> Tuple:
     """
     Convert a list of sseqs of atoms to a tuple of tuple of bits.
     Each inner tuple of bits is one clock cycle
+    Note: will be a list of atoms if each sseq is length 1. Should also work.
     """
     ts_flattened = []
     for s_xss in ts_xss:
@@ -40,5 +43,45 @@ def ts_arrays_to_bits(ts_xss):
     return builtins.tuple(ts_flattened)
 
 
+@cache_definition
+def DefineConst(t: ST_Type, ts_values: Tuple,
+               has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    Emits a constant over multiple clocks
 
+    O : Out(t)
+
+    if has_ce:
+    CE : In(Bit)
+    if has_reset:
+    RESET : In(Bit)
+    if has_valid:
+    valid_down : Out(Bit)
+    """
+    class _Const(Circuit):
+        name = "Const_t{}_hasCE{}_hasReset{}_hasValid{}".format(cleanName(str(t)), str(has_ce),
+                                                                str(has_reset), str(has_valid))
+        IO = ['O', Out(t.magma_repr())] + ClockInterface(has_ce, has_reset)
+        if has_valid:
+            IO += valid_ports[2:4]
+        @classmethod
+        def definition(cls):
+            enabled = DefineCoreirConst(1, 1)().O[0]
+            if has_ce:
+                enabled = bit(cls.CE) & enabled
+
+            luts = DefineLUTAnyType(t.magma_repr(), t.time(), ts_arrays_to_bits(ts_values))()
+            lut_position_counter = AESizedCounterModM(t.time(), has_ce=True, has_reset=has_reset)
+
+            wire(lut_position_counter.O, luts.addr)
+            wire(cls.O, luts.data)
+            wire(enabled, lut_position_counter.CE)
+
+            if has_reset:
+                wire(cls.RESET, lut_position_counter.RESET)
+            if has_valid:
+                wire(enabled, cls.valid_down)
+
+
+    return _Const
 

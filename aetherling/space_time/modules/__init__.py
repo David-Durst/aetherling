@@ -7,3 +7,4 @@ from .tuple import DefineAtomTupleCreator, DefineSSeqTupleCreator, \
 from .shift import DefineShift_S, DefineShift_T
 from .upsample import DefineUp_S, DefineUp_T
 from .fifo import DefineFIFO
+from .const import DefineConst
