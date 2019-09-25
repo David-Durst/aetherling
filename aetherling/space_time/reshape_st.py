@@ -3,7 +3,7 @@ from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.space_time.ram_st import DefineRAM_ST
 from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, remove_tseqs, replace_tombstone, \
-    ST_Tombstone, num_nested_layers, valid_ports
+    ST_Tombstone, num_nested_layers, num_nested_space_layers, valid_ports
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.flip.bitonic_sort import DefineBitonicSort
 from aetherling.modules.permutation import build_permutation_graph, BipartiteNode, get_output_latencies
@@ -332,7 +332,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             num_sseq_layers_inputs = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.diff_input))
             num_sseq_layers_to_remove_inputs = max(0, num_sseq_layers_inputs - 1)
             num_sseq_layers_outputs = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.diff_output))
-            num_sseq_layers_to_remove_outputs = max(0, num_sseq_layers_inputs - 1)
+            num_sseq_layers_to_remove_outputs = max(0, num_sseq_layers_outputs - 1)
             if remove_tseqs(shared_and_diff_subtypes.shared_outer) != ST_Tombstone():
                 #num_sseq_layers_inputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
                 #num_sseq_layers_outputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
@@ -348,7 +348,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 input_ports = flatten_ports(cls.I, num_sseq_layers_to_remove_inputs)
                 output_ports = flatten_ports(cls.O, num_sseq_layers_to_remove_outputs)
             # this is only used if the shared outer layers contains any sseqs
-            sseq_layers_to_flatten = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer)) - 1
+            sseq_layers_to_flatten = max(num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer)) - 1, 0)
             for idx in range(len(rams)):
                 # wire input and bank to input sorting network
                 wire(write_bank_for_input_lane_luts[idx].data, input_sorting_network.I[idx].bank)
@@ -362,7 +362,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                         for i in range(len(cur_input_port)):
                             wire(cur_input_port[i], cur_sort_port[i])
                     else:
-                        wire(input_ports[idx], input_sorting_network.I[idx].val)
+                        if num_nested_space_layers(t_in) == 0:
+                            # input_ports will be an array of bits for 1 element
+                            # if no sseq in t_in
+                            wire(input_ports, input_sorting_network.I[idx].val)
+                        else:
+                            wire(input_ports[idx], input_sorting_network.I[idx].val)
                     #wire(cls.ram_wr[idx], input_sorting_network.O[idx].val)
                     #wire(cls.ram_rd[idx], rams[idx].RDATA)
                 else:
@@ -400,7 +405,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                         for i in range(len(cur_output_port)):
                             wire(cur_output_port[i], cur_sort_port[i])
                     else:
-                        wire(output_sorting_network.O[idx].val, output_ports[idx])
+                        if num_nested_space_layers(t_out) == 0:
+                            # output_ports will be an array of bits for 1 element
+                            # if no sseq in t_out
+                            wire(output_sorting_network.O[idx].val, output_ports)
+                        else:
+                            wire(output_sorting_network.O[idx].val, output_ports[idx])
                 else:
                     wire(output_sorting_network.O[idx].val, TermAnyType(type(output_sorting_network.O[idx].val)))
 
