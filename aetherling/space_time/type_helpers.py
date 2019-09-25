@@ -112,6 +112,20 @@ def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> S
             input_diff = replace(input_copy, t=inner_shared_diff.diff_input)
             output_diff = replace(output_copy, t=inner_shared_diff.diff_output)
             return SharedDiffTypes(inner_shared_diff.shared_inner, ST_Tombstone(), input_diff, output_diff)
+    elif is_nested(input_type):
+        inner_shared_diff = get_shared_and_diff_subtypes(input_type.t, output_type)
+        # replace all inner parts of input so can stack this layer of input
+        # on input_diff
+        input_copy = replace(input_type, t=ST_Tombstone())
+        input_diff = replace(input_copy, t=inner_shared_diff.diff_input)
+        return replace(inner_shared_diff, diff_input=input_diff)
+    elif is_nested(output_type):
+        inner_shared_diff = get_shared_and_diff_subtypes(input_type, output_type.t)
+        # replace all inner parts of input so can stack this layer of input
+        # on input_diff
+        output_copy = replace(output_type, t=ST_Tombstone())
+        output_diff = replace(output_copy, t=inner_shared_diff.diff_output)
+        return replace(inner_shared_diff, diff_output=output_diff)
     else:
         return None
 

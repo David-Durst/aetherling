@@ -3,7 +3,7 @@ from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.space_time.ram_st import DefineRAM_ST
 from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, remove_tseqs, replace_tombstone, \
-    ST_Tombstone, num_nested_layers
+    ST_Tombstone, num_nested_layers, valid_ports
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.flip.bitonic_sort import DefineBitonicSort
 from aetherling.modules.permutation import build_permutation_graph, BipartiteNode, get_output_latencies
@@ -143,7 +143,7 @@ def flatten_ports(ports_to_flatten: List, layers_to_flatten: int) -> List:
         return flatten_ports(partially_flattened, layers_to_flatten - 1)
 
 @cache_definition
-def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=False) -> DefineCircuitKind:
+def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=False, has_valid=False) -> DefineCircuitKind:
     """
     Convert between two space-time types of the same throughput
 
@@ -154,6 +154,9 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
     CE : In(Bit)
     if has_reset:
     RESET : In(Bit)
+    if has_valid:
+    valid_up : In(Bit)
+    valid_down : Out(Bit)
 
     Note: property output_delay indicates delay of output relative to input
     """
@@ -171,6 +174,8 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
               #'reshape_write_counter', Out(Array[2, Bit]),
               #'first_valid', Out(Bit)
               ] + ClockInterface(has_ce=has_ce, has_reset=has_reset)
+        if has_valid:
+            IO += valid_ports
         @classmethod
         def definition(cls):
             # first section creates the RAMs and LUTs that set values in them and the sorting network
@@ -255,7 +260,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
             # second part creates the counters that index into the LUTs
             # elem_per counts time per element of the reshape
-            elem_per_reshape_counter = AESizedCounterModM(ram_element_type.time(), has_ce=has_ce)
+            elem_per_reshape_counter = AESizedCounterModM(ram_element_type.time(), has_ce=True)
             end_cur_elem = Decode(ram_element_type.time() - 1,
                                   elem_per_reshape_counter.O.N)(elem_per_reshape_counter.O)
             # reshape counts which element in the reshape
@@ -266,19 +271,21 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             output_delay = (get_output_latencies(graph)[0]) * ram_element_type.time()
             # this is present so testing knows the delay
             cls.output_delay = output_delay
-            reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=has_ce, has_reset=has_reset)()
+            reshape_read_delay_counter = DefineInitialDelayCounter(output_delay, has_ce=True, has_reset=has_reset)()
             # outer counter the repeats the reshape
             #wire(reshape_write_counter.O, cls.reshape_write_counter)
 
+            enabled = DefineCoreirConst(1, 1)().O[0]
+            if has_valid:
+                enabled = cls.valid_up & enabled
+                wire(reshape_read_delay_counter.valid, cls.valid_down)
             if has_ce:
-                wire(cls.CE, elem_per_reshape_counter.CE)
-                wire(cls.CE, reshape_read_delay_counter.CE)
-                wire(bit(cls.CE) & end_cur_elem, reshape_write_counter.CE)
-                wire(bit(cls.CE) & end_cur_elem & reshape_read_delay_counter.valid,
-                     reshape_read_counter.CE)
-            else:
-                wire(end_cur_elem, reshape_write_counter.CE)
-                wire(end_cur_elem & reshape_read_delay_counter.valid, reshape_read_counter.CE)
+                enabled = bit(cls.CE) & enabled
+            wire(enabled, elem_per_reshape_counter.CE)
+            wire(enabled, reshape_read_delay_counter.CE)
+            wire(enabled & end_cur_elem, reshape_write_counter.CE)
+            wire(enabled & end_cur_elem & reshape_read_delay_counter.valid,
+                 reshape_read_counter.CE)
 
             if has_reset:
                 wire(cls.RESET, elem_per_reshape_counter.RESET)
@@ -323,21 +330,23 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
             # flatten all the sseq_layers to get flat magma type of inputs and outputs
             # tseqs don't affect magma types
             num_sseq_layers_inputs = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.diff_input))
+            num_sseq_layers_to_remove_inputs = max(0, num_sseq_layers_inputs - 1)
             num_sseq_layers_outputs = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.diff_output))
+            num_sseq_layers_to_remove_outputs = max(0, num_sseq_layers_inputs - 1)
             if remove_tseqs(shared_and_diff_subtypes.shared_outer) != ST_Tombstone():
                 #num_sseq_layers_inputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
                 #num_sseq_layers_outputs += num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer))
                 input_ports = flatten_ports(
                     transpose_outer_dimensions(shared_and_diff_subtypes.shared_outer,
                                                shared_and_diff_subtypes.diff_input, cls.I),
-                    num_sseq_layers_inputs - 1)
+                    num_sseq_layers_to_remove_inputs)
                 output_ports = flatten_ports(
                     transpose_outer_dimensions(shared_and_diff_subtypes.shared_outer,
                                                shared_and_diff_subtypes.diff_output, cls.O),
-                    num_sseq_layers_outputs - 1)
+                    num_sseq_layers_to_remove_outputs)
             else:
-                input_ports = flatten_ports(cls.I, num_sseq_layers_inputs - 1)
-                output_ports = flatten_ports(cls.O, num_sseq_layers_outputs - 1)
+                input_ports = flatten_ports(cls.I, num_sseq_layers_to_remove_inputs)
+                output_ports = flatten_ports(cls.O, num_sseq_layers_to_remove_outputs)
             # this is only used if the shared outer layers contains any sseqs
             sseq_layers_to_flatten = num_nested_layers(remove_tseqs(shared_and_diff_subtypes.shared_outer)) - 1
             for idx in range(len(rams)):
