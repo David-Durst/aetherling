@@ -67,6 +67,16 @@ def num_nested_layers(t: ST_Type) -> int:
     else:
         return 0
 
+def num_nested_space_layers(t: ST_Type) -> int:
+    """
+    Get the number of TSeqs and SSeqs in t
+    """
+    no_tseqs_t = remove_tseqs(t)
+    if is_nested(no_tseqs_t):
+        return num_nested_layers(no_tseqs_t.t) + 1
+    else:
+        return 0
+
 def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> SharedDiffTypes:
     """
     Given two types that take equal amount of time, have the same length, but have different

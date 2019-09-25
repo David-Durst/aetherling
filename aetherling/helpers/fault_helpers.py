@@ -51,16 +51,24 @@ def wire_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
     if nesting_layers > 0:
         for sub_port in fault_port:
             cur_idx = wire_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
+        return cur_idx
     else:
-        tester.poke(fault_port.port, value[cur_idx])
+        if type(value) is list:
+            tester.poke(fault_port.port, value[cur_idx])
+        else:
+            tester.poke(fault_port.port, value)
         return cur_idx + 1
 
 def expect_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
     if nesting_layers > 0:
         for sub_port in fault_port:
-            cur_idx = wire_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
+            cur_idx = expect_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
+        return cur_idx
     else:
-        fault_port.expect(value[cur_idx])
+        if type(value) is list:
+            fault_port.expect(value[cur_idx])
+        else:
+            fault_port.expect(value)
         return cur_idx + 1
 
 
