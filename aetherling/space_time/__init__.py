@@ -11,4 +11,6 @@ from .ram_st import DefineRAM_ST
 from aetherling.space_time.modules.tuple import *
 from .modules import *
 from .type_helpers import *
-from .reshape_st import DefineReshape_ST
+# can't export this as permutation.__init__.py imports files from
+# this module and reshape_st imports from permtuation, creating a loop
+#from .reshape_st import DefineReshape_ST
