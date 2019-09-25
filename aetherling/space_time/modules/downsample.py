@@ -18,8 +18,8 @@ def DefineDown_S(n: int, idx: int, elem_t: ST_Type, has_valid: bool = False) -> 
     """
     Convert a SSeq n elem_t to SSeq 1 elem_t
 
-    I : Out(SSeq(n, elem_t).magma_repr())
-    O : In(SSeq(1, elem_t).magma_repr())
+    I : In(SSeq(n, elem_t).magma_repr())
+    O : Out(SSeq(1, elem_t).magma_repr())
     if has_valid:
     valid_up : In(Bit)
     valid_down : Out(Bit)

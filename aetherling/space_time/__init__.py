@@ -11,3 +11,4 @@ from .ram_st import DefineRAM_ST
 from aetherling.space_time.modules.tuple import *
 from .modules import *
 from .type_helpers import *
+from .reshape_st import DefineReshape_ST

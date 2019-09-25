@@ -9,3 +9,4 @@ from .upsample import DefineUp_S, DefineUp_T
 from .fifo import DefineFIFO
 from .const import DefineConst
 from .downsample import DefineDown_S
+from .partition import DefinePartition_S, DefineUnpartition_S
