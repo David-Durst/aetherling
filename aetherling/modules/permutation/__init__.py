@@ -3,6 +3,7 @@ from .assign_memory_addresses import assign_memory_addresses
 from .build_graph import build_input_output_graph, InputOutputGraph, BipartiteNode
 from .compute_latency import get_output_latencies
 from aetherling.space_time.space_time_types import ST_Type
+from aetherling.space_time.type_helpers import strip_tseq_1_0_sseq_1
 
 
 def build_permutation_graph(t_in: ST_Type, t_out: ST_Type) -> InputOutputGraph:
@@ -23,5 +24,7 @@ def get_latency(t_in: ST_Type, t_out: ST_Type) -> int:
     :param t_out: the output type to the graph
     :return: The latency of the reshape.
     """
+    if strip_tseq_1_0_sseq_1(t_in) == strip_tseq_1_0_sseq_1(t_out):
+        return 0
     graph = build_permutation_graph(t_in, t_out)
     return get_output_latencies(graph)[0]

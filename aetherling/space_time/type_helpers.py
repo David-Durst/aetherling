@@ -129,6 +129,22 @@ def get_shared_and_diff_subtypes(input_type: ST_Type, output_type: ST_Type) -> S
     else:
         return None
 
+def strip_tseq_1_0_sseq_1(t: ST_Type) -> ST_Type:
+    if is_nested(t):
+        # strip SSeq 1 or TSeq 1 0 from t if outer layer of t, then continue on inner layers
+        t_no_inner = replace(t, t=ST_Tombstone())
+        if t == ST_SSeq(1, ST_Tombstone()) or t == ST_TSeq(1, 0, ST_Tombstone()):
+            return strip_tseq_1_0_sseq_1(t.t)
+        else:
+            return replace(t, t=strip_tseq_1_0_sseq_1(t.t))
 
 def flatten(l):
     return [item for sublist in l for item in sublist]
+
+def get_nested_ports(port, nesting_layers, cur_ports = []):
+    if nesting_layers > 0:
+        for sub_port in port:
+            get_nested_ports(sub_port, nesting_layers - 1, cur_ports)
+    else:
+        cur_ports.append(port)
+    return cur_ports

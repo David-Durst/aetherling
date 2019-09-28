@@ -3,7 +3,8 @@ from aetherling.space_time.space_time_types import *
 from aetherling.space_time.nested_counters import *
 from aetherling.space_time.ram_st import DefineRAM_ST
 from aetherling.space_time.type_helpers import get_shared_and_diff_subtypes, remove_tseqs, replace_tombstone, \
-    ST_Tombstone, num_nested_layers, num_nested_space_layers, valid_ports
+    ST_Tombstone, num_nested_layers, num_nested_space_layers, valid_ports, strip_tseq_1_0_sseq_1
+from aetherling.space_time.modules.passthrough import DefinePassthrough
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.modules.flip.bitonic_sort import DefineBitonicSort
 from aetherling.modules.permutation import build_permutation_graph, BipartiteNode, get_output_latencies
@@ -160,6 +161,8 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
 
     Note: property output_delay indicates delay of output relative to input
     """
+    if strip_tseq_1_0_sseq_1(t_in) == strip_tseq_1_0_sseq_1(t_out):
+        return DefinePassthrough(t_in, t_out, has_valid=has_valid)
 
     class _Reshape_ST(Circuit):
         name = 'Reshape_ST{}_{}_hasCE{}_hasReset{}'.format(cleanName(str(t_in)), cleanName(str(t_out)),
