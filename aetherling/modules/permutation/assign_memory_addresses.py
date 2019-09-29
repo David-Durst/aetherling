@@ -90,13 +90,15 @@ def assign_memory_addresses(graph: InputOutputGraph) -> InputOutputGraph:
                 else:
                     soonest_expiring_addr = None
 
+            # adjustment from paper, see above the adjustment - why is this giving me the wrong s? wrong liftetime comes from this, meaning addr can be reused too early
+            (_, input_s) = input_s_sorted_by_banks_this_clock[s]
             # get an address to write to
-            if graph.input_nodes[t].flat_idxs[s].invalid:
+            # note: checking if the input is valid using input_s
+            # and if valid, then getting the addr for bank s, not for input_s
+            if graph.input_nodes[t].flat_idxs[input_s].invalid:
                 next_addr_to_write_to = Address(0, 0)
             else:
                 next_addr_to_write_to = free_addr_stacks[s].get_next_addr()
-            # adjustment from paper, see above the adjustment
-            (_, input_s) = input_s_sorted_by_banks_this_clock[s]
             graph.input_nodes[t].edge_addr[input_s] = next_addr_to_write_to.addr
             output_addr = get_output_address_at_input(t, input_s, graph.input_type, graph.output_type)
             graph.output_nodes[output_addr.t].edge_addr[output_addr.s] = next_addr_to_write_to.addr

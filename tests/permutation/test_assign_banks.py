@@ -81,6 +81,12 @@ def test_shared_sseq_2_tseq_3_1_diff_2_3_flip_banks():
     fixed_graph = assign_banks(graph)
     check_banks(fixed_graph, no*nii, (3+1)*(3+0))
 
+def test_tseq_2_0_tseq_3_2_sseq_1_to_tseq_2_8_sseq_3_banks():
+    input_type = ST_TSeq(2, 0, ST_TSeq(3, 2, ST_SSeq(1, ST_Int())))
+    output_type = ST_TSeq(2, 8, ST_SSeq(3, ST_Int()))
+    graph = build_input_output_graph(input_type, output_type)
+    fixed_graph = assign_banks(graph)
+    check_banks(fixed_graph, 3, 10)
 
 def check_banks(fixed_graph, s_len, t_len):
     for t in range(t_len):
