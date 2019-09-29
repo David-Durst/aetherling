@@ -1,7 +1,8 @@
 from aetherling.space_time.space_time_types import *
+from aetherling.space_time.type_helpers import valid_ports
 from aetherling.space_time.nested_counters import DefineNestedCounters
 from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
-from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, renameCircuitForReduce
+from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, tupleToTwoInputsForReduce
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.helpers.nameCleanup import cleanName
@@ -71,21 +72,25 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
     return _Map_T
 
 @cache_definition
-def DefineReduce_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
+def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Reduce_S(Circuit):
         assert type(op.st_in_t) == ST_Atom_Tuple
         name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
         atom_type = op.st_in_t.t0
         st_in_t = ST_SSeq(n, atom_type)
         st_out_t = ST_SSeq(1, atom_type)
-        IO = ['I', st_in_t.magma_repr(), 'O', st_out_t.magma_repr()]
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
 
         @classmethod
         def definition(cls):
-            op_renamed = renameCircuitForReduce(op)
+            op_renamed = tupleToTwoInputsForReduce(op)
             reduce = DefineReduceParallel(n, op_renamed)()
             wire(cls.I, reduce.I)
             wire(cls.O[0], reduce.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
     return _Reduce_S
 
 @cache_definition
@@ -97,12 +102,12 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
         binary_op = False
         st_in_t = ST_TSeq(n, i, atom_type)
         st_out_t = ST_TSeq(1, n+i-1, atom_type)
-        IO = ['I', st_in_t.magma_repr(), 'O', st_out_t.magma_repr(),
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr()),
               'valid_in', In(Bit), 'valid_out', Out(Bit)]
 
         @classmethod
         def definition(cls):
-            op_renamed = renameCircuitForReduce(op)
+            op_renamed = tupleToTwoInputsForReduce(op)
             reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
             enable_counter = DefineNestedCounters(ST_TSeq(n, i, ST_Int()),
                                                   has_last=False,

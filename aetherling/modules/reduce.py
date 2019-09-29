@@ -288,4 +288,41 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     return _RenamedCircuit
 
 
+@cache_definition
+def tupleToTwoInputsForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
+    """
+    Given an operation definition with one input port and one output port
+    where the input port is a tuple of type t x t and the output port is of type t,
+    return an circuit definition with ports name in0, in1, and out
+    that reduce needs.
+    :param op: A circuit definition with ports In(t x t) and Out(t).
+    :return: A circuit definition with the ports renamed
+    in0: In(t)
+    in1: In(t)
+    out: Out(t)
+    """
+    interface = opDef.IO()
+    inputs = interface.inputs()
+    output = interface.outputs()
+    assert len(inputs) == 1 # must have only 2 inputs
+    assert len(output) == 1 # must have only 1 output
+    assert type(inputs[0][0]) == type(inputs[0][1]) # all inputs and outputs must be same type
+    assert In(type(output[0])) == type(inputs[0][0]) # need to do Out instead of in conversion as types reversed here
+
+    class _RenamedCircuit(Circuit):
+        name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
+        IO = ["in0", type(inputs[0][0]), "in1", type(inputs[0][1]), "out", Out(type(output[0]))]
+
+        @classmethod
+        def definition(renamedCircuit):
+            op = opDef()
+            interface_instance = op.IO()
+            inputs_instance = interface_instance.inputs()
+            output_instance = interface_instance.outputs()
+            wire(getattr(op, inputs_instance[0].name.name)[0], renamedCircuit.in0)
+            wire(getattr(op, inputs_instance[0].name.name)[1], renamedCircuit.in1)
+            wire(getattr(op, output_instance[0].name.name), renamedCircuit.out)
+            return renamedCircuit
+
+    return _RenamedCircuit
 
