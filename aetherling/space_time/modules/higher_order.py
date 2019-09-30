@@ -1,5 +1,5 @@
 from aetherling.space_time.space_time_types import *
-from aetherling.space_time.type_helpers import valid_ports
+from aetherling.space_time.type_helpers import valid_ports, strip_tseq_1_0_sseq_1
 from aetherling.space_time.nested_counters import DefineNestedCounters
 from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
 from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, tupleToTwoInputsForReduce
@@ -16,18 +16,18 @@ int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
 
 @cache_definition
-def DefineMap_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
+def DefineMap_S(n: int, op: DefineCircuitKind, has_valid=True) -> DefineCircuitKind:
     assert op.binary_op == False
-    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=True)
+    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=has_valid)
     map_s.binary_op = False
     map_s.st_in_t = ST_SSeq(n, op.st_in_t)
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
     return map_s
 
 @cache_definition
-def DefineMap2_S(n: int, op: DefineCircuitKind) -> DefineCircuitKind:
+def DefineMap2_S(n: int, op: DefineCircuitKind, has_valid=True) -> DefineCircuitKind:
     assert op.binary_op == True
-    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=True)
+    map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=has_valid)
     map_s.binary_op = True
     map_s.st_in_t = [ST_SSeq(n, op.st_in_t[0]), ST_SSeq(n, op.st_in_t[1])]
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
@@ -96,31 +96,36 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
 @cache_definition
 def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
     class _Reduce_T(Circuit):
-        assert type(op.st_in_t) == ST_Atom_Tuple
+        # second case handles partially parallel generated code where reduce over a map_s 1
+        assert type(op.st_in_t) == ST_Atom_Tuple or \
+               (type(op.st_in_t) == ST_SSeq and op.st_in_t.n == 1 and type(op.st_in_t.t) == ST_Atom_Tuple)
         name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
-        atom_type = op.st_in_t.t0
+        atom_type = op.st_in_t.t0 if type(op.st_in_t) == ST_Atom_Tuple else ST_SSeq(1, op.st_in_t.t.t0)
         binary_op = False
         st_in_t = ST_TSeq(n, i, atom_type)
         st_out_t = ST_TSeq(1, n+i-1, atom_type)
-        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr()),
-              'valid_in', In(Bit), 'valid_out', Out(Bit)]
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports
 
         @classmethod
         def definition(cls):
-            op_renamed = tupleToTwoInputsForReduce(op)
+            op_renamed = tupleToTwoInputsForReduce(op, type(op.st_in_t) == ST_SSeq)
             reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
             enable_counter = DefineNestedCounters(ST_TSeq(n, i, ST_Int()),
                                                   has_last=False,
-                                                  has_ce=True)
+                                                  has_ce=True)()
             wire(enable_counter.valid, reduce.CE)
-            wire(cls.valid_in, enable_counter.CE)
-            wire(cls.I, reduce.I)
-            wire(cls.O, reduce.O)
+            wire(cls.valid_up, enable_counter.CE)
+            if type(op.st_in_t) == ST_Atom_Tuple:
+                wire(cls.I, reduce.I)
+                wire(cls.O, reduce.out)
+            else:
+                wire(cls.I[0], reduce.I)
+                wire(cls.O[0], reduce.out)
 
             # valid output after first full valid input collected
             valid_delay = InitialDelayCounter(n)
-            wire(cls.valid_in, valid_delay.CE)
-            wire(cls.valid_out, valid_delay.valid)
+            wire(cls.valid_up, valid_delay.CE)
+            wire(cls.valid_down, valid_delay.valid)
 
             # ignore inner reduce ready and valid
             wire(reduce.valid, TermAnyType(Bit).I)

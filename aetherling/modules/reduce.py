@@ -289,7 +289,7 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
 
 
 @cache_definition
-def tupleToTwoInputsForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
+def tupleToTwoInputsForReduce(opDef: DefineCircuitKind, has_extra_sseq=False) -> DefineCircuitKind:
     """
     Given an operation definition with one input port and one output port
     where the input port is a tuple of type t x t and the output port is of type t,
@@ -306,12 +306,19 @@ def tupleToTwoInputsForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     output = interface.outputs()
     assert len(inputs) == 1 # must have only 2 inputs
     assert len(output) == 1 # must have only 1 output
-    assert type(inputs[0][0]) == type(inputs[0][1]) # all inputs and outputs must be same type
-    assert In(type(output[0])) == type(inputs[0][0]) # need to do Out instead of in conversion as types reversed here
+    if has_extra_sseq:
+        assert type(inputs[0][0][0]) == type(inputs[0][0][1])  # all inputs and outputs must be same type
+        assert In(type(output[0][0])) == type(inputs[0][0][0])  # need to do Out instead of in conversion as types reversed here
+    else:
+        assert type(inputs[0][0]) == type(inputs[0][1]) # all inputs and outputs must be same type
+        assert In(type(output[0])) == type(inputs[0][0]) # need to do Out instead of in conversion as types reversed here
 
     class _RenamedCircuit(Circuit):
         name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
-        IO = ["in0", type(inputs[0][0]), "in1", type(inputs[0][1]), "out", Out(type(output[0]))]
+        if has_extra_sseq:
+            IO = ["in0", type(inputs[0][0][0]), "in1", type(inputs[0][0][1]), "out", Out(type(output[0][0]))]
+        else:
+            IO = ["in0", type(inputs[0][0]), "in1", type(inputs[0][1]), "out", Out(type(output[0]))]
 
         @classmethod
         def definition(renamedCircuit):
@@ -319,9 +326,14 @@ def tupleToTwoInputsForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
             interface_instance = op.IO()
             inputs_instance = interface_instance.inputs()
             output_instance = interface_instance.outputs()
-            wire(getattr(op, inputs_instance[0].name.name)[0], renamedCircuit.in0)
-            wire(getattr(op, inputs_instance[0].name.name)[1], renamedCircuit.in1)
-            wire(getattr(op, output_instance[0].name.name), renamedCircuit.out)
+            if has_extra_sseq:
+                wire(getattr(op, inputs_instance[0].name.name)[0][0], renamedCircuit.in0)
+                wire(getattr(op, inputs_instance[0].name.name)[0][1], renamedCircuit.in1)
+                wire(getattr(op, output_instance[0].name.name)[0], renamedCircuit.out)
+            else:
+                wire(getattr(op, inputs_instance[0].name.name)[0], renamedCircuit.in0)
+                wire(getattr(op, inputs_instance[0].name.name)[1], renamedCircuit.in1)
+                wire(getattr(op, output_instance[0].name.name), renamedCircuit.out)
             return renamedCircuit
 
     return _RenamedCircuit
