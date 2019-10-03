@@ -6,6 +6,7 @@ from mantle.coreir.compare import *
 from aetherling.space_time.space_time_types import *
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.space_time.type_helpers import valid_ports
+from aetherling.modules.term_any_type import TermAnyType
 
 @cache_definition
 def DefineSSeqTupleCreator(t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
@@ -114,3 +115,70 @@ def DefineAtomTupleCreator(t0: ST_Type, t1: ST_Type, has_valid: bool = False) ->
 def AtomTupleCreator(t0: ST_Type, t1: ST_Type):
     return DefineAtomTupleCreator(t0, t1)()
 
+@cache_definition
+def DefineFst(t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    A module for taking the first elemnt of an atom tuple
+    t x t' -> t
+
+    I : In(Tuple(t, t'))
+    O : Out(t)
+    """
+
+    class _Fst(Circuit):
+        name = "fst_t{}".format(cleanName(str(t)))
+
+        binary_op = True
+        st_in_t = [t]
+        st_out_t = t.t0
+        IO = ["I", In(st_in_t[0].magma_repr()),
+              "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            wire(cls.I[0], cls.O)
+            snd_term = TermAnyType(t.t1.magma_repr())
+            wire(cls.I[1], snd_term.I)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+
+    return _Fst
+
+def Fst(t: ST_Type):
+    return DefineFst(t)()
+
+@cache_definition
+def DefineSnd(t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    A module for taking the second elemnt of an atom tuple
+    t x t' -> t'
+
+    I : In(Tuple(t, t'))
+    O : Out(t')
+    """
+
+    class _Snd(Circuit):
+        name = "snd_t{}".format(cleanName(str(t)))
+
+        binary_op = True
+        st_in_t = [t]
+        st_out_t = t.t1
+        IO = ["I", In(st_in_t[0].magma_repr()),
+              "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            fst_term = TermAnyType(t.t0.magma_repr())
+            wire(cls.I[0], fst_term.I)
+            wire(cls.I[1], cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+
+    return _Snd
+
+def Snd(t: ST_Type):
+    return DefineSnd(t)()
