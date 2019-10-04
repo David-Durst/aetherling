@@ -58,8 +58,8 @@ def DefineSSeqTupleAppender(t: ST_Type, n: int, has_valid: bool = False) -> Defi
         name = "sseqTupleAppender_t{}_n{}".format(cleanName(str(t)), str(n))
 
         binary_op = True
-        st_in_t = [ST_SSeq(n, t), t]
-        st_out_t = ST_SSeq(n+1, t)
+        st_in_t = [ST_SSeq_Tuple(n, t), t]
+        st_out_t = ST_SSeq_Tuple(n+1, t)
         IO = ["I0", In(st_in_t[0].magma_repr()),
               "I1", In(st_in_t[1].magma_repr()),
               "O", Out(st_out_t.magma_repr())]
@@ -78,6 +78,72 @@ def DefineSSeqTupleAppender(t: ST_Type, n: int, has_valid: bool = False) -> Defi
 
 def SSeqTupleAppender(t: ST_Type, n: int):
     return DefineSSeqTupleAppender(t, n)()
+
+@cache_definition
+def DefineSSeqToSTuple(t: ST_Type, n: int, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    A module for converting an SSeq to an SSeq Tuple
+    SSeq n t -> STuple n t
+
+    I : In(SSeq(n, t).magma_repr())
+    O : In(STuple(n, t).magma_repr())
+    """
+
+    class _SSeqToTuple(Circuit):
+        name = "sseqToStuple_t{}_n{}".format(cleanName(str(t)), str(n))
+
+        binary_op = False
+        st_in_t = [ST_SSeq_Tuple(n, t)]
+        st_out_t = ST_SSeq(n, t)
+        IO = ["I", In(st_in_t[0].magma_repr()),
+              "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            wire(cls.I, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+
+    return _SSeqToTuple
+
+def SSeqToSTuple(t: ST_Type, n: int, has_valid: bool = False):
+    return DefineSSeqToSTuple(t, n, has_valid)()
+
+@cache_definition
+def DefineSTupleToSSeq(t: ST_Type, n: int, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    A module for converting an SSeq Tuple to an SSeq
+    SSeq n t -> STuple n t
+
+    I : In(STuple(n, t).magma_repr())
+    O : Out(SSeq(n, t).magma_repr())
+    """
+
+    class _TupleToSSeq(Circuit):
+        name = "stupleToSSeq_t{}_n{}".format(cleanName(str(t)), str(n))
+
+        binary_op = False
+        st_in_t = [ST_SSeq_Tuple(n, t)]
+        st_out_t = ST_SSeq(n, t)
+        IO = ["I", In(st_in_t[0].magma_repr()),
+              "O", Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            wire(cls.I, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+
+    return _TupleToSSeq
+
+
+def STupleToSSeq(t: ST_Type, n: int, has_valid: bool = False):
+    return DefineSTupleToSSeq(t, n, has_valid)()
+
 
 @cache_definition
 def DefineAtomTupleCreator(t0: ST_Type, t1: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
@@ -128,7 +194,7 @@ def DefineFst(t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
     class _Fst(Circuit):
         name = "fst_t{}".format(cleanName(str(t)))
 
-        binary_op = True
+        binary_op = False
         st_in_t = [t]
         st_out_t = t.t0
         IO = ["I", In(st_in_t[0].magma_repr()),
@@ -162,7 +228,7 @@ def DefineSnd(t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
     class _Snd(Circuit):
         name = "snd_t{}".format(cleanName(str(t)))
 
-        binary_op = True
+        binary_op = False
         st_in_t = [t]
         st_out_t = t.t1
         IO = ["I", In(st_in_t[0].magma_repr()),
