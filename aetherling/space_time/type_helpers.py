@@ -50,7 +50,7 @@ def remove_tseqs(t: ST_Type) -> ST_Type:
     """
     Get just the sseqs and the non-nested types, removing the tseqs
     """
-    if type(t) == ST_SSeq:
+    if type(t) == ST_SSeq or type(t) == ST_SSeq_Tuple:
         inner_tseqs_removed = remove_tseqs(t.t)
         return replace(t, t=inner_tseqs_removed)
     elif is_nested(t):
