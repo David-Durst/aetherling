@@ -168,6 +168,9 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
         name = 'Reshape_ST{}_{}_hasCE{}_hasReset{}'.format(cleanName(str(t_in)), cleanName(str(t_out)),
                                                            str(has_ce), str(has_reset))
         name = 'testy_namer'
+        binary_op = False
+        st_in_t = t_in
+        st_out_t = t_out
         IO = ['I', In(t_in.magma_repr()),
               'O', Out(t_out.magma_repr())
               #'ram_wr', Out(t_in.magma_repr()),

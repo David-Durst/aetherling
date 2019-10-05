@@ -25,7 +25,10 @@ def DefineShift_S(n: int, shift_amount: int, elem_t: ST_Type, has_valid: bool = 
     class _ShiftS(Circuit):
         name = "Shift_S_n{}_amt{}_tEl{}_hasValid{}".format(str(n), str(shift_amount), cleanName(str(elem_t)),
                                                            str(has_valid))
-        IO = ['I', In(ST_SSeq(n, elem_t).magma_repr()), 'O', Out(ST_SSeq(n, elem_t).magma_repr())] + \
+        binary_op = False
+        st_in_t = ST_SSeq(n, elem_t)
+        st_out_t = ST_SSeq(n, elem_t)
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(False, False)
         if has_valid:
             IO += valid_ports
@@ -64,7 +67,10 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
                                                                                    str(has_ce),
                                                                                    str(has_reset),
                                                                                    str(has_valid))
-        IO = ['I', In(ST_TSeq(n, i, elem_t).magma_repr()), 'O', Out(ST_TSeq(n, i, elem_t).magma_repr())] + \
+        binary_op = False
+        st_in_t = ST_TSeq(n, i, elem_t)
+        st_out_t = ST_TSeq(n, i, elem_t)
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(has_ce, has_reset)
         if has_valid:
             IO += valid_ports

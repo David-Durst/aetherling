@@ -8,5 +8,5 @@ from .shift import DefineShift_S, DefineShift_T
 from .upsample import DefineUp_S, DefineUp_T
 from .fifo import DefineFIFO
 from .const import DefineConst
-from .downsample import DefineDown_S
+from .downsample import DefineDown_S, DefineDown_T
 from .partition import DefinePartition_S, DefineUnpartition_S

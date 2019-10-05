@@ -62,6 +62,9 @@ def DefineConst(t: ST_Type, ts_values: Tuple,
         name = "Const_t{}_hasCE{}_hasReset{}_hasValid{}".format(cleanName(str(t)), str(has_ce),
                                                                 str(has_reset), str(has_valid))
         IO = ['O', Out(t.magma_repr())] + ClockInterface(has_ce, has_reset)
+        binary_op = False
+        st_in_t = []
+        st_out_t = t
         if has_valid:
             IO += valid_ports
         @classmethod

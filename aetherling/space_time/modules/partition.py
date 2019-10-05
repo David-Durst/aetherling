@@ -24,10 +24,12 @@ def DefinePartition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = False
     valid_up : In(Bit)
     valid_down : Out(Bit)
     """
-    class _Up_S(Circuit):
+    class _Partition_S(Circuit):
         name = "Partition_S_no{}_ni{}_tEl{}_v{}".format(str(no), str(ni), cleanName(str(elem_t)), str(has_valid))
-        IO = ['I', In(ST_SSeq(no*ni, elem_t).magma_repr()),
-              'O', Out(ST_SSeq(no, ST_SSeq(ni, elem_t)).magma_repr())] + \
+        binary_op = False
+        st_in_t = ST_SSeq(no*ni, elem_t)
+        st_out_t = ST_SSeq(no, ST_SSeq(ni, elem_t))
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(False, False)
         if has_valid:
             IO += valid_ports
@@ -38,10 +40,10 @@ def DefinePartition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = False
                     wire(cls.I[i*ni + j], cls.O[i][j])
             if has_valid:
                 wire(cls.valid_up, cls.valid_down)
-    return _Up_S
+    return _Partition_S
 
 def Partition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = False) -> Circuit:
-    return DefineDown_S(no, ni, elem_t, has_valid)()
+    return DefinePartition_S(no, ni, elem_t, has_valid)()
 
 @cache_definition
 def DefineUnpartition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
@@ -54,10 +56,12 @@ def DefineUnpartition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = Fal
     valid_up : In(Bit)
     valid_down : Out(Bit)
     """
-    class _Up_S(Circuit):
+    class _Unpartition_S(Circuit):
         name = "Partition_S_no{}_ni{}_tEl{}_v{}".format(str(no), str(ni), cleanName(str(elem_t)), str(has_valid))
-        IO = ['I', In(ST_SSeq(no, ST_SSeq(ni, elem_t)).magma_repr()),
-              'O', Out(ST_SSeq(no * ni, elem_t).magma_repr())] + \
+        binary_op = False
+        st_in_t = ST_SSeq(no, ST_SSeq(ni, elem_t))
+        st_out_t = ST_SSeq(no*ni, elem_t)
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(False, False)
         if has_valid:
             IO += valid_ports
@@ -68,7 +72,7 @@ def DefineUnpartition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = Fal
                     wire(cls.O[i*ni + j], cls.I[i][j])
             if has_valid:
                 wire(cls.valid_up, cls.valid_down)
-    return _Up_S
+    return _Unpartition_S
 
 def Unpartition_S(no: int, ni: int, elem_t: ST_Type, has_valid: bool = False) -> Circuit:
-    return DefineDown_S(no, ni, elem_t, has_valid)()
+    return DefineUnpartition_S(no, ni, elem_t, has_valid)()
