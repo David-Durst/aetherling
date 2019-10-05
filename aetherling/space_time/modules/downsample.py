@@ -27,7 +27,7 @@ def DefineDown_S(n: int, idx: int, elem_t: ST_Type, has_valid: bool = False) -> 
     class _Down_S(Circuit):
         name = "Down_S_n{}_sel{}_tEl{}_v{}".format(str(n), str(idx), cleanName(str(elem_t)), str(has_valid))
         binary_op = False
-        st_in_t = ST_SSeq(n, elem_t)
+        st_in_t = [ST_SSeq(n, elem_t)]
         st_out_t = ST_SSeq(1, elem_t)
         IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(False, False)
@@ -64,7 +64,7 @@ def DefineDown_T(n: int, i:int, idx: int, elem_t: ST_Type, has_valid: bool = Fal
     class _Down_T(Circuit):
         name = "Down_S_n{}_i{}_sel{}_tEl{}_v{}".format(str(n), str(i), str(idx), cleanName(str(elem_t)), str(has_valid))
         binary_op = False
-        st_in_t = ST_TSeq(n, i, elem_t)
+        st_in_t = [ST_TSeq(n, i, elem_t)]
         st_out_t = ST_TSeq(1, n+i-1, elem_t)
         IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(False, False)

@@ -27,7 +27,7 @@ def DefineUp_S(n: int, elem_t: ST_Type, has_valid: bool = False) -> DefineCircui
     class _Up_S(Circuit):
         name = "Up_S_n{}_tEl{}_v{}".format(str(n), cleanName(str(elem_t)), str(has_valid))
         binary_op = False
-        st_in_t = ST_SSeq(1, elem_t)
+        st_in_t = [ST_SSeq(1, elem_t)]
         st_out_t = ST_SSeq(n, elem_t)
         IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
              ClockInterface(False, False)
@@ -66,10 +66,10 @@ def DefineUp_T(n: int, i: int, elem_t: ST_Type,
                                                                           str(has_ce), str(has_reset),
                                                                           str(has_valid))
         binary_op = False
-        st_in_t = ST_TSeq(1, n+i-1, elem_t)
+        st_in_t = [ST_TSeq(1, n+i-1, elem_t)]
         st_out_t = ST_TSeq(n, i, elem_t)
         IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
-             + ClockInterface(has_ce, has_reset)
+             ClockInterface(has_ce, has_reset)
         if has_valid:
             IO += valid_ports
         @classmethod

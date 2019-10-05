@@ -31,7 +31,7 @@ def DefineFIFO(t: ST_Type, delay: int,
                                                                           str(has_valid))
         IO = ['I', In(t.magma_repr()), 'O', Out(t.magma_repr())] + ClockInterface(has_ce, has_reset)
         binary_op = False
-        st_in_t = t
+        st_in_t = [t]
         st_out_t = t
         if has_valid:
             IO += valid_ports
