@@ -35,7 +35,8 @@ def DefineDown_S(n: int, idx: int, elem_t: ST_Type, has_valid: bool = False) -> 
             IO += valid_ports
         @classmethod
         def definition(cls):
-            inputs_term = TermAnyType(ST_SSeq(n-1, elem_t).magma_repr())
+            if n > 1:
+                inputs_term = TermAnyType(ST_SSeq(n-1, elem_t).magma_repr())
             num_wired_to_output = 0
             for i in range(len(cls.I)):
                 if i == idx:
