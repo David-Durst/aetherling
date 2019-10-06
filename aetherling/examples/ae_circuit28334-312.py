@@ -56,7 +56,7 @@ if __name__ == '__main__':
     for f_clk in range(4 + 1):
         tester.print('clk: {}\n'.format(f_clk))
         if f_clk < 4 and fault_inputs0_valid[f_clk]:
-            fault_helpers.wire_nested_port(tester, tester.circuit.hi, fault_inputs0[f_clk], num_nested_space_layers(ST_SSeq(4, ST_TSeq(4, 0, ST_Int()))), 0)
+            fault_helpers.set_nested_port(tester, tester.circuit.hi, fault_inputs0[f_clk], num_nested_space_layers(ST_SSeq(4, ST_TSeq(4, 0, ST_Int()))), 0)
         tester.eval()
         if f_clk > 1:
             output_counter += 1

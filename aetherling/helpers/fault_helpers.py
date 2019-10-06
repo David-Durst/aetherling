@@ -47,10 +47,19 @@ def print_nd_int_array_port(tester, port, name = None):
     else:
         tester.print(f"%d, ", port)
 
-def wire_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
+def print_nested_port(tester, fault_port, nesting_layers):
+    if nesting_layers > 0:
+        tester.print("[")
+        for sub_port in fault_port:
+            print_nested_port(tester, sub_port, nesting_layers - 1)
+        tester.print("]")
+    else:
+        tester.print(f"%d, ", fault_port)
+
+def set_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
     if nesting_layers > 0:
         for sub_port in fault_port:
-            cur_idx = wire_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
+            cur_idx = set_nested_port(tester, sub_port, value, nesting_layers - 1, cur_idx)
         return cur_idx
     else:
         if type(value) is list:
@@ -59,6 +68,7 @@ def wire_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
             tester.poke(fault_port.port, value)
         return cur_idx + 1
 
+int_to_ignore = -23451
 def expect_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
     if nesting_layers > 0:
         for sub_port in fault_port:
@@ -66,9 +76,11 @@ def expect_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
         return cur_idx
     else:
         if type(value) is list:
-            fault_port.expect(value[cur_idx])
+            if value[cur_idx] != int_to_ignore:
+                fault_port.expect(value[cur_idx])
         else:
-            fault_port.expect(value)
+            if value != int_to_ignore:
+                fault_port.expect(value)
         return cur_idx + 1
 
 

@@ -61,7 +61,7 @@ if __name__ == '__main__':
     mod = Main
     tester = fault.Tester(mod, mod.CLK)
     for f_clk in range(1):
-        #fault_helpers.wire_nested_port(tester, tester.circuit.hi, fault_inputs0[f_clk])
+        #fault_helpers.set_nested_port(tester, tester.circuit.hi, fault_inputs0[f_clk])
         tester.circuit.hi = fault_inputs0[f_clk]
         tester.eval()
         #fault_helpers.expect_nested_port(tester.circuit.O, fault_output[f_clk])
