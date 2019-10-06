@@ -5,7 +5,10 @@ from magma.bitutils import *
 from magma.simulator.coreir_simulator import CoreIRSimulator
 from magma.scope import Scope
 import fault
-from aetherling.helpers.fault_helpers import compile_and_run
+from aetherling.space_time.type_helpers import flatten
+from aetherling.helpers.fault_helpers import compile_and_run, set_nested_port, \
+    expect_nested_port, print_nested_port, int_to_ignore
+import builtins
 
 def test_shift_s():
     num_in = 4
@@ -132,170 +135,30 @@ def test_shift_t_invalid_v_delayed_true_ce():
             tester.step(2)
     compile_and_run(tester)
 
-"""
-def test_rshift_sequential_rv_and_ce_flicker():
-    width = 5
-    test_vals = [2,5,3,8]
-    shift_amount = 1
-    ready_down_period = 3
-    valid_up_period = 4
-    ce_period = 2
-    # 12 is lcm of all periods
-    lcm_periods = 12
-    # rshift only executes when upstream valid, downstream valid, and ce high
-    # that occurs only on lcm of their periods
-    num_clocks_per_iteration = len(test_vals) * lcm_periods
-    num_iterations = 2
-    scope = Scope()
-
-    testcircuit = DefineRShiftSequential(len(test_vals), 1, shift_amount, Array[width, Bit], has_ce=True)
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-
-    for i in range(num_iterations):
-        for clk in range(num_clocks_per_iteration):
-            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
-            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
-            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
-            if clk % valid_up_period == 0:
-                sim.set_value(testcircuit.I, int2seq(test_vals[clk // lcm_periods], width), scope)
-            # ensure that can change input on not valid_up clock and not affect anything
-            else:
-                sim.set_value(testcircuit.I, int2seq(0, width), scope)
-            sim.evaluate()
-            # check ready
-            assert sim.get_value(testcircuit.ready_up, scope) == (clk % ready_down_period == 0 and
-                                                                  clk % ce_period == 0)
-            # check valid
-            assert sim.get_value(testcircuit.valid_down, scope) == (clk % valid_up_period == 0 and
-                                                                    clk % ce_period == 0)
-            # check that output right
-            if clk > 0 and clk % ce_period == 0 and clk % ready_down_period == 0 and \
-                clk % valid_up_period == 0:
-                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[(clk // lcm_periods) - 1]
-            sim.advance_cycle()
-            sim.evaluate()
-
-def test_rshift_sequential_multi_clock_elements_rv_always_true_no_ce():
-    width = 5
-    test_vals = [2,5,3,8]
-    shift_amount = 1
-    time_per_element = 2
-    num_clocks_per_iteration = len(test_vals)
-    num_iterations = 2
-    scope = Scope()
-
-    testcircuit = DefineRShiftSequential(len(test_vals) // time_per_element, time_per_element, shift_amount, Array[width, Bit])
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-
-    sim.set_value(testcircuit.valid_up, True, scope)
-    sim.set_value(testcircuit.ready_down, True, scope)
-    for i in range(num_iterations):
-        for clk in range(num_clocks_per_iteration):
-            sim.set_value(testcircuit.I, int2seq(test_vals[clk] + i, width), scope)
-            sim.evaluate()
-            if clk >= shift_amount * time_per_element:
-                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[clk - shift_amount * time_per_element] + i
-            assert sim.get_value(testcircuit.ready_up, scope) == True
-            assert sim.get_value(testcircuit.valid_down, scope) == True
-            sim.advance_cycle()
-            sim.evaluate()
-
-def test_rshift_sequential_shift_great_than_1_rv_always_true_no_ce():
-    width = 5
-    test_vals = [2,5,3,8,1,9]
+def test_shift_ts():
+    no = 2
+    io = 0
+    ni = 4
+    test_vals = [[0,1,2,3], [4,5,6,7]]
+    shifted_test_vals = [[int_to_ignore, int_to_ignore, 0, 1], [2, 3, 4, 5]]
     shift_amount = 2
-    num_clocks_per_iteration = len(test_vals)
-    num_iterations = 2
-    scope = Scope()
+    in_type = ST_TSeq(no, io, ST_SSeq(ni, ST_Int()))
 
-    testcircuit = DefineRShiftSequential(len(test_vals), 1, shift_amount, Array[width, Bit])
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
+    rshift = DefineShift_TS(no, io, ni, shift_amount, in_type.t.t, has_valid=True)
 
+    tester = fault.Tester(rshift, rshift.CLK)
 
-    sim.set_value(testcircuit.valid_up, True, scope)
-    sim.set_value(testcircuit.ready_down, True, scope)
-    for i in range(num_iterations):
-        for clk in range(num_clocks_per_iteration):
-            sim.set_value(testcircuit.I, int2seq(test_vals[clk] + i, width), scope)
-            sim.evaluate()
-            if clk >= shift_amount:
-                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[clk - shift_amount] + i
-            assert sim.get_value(testcircuit.ready_up, scope) == True
-            assert sim.get_value(testcircuit.valid_down, scope) == True
-            sim.advance_cycle()
-            sim.evaluate()
-
-def test_rshift_sequential_shift_great_than_1_multi_clock_elements_rv_always_true_no_ce():
-    width = 5
-    test_vals = [2,5,3,8,1,9]
-    time_per_element = 2
-    shift_amount = 2
-    num_clocks_per_iteration = len(test_vals)
-    num_iterations = 2
-    scope = Scope()
-
-    testcircuit = DefineRShiftSequential(len(test_vals) // time_per_element, time_per_element, shift_amount, Array[width, Bit])
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-
-    sim.set_value(testcircuit.valid_up, True, scope)
-    sim.set_value(testcircuit.ready_down, True, scope)
-    for i in range(num_iterations):
-        for clk in range(num_clocks_per_iteration):
-            sim.set_value(testcircuit.I, int2seq(test_vals[clk] + i, width), scope)
-            sim.evaluate()
-            if clk >= shift_amount * time_per_element:
-                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[clk - shift_amount * time_per_element] + i
-            assert sim.get_value(testcircuit.ready_up, scope) == True
-            assert sim.get_value(testcircuit.valid_down, scope) == True
-            sim.advance_cycle()
-            sim.evaluate()
-
-def test_rshift_sequential_shift_great_than_1_multi_clock_elements_rv_and_ce_flicker():
-    width = 5
-    test_vals = [2,5,3,8,1,9]
-    time_per_element = 2
-    shift_amount = 2
-    ready_down_period = 3
-    valid_up_period = 4
-    ce_period = 2
-    # 12 is lcm of all periods
-    lcm_periods = 12
-    # rshift only executes when upstream valid, downstream valid, and ce high
-    # that occurs only on lcm of their periods
-    num_clocks_per_iteration = len(test_vals) * lcm_periods
-    num_iterations = 2
-    scope = Scope()
-
-    testcircuit = DefineRShiftSequential(len(test_vals) // time_per_element, time_per_element, shift_amount, Array[width, Bit], True)
-    sim = CoreIRSimulator(testcircuit, testcircuit.CLK)
-
-
-    sim.set_value(testcircuit.valid_up, True, scope)
-    sim.set_value(testcircuit.ready_down, True, scope)
-    for i in range(num_iterations):
-        for clk in range(num_clocks_per_iteration):
-            sim.set_value(testcircuit.valid_up, clk % valid_up_period == 0, scope)
-            sim.set_value(testcircuit.ready_down, clk % ready_down_period == 0, scope)
-            sim.set_value(testcircuit.CE, clk % ce_period == 0, scope)
-            if clk % valid_up_period == 0:
-                sim.set_value(testcircuit.I, int2seq(test_vals[clk // lcm_periods] + i, width), scope)
-            # ensure that can change input on not valid_up clock and not affect anything
-            else:
-                sim.set_value(testcircuit.I, int2seq(0, width), scope)
-            sim.evaluate()
-            # check ready
-            assert sim.get_value(testcircuit.ready_up, scope) == (clk % ready_down_period == 0 and
-                                                                  clk % ce_period == 0)
-            # check valid
-            assert sim.get_value(testcircuit.valid_down, scope) == (clk % valid_up_period == 0 and
-                                                                    clk % ce_period == 0)
-            # check that output right
-            if clk >= shift_amount * time_per_element * lcm_periods and clk % ce_period == 0 and clk % ready_down_period == 0 and \
-                    clk % valid_up_period == 0:
-                assert seq2int(sim.get_value(testcircuit.O, scope)) == test_vals[(clk // lcm_periods) - shift_amount * time_per_element] + i
-            sim.advance_cycle()
-            sim.evaluate()
-"""
+    tester.circuit.valid_up = 1
+    for clk in range(len(test_vals)):
+        tester.print("clk: {}".format(clk))
+        set_nested_port(tester, tester.circuit.I, test_vals[clk], 1, 0)
+        print_nested_port(tester, tester.circuit.I, 1)
+        tester.print("\n")
+        tester.eval()
+        #for i, val in enumerate(test_vals[i*ni+shift_amount:(i+1)*ni+shift_amount]):
+        print_nested_port(tester, tester.circuit.O, 1)
+        tester.print("\n")
+        expect_nested_port(tester, tester.circuit.O, shifted_test_vals[clk], 1, 0)
+        tester.circuit.valid_down.expect(1)
+        tester.step(2)
+    compile_and_run(tester)

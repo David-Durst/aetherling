@@ -4,7 +4,7 @@ from .higher_order import DefineMap_S, DefineMap_T, DefineMap2_S, \
     DefineMap2_T, DefineReduce_S, DefineReduce_T
 from .tuple import DefineAtomTupleCreator, DefineSSeqTupleCreator, \
     DefineSSeqTupleAppender, DefineFst, DefineSnd
-from .shift import DefineShift_S, DefineShift_T
+from .shift import DefineShift_S, DefineShift_T, DefineShift_TS
 from .upsample import DefineUp_S, DefineUp_T
 from .fifo import DefineFIFO
 from .const import DefineConst

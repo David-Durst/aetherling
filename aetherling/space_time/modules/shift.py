@@ -9,7 +9,7 @@ from mantle.coreir import DefineCoreirConst
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.helpers.magma_helpers import ready_valid_interface
 
-__all__ = ['DefineShift_S', 'Shift_S', 'DefineShift_T', 'Shift_T']
+__all__ = ['DefineShift_S', 'Shift_S', 'DefineShift_T', 'Shift_T', 'DefineShift_TS', 'Shift_TS']
 
 @cache_definition
 def DefineShift_S(n: int, shift_amount: int, elem_t: ST_Type, has_valid: bool = False) -> DefineCircuitKind:
@@ -118,3 +118,84 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
 def Shift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
                   has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> Circuit:
     return DefineShift_T(n, i, shift_amount, elem_t, has_ce, has_reset, has_valid)()
+
+
+"""
+Shift Rewrite Rule ---
+Shift (no*ni) s in_seq ===
+Unpartition no ni .
+    Tuple_To_Seq .
+    foldl1 (\accum next -> Map2 no Tuple accum next) .
+    fmap (\(i, in_seq) -> 
+            Shift no ((ni - i + s - 1) // ni) $ Map no (Select_1d ni ((i - s) % ni)) in_seq
+        ) .
+    zipWith [0..]
+    repeat ni .
+    Partition no ni
+"""
+
+
+@cache_definition
+def DefineShift_TS(no: int, io: int, ni: int, shift_amount: int, elem_t: ST_Type,
+                  has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    Shifts the elements in TSeq no io (SSeq ni elem_t) by shift_amount to the right.
+
+    I : In((TSeq(no, io, SSeq(ni, elem_t)).magma_repr())
+    O : Out((TSeq(n, i, SSeq(ni, elem_t)).magma_repr())
+    if has_ce:
+    CE : In(Bit)
+    if has_reset:
+    RESET : In(Bit)
+    if has_valid:
+    valid_up : In(Bit)
+    valid_down : Out(Bit)
+    """
+    class _ShiftTS(Circuit):
+        name = "Shift_ts_no{}_io{}_ni{}_amt{}_tEl{}__hasCE{}_hasReset{}_hasValid{}".format(str(no), str(io),
+                                                                                           str(ni),
+                                                                                           str(shift_amount),
+                                                                                           cleanName(str(elem_t)),
+                                                                                           str(has_ce),
+                                                                                           str(has_reset),
+                                                                                           str(has_valid))
+        binary_op = False
+        st_in_t = [ST_TSeq(no, io, ST_SSeq(ni, elem_t))]
+        st_out_t = ST_TSeq(no, io, ST_SSeq(ni, elem_t))
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
+             ClockInterface(has_ce, has_reset)
+        if has_valid:
+            IO += valid_ports
+        @classmethod
+        def definition(cls):
+            enabled = DefineCoreirConst(1, 1)().O[0]
+            if has_valid:
+                enabled = cls.valid_up & enabled
+                wire(cls.valid_up, cls.valid_down)
+            if has_ce:
+                enabled = bit(cls.CE) & enabled
+
+            # don't need valid on these shift_t as they'll be getting it from the enable signal
+            shift_t_xs = []
+            for i in range(ni):
+                shift_amount_t = (ni - i + shift_amount - 1) // ni
+                if shift_amount_t == 0:
+                    shift_t_xs.append(None)
+                else:
+                    shift_t_xs.append(DefineShift_T(no, io, shift_amount_t, elem_t, True, has_reset, False)())
+
+            for i in range(ni):
+                if shift_t_xs[i] is None:
+                    wire(cls.I[(i - shift_amount) % ni], cls.O[i])
+                else:
+                    wire(cls.I[(i - shift_amount) % ni], shift_t_xs[i].I)
+                    wire(shift_t_xs[i].O, cls.O[i])
+                    wire(enabled, shift_t_xs[i].CE)
+                    if has_reset:
+                        wire(cls.RESET, shift_t_xs[i].RESET)
+
+    return _ShiftTS
+
+def Shift_TS(no: int, io: int, ni: int, shift_amount: int, elem_t: ST_Type,
+            has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> Circuit:
+    return DefineShift_T(no, io, ni, shift_amount, elem_t, has_ce, has_reset, has_valid)()
