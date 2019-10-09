@@ -193,6 +193,14 @@ def test_same_modulo_nesting():
     output_type = ST_SSeq(1, ST_TSeq(2, 0, ST_SSeq(3, ST_Int())))
     DefineReshape_ST(input_type, output_type)
 
+def test_tseq_2_0_sseq_50_stuple_3_to_tseq_2_0_sseq_50_sseq_3():
+    input_type = ST_TSeq(2, 0, ST_SSeq(50, ST_SSeq_Tuple(3, ST_Int())))
+    output_type = ST_TSeq(2, 0, ST_SSeq(50, ST_SSeq(3, ST_Int())))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type, has_valid=True)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
+
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
     clocks = len(graph.input_nodes)
     if has_ce:
