@@ -3,14 +3,14 @@ import aetherling.helpers.fault_helpers as fault_helpers
 from aetherling.space_time import *
 from aetherling.space_time.reshape_st import DefineReshape_ST
 import magma as m
-Main = lambda : m.DefineFromVerilog("/home/david/dev/embeddedHaskellAetherling/test/verilog_examples/aetherling_copies/map_s_4.v", target_modules=["top"])[0]
+Main = lambda : m.DefineFromVerilogFile("/Users/durst/dev/W17-8/haskellAetherling/Aetherling/test/verilog_examples/aetherling_copies/map_s_4.v", target_modules=["top"])[0]
 fault_inputs0 = [0,-1,2,3]
 fault_inputs0_valid = [True,True,True,True]
 fault_output = [0,1,2,3]
 fault_output_valid = [True,True,True,True]
 if __name__ == '__main__':
     mod = Main()
-    tester = fault.Tester(mod, mod.CLK)
+    tester = fault.Tester(mod, clock(mod.CLK))
     tester.circuit.valid_up = 1
     output_counter = 0
     for f_clk in range(4 + 0):
