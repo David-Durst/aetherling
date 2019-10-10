@@ -98,8 +98,8 @@ if __name__ == '__main__':
         if f_clk > 0:
             output_counter += 1
         if f_clk >= 0 and fault_output_valid[output_counter]:
-            for i in range(8):
-                tester.print("output {}: %d\n".format(i), mod.instances[0].O[0])
+            #for i in range(8):
+            #    tester.print("output {}: %d\n".format(i), mod.instances[0].O[0])
             fault_helpers.expect_nested_port(tester, tester.circuit.O, fault_output[output_counter], num_nested_space_layers(ST_SSeq(1, ST_Int())), 0)
         tester.step(2)
     fault_helpers.compile_and_run(tester)

@@ -29,4 +29,4 @@ if __name__ == '__main__':
             tester.print("\n")
             fault_helpers.expect_nested_port(tester, tester.circuit.O, fault_output[output_counter], num_nested_space_layers(ST_TSeq(4, 0, ST_Int())), 0)
         tester.step(2)
-    fault_helpers.compile_and_run(tester)
+    fault_helpers.compile_and_run_verilog(tester)
