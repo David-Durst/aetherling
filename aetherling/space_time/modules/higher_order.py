@@ -77,6 +77,7 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
         assert type(op.st_in_t) == ST_Atom_Tuple
         name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
         atom_type = op.st_in_t.t0
+        binary_op = False
         st_in_t = ST_SSeq(n, atom_type)
         st_out_t = ST_SSeq(1, atom_type)
         IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
