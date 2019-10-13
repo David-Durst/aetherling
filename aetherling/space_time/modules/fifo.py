@@ -38,31 +38,28 @@ def DefineFIFO(t: ST_Type, delay: int,
             IO += valid_ports
         @classmethod
         def definition(cls):
-            enabled = DefineCoreirConst(1, 1)().O[0]
-            if has_valid:
-                enabled = cls.valid_up & enabled
-            if has_ce:
-                enabled = bit(cls.CE) & enabled
-
             per_clock_type = t.magma_repr()
             if delay == 1:
-                reg = DefineRegisterAnyType(t.magma_repr(), has_ce=True, has_reset=has_reset)()
+                reg = DefineRegisterAnyType(t.magma_repr(), has_ce=False, has_reset=has_reset)()
 
                 wire(reg.I, cls.I)
                 wire(reg.O, cls.O)
-                wire(reg.CE, enabled)
                 if has_reset:
                     wire(reg.RESET, cls.RESET)
 
                 if has_valid:
-                    valid_reg = DefineRegisterAnyType(Bit, has_ce=True, has_reset=has_reset)()
+                    valid_reg = DefineRegisterAnyType(Bit, has_ce=False, has_reset=has_reset)()
                     wire(valid_reg.I, cls.valid_up)
                     wire(valid_reg.O, cls.valid_down)
-                    wire(valid_reg.CE, enabled)
                     if has_reset:
                         wire(valid_reg.RESET, cls.RESET)
 
             else:
+                enabled = DefineCoreirConst(1, 1)().O[0]
+                if has_valid:
+                    enabled = cls.valid_up & enabled
+                if has_ce:
+                    enabled = bit(cls.CE) & enabled
                 read_counter = AESizedCounterModM(delay, has_ce=True, has_reset=has_reset)
                 write_counter = AESizedCounterModM(delay, has_ce=True, has_reset=has_reset)
                 fifo_buffer = DefineRAMAnyType(per_clock_type, delay)()
