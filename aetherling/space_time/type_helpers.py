@@ -133,7 +133,7 @@ def strip_tseq_1_0_sseq_1(t: ST_Type) -> ST_Type:
     if is_nested(t):
         # strip SSeq 1 or TSeq 1 0 from t if outer layer of t, then continue on inner layers
         t_no_inner = replace(t, t=ST_Tombstone())
-        if t == ST_SSeq(1, ST_Tombstone()) or t == ST_TSeq(1, 0, ST_Tombstone()):
+        if t_no_inner == ST_SSeq(1, ST_Tombstone()) or t_no_inner == ST_TSeq(1, 0, ST_Tombstone()):
             return strip_tseq_1_0_sseq_1(t.t)
         else:
             return replace(t, t=strip_tseq_1_0_sseq_1(t.t))

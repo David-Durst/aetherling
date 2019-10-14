@@ -204,6 +204,9 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 ram_element_type = shared_and_diff_subtypes.shared_inner
             else:
                 ram_element_type = replace_tombstone(outer_shared_sseqs, shared_and_diff_subtypes.shared_inner)
+            # can use wider rams rather than duplicate for outer_shared_sseqs because will
+            # transpose dimenions of input wires below to wire up as if outer, shared dimensions
+            # were on the inside
             rams = [DefineRAM_ST(ram_element_type, ram_max_addr + 1)() for ram_max_addr in max_ram_addrs]
             rams_addr_widths = [ram.WADDR.N for ram in rams]
 

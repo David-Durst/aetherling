@@ -201,6 +201,13 @@ def test_tseq_2_0_sseq_50_stuple_3_to_tseq_2_0_sseq_50_sseq_3():
     tester = fault.Tester(testcircuit, testcircuit.CLK)
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
+def test_tseq_3_0_sseq_3_sseq_1_to_tseq_3_0_sseq_3():
+    input_type = ST_TSeq(3, 0, ST_SSeq(3, ST_SSeq(1, ST_Int())))
+    output_type = ST_TSeq(3, 0, ST_SSeq(3, ST_Int()))
+    testcircuit = DefineReshape_ST(input_type, output_type, has_valid=True)
+    assert "Passthrough" in testcircuit.name
+
+
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
     clocks = len(graph.input_nodes)
     if has_ce:
