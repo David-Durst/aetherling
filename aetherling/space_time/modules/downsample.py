@@ -1,15 +1,10 @@
 from aetherling.space_time import *
 from aetherling.space_time.type_helpers import valid_ports
-from mantle import Decode
-from mantle.coreir import DefineCoreirConst
+from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from magma import *
 from magma.circuit import DefineCircuitKind
 from aetherling.helpers.nameCleanup import cleanName
-from aetherling.modules.register_any_type import DefineRegisterAnyType
-from aetherling.modules.mux_any_type import DefineMuxAnyType
 from aetherling.modules.term_any_type import TermAnyType
-from aetherling.modules.ram_any_type import DefineRAMAnyType
-from aetherling.modules.counter import AESizedCounterModM
 
 __all__ = ['DefineDown_S', 'Down_S', 'DefineDown_T' ,'Down_T']
 
@@ -75,7 +70,9 @@ def DefineDown_T(n: int, i:int, idx: int, elem_t: ST_Type, has_valid: bool = Fal
         def definition(cls):
             wire(cls.I, cls.O)
             if has_valid:
-                wire(cls.valid_up, cls.valid_down)
+                delay_counter = InitialDelayCounter(elem_t.time()*idx)
+                wire(cls.valid_up, delay_counter.CE)
+                wire(delay_counter.valid, cls.valid_down)
     return _Down_T
 
 def Down_T(n: int, i: int, idx: int, elem_t: ST_Type, has_valid: bool = False) -> Circuit:
