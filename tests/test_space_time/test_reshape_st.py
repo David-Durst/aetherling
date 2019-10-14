@@ -197,7 +197,7 @@ def test_tseq_2_0_sseq_50_stuple_3_to_tseq_2_0_sseq_50_sseq_3():
     input_type = ST_TSeq(2, 0, ST_SSeq(50, ST_SSeq_Tuple(3, ST_Int())))
     output_type = ST_TSeq(2, 0, ST_SSeq(50, ST_SSeq(3, ST_Int())))
     graph = build_permutation_graph(input_type, output_type)
-    testcircuit = DefineReshape_ST(input_type, output_type, has_valid=True)
+    testcircuit = DefineReshape_ST(input_type, output_type)
     tester = fault.Tester(testcircuit, testcircuit.CLK)
     check_reshape(graph, 2, testcircuit.output_delay, tester, 1, 1)
 
@@ -207,8 +207,26 @@ def test_tseq_3_0_sseq_3_sseq_1_to_tseq_3_0_sseq_3():
     testcircuit = DefineReshape_ST(input_type, output_type, has_valid=True)
     assert "Passthrough" in testcircuit.name
 
+def test_tseq_2_2_tseq_1_1_to_tseq_2_6():
+    input_type = ST_TSeq(2, 2, ST_TSeq(1, 1, ST_Int()))
+    output_type = ST_TSeq(2, 6, ST_Int())
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0, input_port_iterable=False,
+                  output_port_iterable=False)
 
-def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out, has_ce = False, has_reset = False):
+def test_tseq_3_6_tseq_1_2_to_tseq_3_24():
+    input_type = ST_TSeq(3, 6, ST_TSeq(1, 2, ST_Int()))
+    output_type = ST_TSeq(3, 24, ST_Int())
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0, input_port_iterable=False,
+                  output_port_iterable=False)
+
+def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out,
+                  input_port_iterable = True, output_port_iterable = True, has_ce = False, has_reset = False):
     clocks = len(graph.input_nodes)
     if has_ce:
         tester.circuit.CE = True
@@ -241,25 +259,46 @@ def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in
 
         for k in range(len(graph.input_nodes[input_element].flat_idxs)):
             if not graph.input_nodes[input_element].flat_idxs[k].invalid:
-                tester.poke(in_ports[k].port, graph.input_nodes[input_element].flat_idxs[k].idx + in_iterations)
-                tester.print("input {}: %d\n".format(k), in_ports[k])
+                if input_port_iterable:
+                    tester.poke(in_ports[k].port, graph.input_nodes[input_element].flat_idxs[k].idx + in_iterations)
+                    tester.print("input {}: %d\n".format(k), in_ports[k])
+                else:
+                    tester.poke(in_ports.port, graph.input_nodes[input_element].flat_idxs[k].idx + in_iterations)
+                    tester.print("input: %d\n", in_ports)
 
         tester.eval()
 
 #        for k in range(len(graph.input_nodes[input_element].flat_idxs)):
-#            tester.print("ram_wr {}: %d\n".format(k), tester.circuit.ram_wr[k])
-#            tester.print("addr_wr {}: %d\n".format(k), tester.circuit.addr_wr[k])
-
+#            if input_port_iterable:
+#                tester.print("ram_wr {}: %d\n".format(k), tester.circuit.ram_wr[k])
+#                tester.print("addr_wr {}: %d\n".format(k), tester.circuit.addr_wr[k])
+#            else:
+#                tester.print("ram_wr {}: %d\n".format(k), tester.circuit.ram_wr)
+#                tester.print("addr_wr {}: %d\n".format(k), tester.circuit.addr_wr)
+#
 #        for k in range(len(graph.output_nodes[output_element].flat_idxs)):
-#            tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd[k])
-#            tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd[k])
+#            if input_port_iterable:
+#                tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd[k])
+#                tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd[k])
+#            else:
+#                tester.print("ram_rd {}: %d\n".format(k), tester.circuit.ram_rd)
+#                tester.print("addr_rd {}: %d\n".format(k), tester.circuit.addr_rd)
 
+        if i == delay:
+            tester.print("valid starting this clock\n")
+
+        for k in range(len(graph.output_nodes[output_element].flat_idxs)):
+            if output_port_iterable:
+                tester.print("output {}: %d\n".format(k), out_ports[k])
+            else:
+                tester.print("output {}: %d\n".format(k), out_ports)
         if i >= delay:
             for k in range(len(graph.output_nodes[output_element].flat_idxs)):
-                tester.print("output {}: %d\n".format(k), out_ports[k])
-            for k in range(len(graph.output_nodes[output_element].flat_idxs)):
                 if not graph.output_nodes[output_element].flat_idxs[k].invalid:
-                    out_ports[k].expect(graph.output_nodes[output_element].flat_idxs[k].idx + out_iterations)
+                    if output_port_iterable:
+                        out_ports[k].expect(graph.output_nodes[output_element].flat_idxs[k].idx + out_iterations)
+                    else:
+                        out_ports.expect(graph.output_nodes[output_element].flat_idxs[k].idx + out_iterations)
 
 #        tester.print("reshape write counter: %d\n", tester.circuit.reshape_write_counter)
 #        tester.print("ram first valid write: %d\n \n", tester.circuit.first_valid)

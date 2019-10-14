@@ -172,12 +172,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
         st_in_t = [t_in]
         st_out_t = t_out
         IO = ['I', In(t_in.magma_repr()),
-              'O', Out(t_out.magma_repr())
+              'O', Out(t_out.magma_repr()),
               #'ram_wr', Out(t_in.magma_repr()),
-              #'addr_wr', Out(Array[2, Array[1, Bit]]),
+              #'addr_wr', Out(Array[1, Bit]),
               #'ram_rd', Out(t_in.magma_repr()),
-              #'addr_rd', Out(Array[2, Array[1, Bit]]),
-              #'reshape_write_counter', Out(Array[2, Bit]),
+              #'addr_rd', Out(Array[1, Bit]),
+              #'reshape_write_counter', Out(Array[6, Bit]),
               #'first_valid', Out(Bit)
               ] + ClockInterface(has_ce=has_ce, has_reset=has_reset)
         if has_valid:
@@ -216,10 +216,10 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 ram_addr_width = rams_addr_widths[bank_idx]
                 num_addrs = len(input_lane_write_addr_per_bank[bank_idx])
                 #assert num_addrs == t_in_diff.time()
-                addrs = [builtins.tuple(int2seq(write_data_per_bank_per_clock.addr, ram_addr_width))
+                write_addrs = [builtins.tuple(int2seq(write_data_per_bank_per_clock.addr, ram_addr_width))
                          for write_data_per_bank_per_clock in input_lane_write_addr_per_bank[bank_idx]]
                 write_addr_for_bank_luts.append(
-                    DefineLUTAnyType(Array[ram_addr_width, Bit], num_addrs, builtins.tuple(addrs))())
+                    DefineLUTAnyType(Array[ram_addr_width, Bit], num_addrs, builtins.tuple(write_addrs))())
 
             # for bank, whether to actually write this clock
             write_valid_for_bank_luts = []
@@ -248,10 +248,10 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 ram_addr_width = rams_addr_widths[bank_idx]
                 num_addrs = len(output_lane_read_addr_per_bank[bank_idx])
                 #assert num_addrs == t_in_diff.time()
-                addrs = [builtins.tuple(int2seq(read_data_per_bank_per_clock.addr, ram_addr_width))
+                read_addrs = [builtins.tuple(int2seq(read_data_per_bank_per_clock.addr, ram_addr_width))
                          for read_data_per_bank_per_clock in output_lane_read_addr_per_bank[bank_idx]]
                 read_addr_for_bank_luts.append(
-                    DefineLUTAnyType(Array[ram_addr_width, Bit], num_addrs, builtins.tuple(addrs))())
+                    DefineLUTAnyType(Array[ram_addr_width, Bit], num_addrs, builtins.tuple(read_addrs))())
 
             # for each bank, the lane to send each read to
             output_lane_for_bank_luts = []
@@ -377,8 +377,8 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                             wire(input_ports, input_sorting_network.I[idx].val)
                         else:
                             wire(input_ports[idx], input_sorting_network.I[idx].val)
-                    #wire(cls.ram_wr[idx], input_sorting_network.O[idx].val)
-                    #wire(cls.ram_rd[idx], rams[idx].RDATA)
+                    #wire(cls.ram_wr, input_sorting_network.O[idx].val)
+                    #wire(cls.ram_rd, rams[idx].RDATA)
                 else:
                     wire(DefineCoreirConst(ram_element_type.magma_repr().size(), 0)().O,
                          input_sorting_network.I[idx].val)
@@ -386,7 +386,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 # wire input sorting network, write addr, and write valid luts to banks
                 wire(input_sorting_network.O[idx].val, rams[idx].WDATA)
                 wire(write_addr_for_bank_luts[idx].data, rams[idx].WADDR)
-                #wire(write_addr_for_bank_luts[idx].data, cls.addr_wr[idx])
+                #wire(write_addr_for_bank_luts[idx].data[0], cls.addr_wr[idx])
                 if has_ce:
                     wire(write_valid_for_bank_luts[idx].data & bit(cls.CE), rams[idx].WE)
                 else:
@@ -396,7 +396,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                 wire(rams[idx].RDATA, output_sorting_network.I[idx].val)
                 wire(output_lane_for_bank_luts[idx].data, output_sorting_network.I[idx].lane)
                 wire(read_addr_for_bank_luts[idx].data, rams[idx].RADDR)
-                #wire(read_addr_for_bank_luts[idx].data, cls.addr_rd[idx])
+                #wire(read_addr_for_bank_luts[idx].data[0], cls.addr_rd[idx])
                 # ok to read invalid things, so in read value LUT
                 if has_ce:
                     wire(bit(cls.CE), rams[idx].RE)
