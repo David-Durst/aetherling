@@ -124,7 +124,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
                 wire(cls.O[0], reduce.out)
 
             # valid output after first full valid input collected
-            valid_delay = InitialDelayCounter(n)
+            valid_delay = InitialDelayCounter(n-1)
             wire(cls.valid_up, valid_delay.CE)
             wire(cls.valid_down, valid_delay.valid)
 
