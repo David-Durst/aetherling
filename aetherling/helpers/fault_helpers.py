@@ -99,8 +99,8 @@ def compile_and_run(tester):
     }, directory="vBuild/", flags=["-Wno-fatal"])
 
 def compile_and_run_verilog(tester):
-    tester.compile_and_run(magma_output="verilog", target="verilator", magma_opts={
+    tester.compile_and_run(magma_output="verilog", skip_compile=True, target="verilator", magma_opts={
         "verilator_debug": True,
         "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
         "namespaces": ["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
-    }, directory="vBuild/", flags=["-Wno-fatal"])
+    }, directory="vBuild/", flags=["-Wno-fatal", "--trace"])
