@@ -70,9 +70,12 @@ def DefineDown_T(n: int, i:int, idx: int, elem_t: ST_Type, has_valid: bool = Fal
         def definition(cls):
             wire(cls.I, cls.O)
             if has_valid:
-                delay_counter = InitialDelayCounter(elem_t.time()*idx)
-                wire(cls.valid_up, delay_counter.CE)
-                wire(delay_counter.valid, cls.valid_down)
+                if elem_t.time()*idx == 0:
+                    wire(cls.valid_up, cls.valid_down)
+                else:
+                    delay_counter = InitialDelayCounter(elem_t.time()*idx)
+                    wire(cls.valid_up, delay_counter.CE)
+                    wire(delay_counter.valid, cls.valid_down)
     return _Down_T
 
 def Down_T(n: int, i: int, idx: int, elem_t: ST_Type, has_valid: bool = False) -> Circuit:
