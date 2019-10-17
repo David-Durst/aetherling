@@ -46,7 +46,7 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
         def definition(cls):
             # each valid clock, going to get a magma_repr in
             # read or write each one of those to a location
-            rams = DefineNativeMapParallel(n, DefineRAMAnyType(t.magma_repr(), t.valid_clocks()))()
+            rams = [DefineRAMAnyType(t.magma_repr(), t.valid_clocks())() for _ in range(n)]
             read_time_position_counter = DefineNestedCounters(t, has_cur_valid=True, has_ce=True, has_reset=has_reset)()
             read_valid_term = TermAnyType(Bit)
             read_last_term = TermAnyType(Bit)
@@ -56,12 +56,12 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
             read_selector = DefineMuxAnyType(t.magma_repr(), n)()
 
             for i in range(n):
-                wire(cls.WDATA, rams.WDATA[i])
-                wire(write_time_position_counter.cur_valid, rams.WADDR[i])
-                wire(read_selector.data[i], rams.RDATA[i])
-                wire(read_time_position_counter.cur_valid, rams.RADDR[i])
+                wire(cls.WDATA, rams[i].WDATA)
+                wire(write_time_position_counter.cur_valid, rams[i].WADDR)
+                wire(read_selector.data[i], rams[i].RDATA)
+                wire(read_time_position_counter.cur_valid, rams[i].RADDR)
                 write_cur_ram = Decode(i, cls.WADDR.N)(cls.WADDR)
-                wire(write_cur_ram & write_time_position_counter.valid, rams.WE[i])
+                wire(write_cur_ram & write_time_position_counter.valid, rams[i].WE)
 
             wire(cls.RADDR, read_selector.sel)
             wire(cls.RDATA, read_selector.out)

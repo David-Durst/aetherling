@@ -56,3 +56,5 @@ def DefineRegisterAnyType(t: Kind, init: int = 0, has_ce: bool = False, has_rese
 
 def RegisterAnyType(t: Kind, init: int = 0, has_ce: bool = False, has_reset: bool = False):
     return DefineRegisterAnyType(t, init, has_ce, has_reset)()
+
+

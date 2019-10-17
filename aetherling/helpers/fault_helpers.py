@@ -94,7 +94,7 @@ def compile(testcircuit, name=None):
 def compile_and_run(tester):
     tester.compile_and_run(target="verilator", magma_opts={
         "verilator_debug": True,
-        "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
+        "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst"],
         "namespaces": ["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
     }, directory="vBuild/", flags=["-Wno-fatal"])
 
