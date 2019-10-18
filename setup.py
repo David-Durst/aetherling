@@ -21,7 +21,8 @@ setup(
         "Pillow",
         "bitarray",
         "colorlog",
-        "pytest"
+        "pytest",
+        "pandas"
     ],
     license='BSD License',
     url='https://github.com/David-Durst/aetherling',

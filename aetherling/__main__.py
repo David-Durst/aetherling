@@ -1,6 +1,7 @@
 import argparse
 from aetherling.modules.permutation import get_latency
 from aetherling.space_time.space_time_types import *
+from aetherling.helpers.pnr import get_latex_from_results_str
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -22,6 +23,13 @@ parser_latency.add_argument(
     type=str,
     help='Output type for reshape.')
 
+parser_results = subparsers.add_parser('parse_results')
+parser_results.add_argument(
+    'in_results_file',
+    type=str,
+    help='File to read results from.'
+)
+
 #  subparser for upload
 #parser_upload = subparsers.add_parser('upload')
 ## add a required argument
@@ -37,4 +45,9 @@ if __name__ == "__main__":
         latency = get_latency(eval(args.in_type), eval(args.out_type))
         with open(args.file, 'w+') as f:
             f.write(str(latency))
+    elif args.subcommand == 'parse_results':
+        with open(args.file, 'w+') as f_out:
+            f_out.write(get_latex_from_results_str(args.in_results_file))
+
+
 
