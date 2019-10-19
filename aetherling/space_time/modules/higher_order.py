@@ -132,3 +132,95 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
             wire(reduce.valid, TermAnyType(Bit).I)
             wire(reduce.ready, TermAnyType(Bit).I)
     return _Reduce_T
+
+@cache_definition
+def DefineAdd_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
+    class _Add_1_S(Circuit):
+        name = "Add_1_S_op{}".format( cleanName(str(op)))
+        binary_op = False
+        st_in_t = op.st_in_t
+        st_out_t = ST_SSeq(1, op.st_out_t)
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            op_inst = op()
+            wire(cls.I, op_inst.I)
+            wire(cls.O[0], op_inst.O)
+
+            if has_valid:
+                wire(cls.valid_up, op_inst.valid_up)
+                wire(cls.valid_down, op_inst.valid_down)
+
+    return _Add_1_S
+
+@cache_definition
+def DefineRemove_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
+    class _Remove_1_S(Circuit):
+        name = "Remove_1_S_op{}".format( cleanName(str(op)))
+        binary_op = False
+        st_in_t = ST_SSeq(1, op.st_out_t)
+        st_out_t = op.st_in_t
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            op_inst = op()
+            wire(cls.I[0], op_inst.I)
+            wire(cls.O, op_inst.O)
+
+            if has_valid:
+                wire(cls.valid_up, op_inst.valid_up)
+                wire(cls.valid_down, op_inst.valid_down)
+
+    return _Remove_1_S
+
+@cache_definition
+def DefineAdd_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
+    class _Add_1_0_T(Circuit):
+        name = "Add_1_S_op{}".format( cleanName(str(op)))
+        binary_op = False
+        st_in_t = op.st_in_t
+        st_out_t = ST_TSeq(1, 0, op.st_out_t)
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            op_inst = op()
+            wire(cls.I, op_inst.I)
+            wire(cls.O, op_inst.O)
+
+            if has_valid:
+                wire(cls.valid_up, op_inst.valid_up)
+                wire(cls.valid_down, op_inst.valid_down)
+
+    return _Add_1_0_T
+
+@cache_definition
+def DefineRemove_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
+    class _Remove_1_0_T(Circuit):
+        name = "Remove_1_S_op{}".format( cleanName(str(op)))
+        binary_op = False
+        st_in_t = ST_TSeq(1, 0, op.st_out_t)
+        st_out_t = op.st_in_t
+        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            op_inst = op()
+            wire(cls.I, op_inst.I)
+            wire(cls.O, op_inst.O)
+
+            if has_valid:
+                wire(cls.valid_up, op_inst.valid_up)
+                wire(cls.valid_down, op_inst.valid_down)
+
+    return _Remove_1_0_T
