@@ -20,7 +20,7 @@ def DefineMap_S(n: int, op: DefineCircuitKind, has_valid=True) -> DefineCircuitK
     assert op.binary_op == False
     map_s = DefineNativeMapParallel(n, op, True, has_ready=False, has_valid=has_valid)
     map_s.binary_op = False
-    map_s.st_in_t = ST_SSeq(n, op.st_in_t)
+    map_s.st_in_t = [ST_SSeq(n, op.st_in_t[0])]
     map_s.st_out_t = ST_SSeq(n, op.st_out_t)
     return map_s
 
@@ -58,7 +58,7 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
         IO = non_clk_ports + ClockInterface(has_ce=False, has_reset=False)
         binary_op = not is_unary
         if is_unary:
-            st_in_t = ST_TSeq(n, inv, op.st_in_t)
+            st_in_t = [ST_TSeq(n, inv, op.st_in_t)]
         else:
             st_in_t = [ST_TSeq(n, inv, op.st_in_t[0]), ST_TSeq(n, inv, op.st_in_t[1])]
         st_out_t = ST_TSeq(n, inv, op.st_out_t)
@@ -78,7 +78,7 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
         name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
         atom_type = op.st_in_t.t0
         binary_op = False
-        st_in_t = ST_SSeq(n, atom_type)
+        st_in_t = [ST_SSeq(n, atom_type)]
         st_out_t = ST_SSeq(1, atom_type)
         IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
@@ -103,7 +103,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
         name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
         atom_type = op.st_in_t.t0 if type(op.st_in_t) == ST_Atom_Tuple else ST_SSeq(1, op.st_in_t.t.t0)
         binary_op = False
-        st_in_t = ST_TSeq(n, i, atom_type)
+        st_in_t = [ST_TSeq(n, i, atom_type)]
         st_out_t = ST_TSeq(1, n+i-1, atom_type)
         IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports
 
@@ -140,7 +140,7 @@ def DefineAdd_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
         binary_op = False
         st_in_t = op.st_in_t
         st_out_t = ST_SSeq(1, op.st_out_t)
-        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
             IO += valid_ports
 
@@ -161,9 +161,9 @@ def DefineRemove_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKin
     class _Remove_1_S(Circuit):
         name = "Remove_1_S_op{}".format( cleanName(str(op)))
         binary_op = False
-        st_in_t = ST_SSeq(1, op.st_out_t)
-        st_out_t = op.st_in_t
-        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        st_in_t = [ST_SSeq(1, op.st_in_t[0])]
+        st_out_t = op.st_out_t
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
             IO += valid_ports
 
@@ -186,7 +186,7 @@ def DefineAdd_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind
         binary_op = False
         st_in_t = op.st_in_t
         st_out_t = ST_TSeq(1, 0, op.st_out_t)
-        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
             IO += valid_ports
 
@@ -207,8 +207,8 @@ def DefineRemove_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitK
     class _Remove_1_0_T(Circuit):
         name = "Remove_1_S_op{}".format( cleanName(str(op)))
         binary_op = False
-        st_in_t = ST_TSeq(1, 0, op.st_out_t)
-        st_out_t = op.st_in_t
+        st_in_t = [ST_TSeq(1, 0, op.st_in_t[0])]
+        st_out_t = op.st_out_t
         IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
             IO += valid_ports
