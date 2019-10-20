@@ -58,7 +58,7 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
         IO = non_clk_ports + ClockInterface(has_ce=False, has_reset=False)
         binary_op = not is_unary
         if is_unary:
-            st_in_t = [ST_TSeq(n, inv, op.st_in_t)]
+            st_in_t = [ST_TSeq(n, inv, op.st_in_t[0])]
         else:
             st_in_t = [ST_TSeq(n, inv, op.st_in_t[0]), ST_TSeq(n, inv, op.st_in_t[1])]
         st_out_t = ST_TSeq(n, inv, op.st_out_t)
@@ -74,13 +74,13 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
 @cache_definition
 def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Reduce_S(Circuit):
-        assert type(op.st_in_t) == ST_Atom_Tuple
+        assert type(op.st_in_t[0]) == ST_Atom_Tuple
         name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
-        atom_type = op.st_in_t.t0
+        atom_type = op.st_in_t[0].t0
         binary_op = False
         st_in_t = [ST_SSeq(n, atom_type)]
         st_out_t = ST_SSeq(1, atom_type)
-        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
             IO += valid_ports
 
@@ -98,25 +98,25 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
 def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
     class _Reduce_T(Circuit):
         # second case handles partially parallel generated code where reduce over a map_s 1
-        assert type(op.st_in_t) == ST_Atom_Tuple or \
-               (type(op.st_in_t) == ST_SSeq and op.st_in_t.n == 1 and type(op.st_in_t.t) == ST_Atom_Tuple)
+        assert type(op.st_in_t[0]) == ST_Atom_Tuple or \
+               (type(op.st_in_t[0]) == ST_SSeq and op.st_in_t[0].n == 1 and type(op.st_in_t[0].t) == ST_Atom_Tuple)
         name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
-        atom_type = op.st_in_t.t0 if type(op.st_in_t) == ST_Atom_Tuple else ST_SSeq(1, op.st_in_t.t.t0)
+        atom_type = op.st_in_t[0].t0 if type(op.st_in_t[0]) == ST_Atom_Tuple else ST_SSeq(1, op.st_in_t[0].t.t0)
         binary_op = False
         st_in_t = [ST_TSeq(n, i, atom_type)]
         st_out_t = ST_TSeq(1, n+i-1, atom_type)
-        IO = ['I', In(st_in_t.magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports
 
         @classmethod
         def definition(cls):
-            op_renamed = tupleToTwoInputsForReduce(op, type(op.st_in_t) == ST_SSeq)
+            op_renamed = tupleToTwoInputsForReduce(op, type(op.st_in_t[0]) == ST_SSeq)
             reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
             enable_counter = DefineNestedCounters(ST_TSeq(n, i, ST_Int()),
                                                   has_last=False,
                                                   has_ce=True)()
             wire(enable_counter.valid, reduce.CE)
             wire(cls.valid_up, enable_counter.CE)
-            if type(op.st_in_t) == ST_Atom_Tuple:
+            if type(op.st_in_t[0]) == ST_Atom_Tuple:
                 wire(cls.I, reduce.I)
                 wire(cls.O, reduce.out)
             else:

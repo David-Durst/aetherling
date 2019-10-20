@@ -17,7 +17,7 @@ def DefineAbs_Atom(has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Int()
+        st_in_t = [ST_Int()]
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
@@ -43,7 +43,7 @@ def DefineNot_Atom(has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Bit()
+        st_in_t = [ST_Bit()]
         st_out_t = ST_Bit()
         @classmethod
         def definition(cls):
@@ -63,7 +63,7 @@ def DefineAdd_Atom(has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
@@ -84,7 +84,7 @@ def DefineSub_Atom(has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
@@ -105,7 +105,7 @@ def DefineMul_Atom(has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
@@ -126,7 +126,7 @@ def DefineDiv_Atom(has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
@@ -147,7 +147,7 @@ def DefineEq_Atom(t: ST_Type, has_valid: bool = False):
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = ST_Atom_Tuple(ST_Int(), ST_Int())
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
         st_out_t = ST_Bit()
         @classmethod
         def definition(cls):
