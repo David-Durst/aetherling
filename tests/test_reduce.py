@@ -18,7 +18,7 @@ def test_reduce_parallel():
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 
-    reducePar = ReduceParallel(numIn, renameCircuitForReduce(DefineAdd(width)))
+    reducePar = ReduceParallel(numIn, DefineAdd(width))
     wire(reducePar.I, testcircuit.I)
     wire(testcircuit.O, reducePar.O)
 
@@ -42,7 +42,7 @@ def test_reduce_sequential_with_ce():
 
     testcircuit = DefineCircuit('Test_Reduce_Sequential_With_CE', *args)
 
-    reduceSeq = ReduceSequential(numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=True)
+    reduceSeq = ReduceSequential(numIn, DefineAdd(width), has_ce=True)
     wire(reduceSeq.I, testcircuit.I)
     wire(testcircuit.O, reduceSeq.out)
     wire(testcircuit.ready, reduceSeq.ready)
@@ -80,7 +80,7 @@ def test_reduce_sequential_without_ce():
 
     testcircuit = DefineCircuit('Test_Reduce_Sequential_Without_CE', *args)
 
-    reduceSeq = ReduceSequential(numIn, renameCircuitForReduce(DefineAdd(width)), has_ce=False)
+    reduceSeq = ReduceSequential(numIn, DefineAdd(width), has_ce=False)
     wire(reduceSeq.I, testcircuit.I)
     wire(testcircuit.O, reduceSeq.out)
     wire(testcircuit.ready, reduceSeq.ready)
@@ -115,7 +115,7 @@ def test_reduce_partially_parallel():
 
     testcircuit = DefineCircuit('Test_Reduce_Parallel', *args)
 
-    reduce_op = ReducePartiallyParallel(numIn, parallelism, renameCircuitForReduce(DefineAdd(width)))
+    reduce_op = ReducePartiallyParallel(numIn, parallelism, DefineAdd(width))
     wire(reduce_op.I, testcircuit.I)
     wire(testcircuit.O, reduce_op.O)
     wire(testcircuit.ready, reduce_op.ready)

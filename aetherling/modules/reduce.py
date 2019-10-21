@@ -1,5 +1,5 @@
 from magma import *
-from magma.circuit import DefineCircuitKind
+from magma.circuit import DefineCircuitKind, Circuit
 from magma.frontend.coreir_ import CircuitInstanceFromGeneratorWrapper, GetCoreIRModule, DefineCircuitFromGeneratorWrapper, \
     GetCoreIRBackend
 from mantle.coreir import DefineCoreirConst
@@ -56,26 +56,26 @@ def DefineReduceParallel(numInputs: int, opDef: Circuit) -> Circuit:
     """
     class _ReduceParallel(Circuit):
         name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(opDef)))
-        token_type = type(renameCircuitForReduce(opDef).in0)
+        token_type = type(opDef.interface.outputs()[0])
 
         IO = ['I', In(Array[numInputs, token_type]), 'O', Out(token_type)]
 
         @classmethod
         def definition(cls):
             ops = [opDef() for _ in range(numInputs - 1)]
-            unflattened_ports = [[op.in0, op.in1] for op in ops]
+            unflattened_ports = [[get_in0(op), get_in1(op)] for op in ops]
             unwired_in_ports = set([port for op_ports in unflattened_ports for port in op_ports])
 
             # wire ops into tree
             for i in range(numInputs - 1):
                 if i == 0:
-                    wire(ops[i].out, cls.O)
+                    wire(get_out(ops[i]), cls.O)
                 elif i % 2 == 0:
-                    wire(ops[i].out, ops[i // 2 - 1].in0)
-                    unwired_in_ports.discard(ops[i // 2 - 1].in0)
+                    wire(get_out(ops[i]), get_in0(ops[i // 2 - 1]))
+                    unwired_in_ports.discard(get_in0(ops[i // 2 - 1]))
                 else:
-                    wire(ops[i].out, ops[ceil(i / 2) - 1].in1)
-                    unwired_in_ports.discard(ops[ceil(i / 2) - 1].in1)
+                    wire(get_out(ops[i]), get_in1(ops[ceil(i / 2) - 1]))
+                    unwired_in_ports.discard(get_in1(ops[ceil(i / 2) - 1]))
 
             # wire inputs to tree
             for (i, op_in_port) in zip(range(numInputs), unwired_in_ports):
@@ -121,7 +121,7 @@ def DefineReduceSequential(numInputs: int, opDef: Circuit, has_ce=False) -> Circ
     """
     class _ReduceSequential(Circuit):
         name = "ReduceSequential_n{}_op{}_ce{}".format(str(numInputs), cleanName(str(opDef)), str(has_ce))
-        token_type = type(renameCircuitForReduce(opDef).in0)
+        token_type = type(opDef.interface.outputs()[0])
 
         IO = ['I', In(token_type), 'out', Out(token_type), 'ready', Out(Bit),
               'valid', Out(Bit)] + ClockInterface(has_ce=has_ce)
@@ -136,17 +136,17 @@ def DefineReduceSequential(numInputs: int, opDef: Circuit, has_ce=False) -> Circ
                 wire(cls.CE, accumulatorRegister.CE)
                 wire(cls.CE, length_counter.CE)
 
-            wire(cls.I, op_instance.in0)
-            wire(accumulatorRegister.O, op_instance.in1)
+            wire(cls.I, get_in0(op_instance))
+            wire(accumulatorRegister.O, get_in1(op_instance))
 
             # use reduce input for register on first clock,
             # otherwise use op output
-            wire(op_instance.out,reg_input_mux.data[0])
+            wire(get_out(op_instance),reg_input_mux.data[0])
             wire(cls.I,reg_input_mux.data[1])
             wire(0 == length_counter.O, reg_input_mux.sel[0])
             wire(reg_input_mux.out, accumulatorRegister.I)
 
-            wire(op_instance.out, cls.out)
+            wire(get_out(op_instance), cls.out)
 
             wire(1, cls.ready)
             # valid when COUT == 1 as register contains sum of all inputs
@@ -252,6 +252,15 @@ def DefineReducePartiallyParallel(
 def ReducePartiallyParallel(numInputs: int, parallelism: int,
                          op: Circuit, has_ce=False):
     return DefineReducePartiallyParallel(numInputs, parallelism, op)()
+
+def get_in0(op: Circuit):
+    return op.interface.inputs()[0]
+
+def get_in1(op: Circuit):
+    return op.interface.inputs()[1]
+
+def get_out(op: Circuit):
+    return op.interface.outputs()[0]
 
 @cache_definition
 def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
