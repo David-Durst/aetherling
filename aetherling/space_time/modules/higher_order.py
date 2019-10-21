@@ -1,6 +1,6 @@
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.type_helpers import valid_ports, strip_tseq_1_0_sseq_1, strip_tseq_1_n_sseq_1, \
-    num_nested_space_layers, replace_atom_tuple_with_t0
+    num_nested_space_layers, replace_atom_tuple_with_t0, time_last_valid
 from aetherling.space_time.nested_counters import DefineNestedCounters
 from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
 from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, tupleToTwoInputsForReduce
@@ -118,7 +118,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
             wire(cls.O, reduce.out)
 
             # valid output after first full valid input collected
-            valid_delay = InitialDelayCounter(n-1)
+            valid_delay = InitialDelayCounter(time_last_valid(cls.st_in_t[0]))
             wire(cls.valid_up, valid_delay.CE)
             wire(cls.valid_down, valid_delay.valid)
 

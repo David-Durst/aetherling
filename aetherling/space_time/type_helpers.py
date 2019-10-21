@@ -171,3 +171,19 @@ def get_nested_ports(port, nesting_layers, cur_ports = []):
     else:
         cur_ports.append(port)
     return cur_ports
+
+def time_last_valid(t: ST_Type, top=True) -> int:
+    if is_nested(t):
+        if type(t) == ST_TSeq:
+            if top:
+                return (t.n-1)*time_last_valid(t.t, False)
+            else:
+                return (t.n+t.i)*time_last_valid(t.t, False)
+        else:
+            return time_last_valid(t.t, top)
+    else:
+        # using 1 in multiplies if not top, else 0 as no later elements
+        if top:
+            return 0
+        else:
+            return 1
