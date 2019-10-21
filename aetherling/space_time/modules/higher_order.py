@@ -1,6 +1,6 @@
 from aetherling.space_time.space_time_types import *
-from aetherling.space_time.type_helpers import valid_ports, strip_tseq_1_0_sseq_1, num_nested_space_layers, \
-    replace_atom_tuple_with_t0
+from aetherling.space_time.type_helpers import valid_ports, strip_tseq_1_0_sseq_1, strip_tseq_1_n_sseq_1, \
+    num_nested_space_layers, replace_atom_tuple_with_t0
 from aetherling.space_time.nested_counters import DefineNestedCounters
 from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
 from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, tupleToTwoInputsForReduce
@@ -75,7 +75,7 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
 @cache_definition
 def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Reduce_S(Circuit):
-        assert type(strip_tseq_1_0_sseq_1(op.st_in_t[0])) == ST_Atom_Tuple
+        assert type(strip_tseq_1_n_sseq_1(op.st_in_t[0])) == ST_Atom_Tuple
         name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
         binary_op = False
         st_in_t = [ST_SSeq(n, replace_atom_tuple_with_t0(op.st_in_t[0]))]
@@ -98,7 +98,7 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
 def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
     class _Reduce_T(Circuit):
         # second case handles partially parallel generated code where reduce over a map_s 1
-        assert strip_tseq_1_0_sseq_1(type(op.st_in_t[0])) == ST_Atom_Tuple
+        assert type(strip_tseq_1_n_sseq_1(op.st_in_t[0])) == ST_Atom_Tuple
         name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
         binary_op = False
         st_in_t = [ST_TSeq(n, i, replace_atom_tuple_with_t0(op.st_in_t[0]))]
@@ -107,7 +107,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
 
         @classmethod
         def definition(cls):
-            op_renamed = tupleToTwoInputsForReduce(op)
+            op_renamed = tupleToTwoInputsForReduce(op, num_nested_space_layers(cls.st_in_t[0]))
             reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
             enable_counter = DefineNestedCounters(cls.st_in_t[0],
                                                   has_last=False,
