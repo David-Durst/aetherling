@@ -1,5 +1,23 @@
 import os
 import magma
+from magma import *
+from magma.circuit import DefineCircuitKind
+
+@cache_definition
+def wrap_module_with_top(opDef: DefineCircuitKind) -> DefineCircuitKind:
+    class _Wrap(Circuit):
+        name = "top"
+        IO = opDef.IO.Decl
+        name = "top"
+
+        @classmethod
+        def definition(cls):
+            op_instance = opDef()
+            port_names = opDef.interface.ports.keys()
+            for port_name in port_names:
+                wire(getattr(cls, port_name), getattr(op_instance, port_name))
+
+    return _Wrap
 
 def get_fault_log(callee_file, circuit_name):
     dirname = os.path.dirname(callee_file)

@@ -80,7 +80,7 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
         binary_op = False
         st_in_t = [ST_SSeq(n, replace_atom_tuple_with_t0(op.st_in_t[0]))]
         st_out_t = ST_SSeq(1, op.st_out_t)
-        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + ClockInterface()
         if has_valid:
             IO += valid_ports
 
@@ -103,7 +103,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
         binary_op = False
         st_in_t = [ST_TSeq(n, i, replace_atom_tuple_with_t0(op.st_in_t[0]))]
         st_out_t = ST_TSeq(1, n+i-1, op.st_out_t)
-        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports + ClockInterface()
 
         @classmethod
         def definition(cls):
