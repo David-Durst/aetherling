@@ -46,6 +46,15 @@ def replace_tombstone(outer_type: ST_Type, inner_type: ST_Type) -> ST_Type:
         raise Exception("Can't replace tomsbone for outer_type {} that has no tombstone. "
                         "Inner type was {}.".format(str(outer_type), str(inner_type)))
 
+def replace_atom_tuple_with_t0(outer_type: ST_Type) -> ST_Type:
+    if is_nested(outer_type):
+        inner_t = replace_atom_tuple_with_t0(outer_type.t)
+        return replace(outer_type, t=inner_t)
+    elif type(outer_type) == ST_Atom_Tuple:
+        return outer_type.t0
+    else:
+        raise Exception("Called replace_atom_tuple_with_t0 on type without atom_tuple")
+
 def remove_tseqs(t: ST_Type) -> ST_Type:
     """
     Get just the sseqs and the non-nested types, removing the tseqs
@@ -137,6 +146,8 @@ def strip_tseq_1_0_sseq_1(t: ST_Type) -> ST_Type:
             return strip_tseq_1_0_sseq_1(t.t)
         else:
             return replace(t, t=strip_tseq_1_0_sseq_1(t.t))
+    else:
+        return t
 
 def flatten(l):
     return [item for sublist in l for item in sublist]

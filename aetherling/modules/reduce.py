@@ -298,7 +298,7 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
 
 
 @cache_definition
-def tupleToTwoInputsForReduce(opDef: DefineCircuitKind, has_extra_sseq=False) -> DefineCircuitKind:
+def tupleToTwoInputsForReduce(opDef: DefineCircuitKind, extra_sseq=0) -> DefineCircuitKind:
     """
     Given an operation definition with one input port and one output port
     where the input port is a tuple of type t x t and the output port is of type t,
@@ -315,19 +315,24 @@ def tupleToTwoInputsForReduce(opDef: DefineCircuitKind, has_extra_sseq=False) ->
     output = interface.outputs()
     assert len(inputs) == 1 # must have only 2 inputs
     assert len(output) == 1 # must have only 1 output
-    if has_extra_sseq:
-        assert type(inputs[0][0][0]) == type(inputs[0][0][1])  # all inputs and outputs must be same type
-        assert In(type(output[0][0])) == type(inputs[0][0][0])  # need to do Out instead of in conversion as types reversed here
-    else:
-        assert type(inputs[0][0]) == type(inputs[0][1]) # all inputs and outputs must be same type
-        assert In(type(output[0])) == type(inputs[0][0]) # need to do Out instead of in conversion as types reversed here
+    # remove extra sseq  + 1 for the outer array of num ports
+    striped_inputs = inputs
+    striped_output = output
+    for i in range(extra_sseq+1):
+        striped_inputs = striped_inputs[0]
+        striped_output = striped_output[0]
+    assert type(striped_inputs[0]) == type(striped_inputs[1]) # all inputs and outputs must be same type
+    assert In(type(striped_output)) == type(striped_inputs[0]) # need to do Out instead of in conversion as types reversed here
+
+    in0_type = type(striped_inputs[0])
+    in1_type = type(striped_inputs[1])
+    for i in range(extra_sseq):
+        in0_type = Array[1, in0_type]
+        in1_type = Array[1, in1_type]
 
     class _RenamedCircuit(Circuit):
         name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
-        if has_extra_sseq:
-            IO = ["in0", type(inputs[0][0][0]), "in1", type(inputs[0][0][1]), "out", Out(type(output[0][0]))]
-        else:
-            IO = ["in0", type(inputs[0][0]), "in1", type(inputs[0][1]), "out", Out(type(output[0]))]
+        IO = ["in0", in0_type, "in1", in1_type, "out", Out(type(output[0]))]
 
         @classmethod
         def definition(renamedCircuit):
@@ -335,14 +340,20 @@ def tupleToTwoInputsForReduce(opDef: DefineCircuitKind, has_extra_sseq=False) ->
             interface_instance = op.IO()
             inputs_instance = interface_instance.inputs()
             output_instance = interface_instance.outputs()
-            if has_extra_sseq:
-                wire(getattr(op, inputs_instance[0].name.name)[0][0], renamedCircuit.in0)
-                wire(getattr(op, inputs_instance[0].name.name)[0][1], renamedCircuit.in1)
-                wire(getattr(op, output_instance[0].name.name)[0], renamedCircuit.out)
-            else:
-                wire(getattr(op, inputs_instance[0].name.name)[0], renamedCircuit.in0)
-                wire(getattr(op, inputs_instance[0].name.name)[1], renamedCircuit.in1)
-                wire(getattr(op, output_instance[0].name.name), renamedCircuit.out)
+            op_in = getattr(op, inputs_instance[0].name.name)
+            op_out = getattr(op, output_instance[0].name.name)
+            cls_in0 = renamedCircuit.in0
+            cls_in1 = renamedCircuit.in1
+            cls_out = renamedCircuit.out
+            for i in range(extra_sseq):
+                op_in = op_in[0]
+                op_out = op_out[0]
+                cls_in0 = cls_in0[0]
+                cls_in1 = cls_in1[0]
+                cls_out = cls_out[0]
+            wire(op_in[0], cls_in0)
+            wire(op_in[1], cls_in1)
+            wire(op_out, cls_out)
             return renamedCircuit
 
     return _RenamedCircuit

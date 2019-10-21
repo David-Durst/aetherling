@@ -1,5 +1,6 @@
 from aetherling.space_time.space_time_types import *
-from aetherling.space_time.type_helpers import valid_ports, strip_tseq_1_0_sseq_1
+from aetherling.space_time.type_helpers import valid_ports, strip_tseq_1_0_sseq_1, num_nested_space_layers, \
+    replace_atom_tuple_with_t0
 from aetherling.space_time.nested_counters import DefineNestedCounters
 from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapParallel
 from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, tupleToTwoInputsForReduce
@@ -71,23 +72,53 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
                 wire(getattr(cls, port_name), getattr(op_instance, port_name))
     return _Map_T
 
+def remove_sseq_1_nesting_layers(port, n):
+    if n == 0:
+        return port
+    else:
+        return remove_sseq_1_nesting_layers(port[0], n-1)
+
 @cache_definition
-def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
-    class _Reduce_S(Circuit):
-        assert type(op.st_in_t[0]) == ST_Atom_Tuple
-        name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
-        atom_type = op.st_in_t[0].t0
+def DefineOpWithoutSSeq1Nesting(opDef: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
+    class _DefineOpWithoutSSeq1Nesting(Circuit):
+        name = "NoNesting_op{}".format(cleanName(str(opDef)))
         binary_op = False
-        st_in_t = [ST_SSeq(n, atom_type)]
-        st_out_t = ST_SSeq(1, atom_type)
+        st_in_t = [strip_tseq_1_0_sseq_1(opDef.st_in_t[0])]
+        st_out_t = strip_tseq_1_0_sseq_1(opDef.st_out_t)
         IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
         if has_valid:
             IO += valid_ports
 
         @classmethod
         def definition(cls):
-            op_renamed = tupleToTwoInputsForReduce(op)
+            op = opDef()
+            op_in = remove_sseq_1_nesting_layers(op.I, num_nested_space_layers(op.st_in_t[0]))
+            op_out = remove_sseq_1_nesting_layers(op.O, num_nested_space_layers(op.st_out_t))
+            wire(cls.I, op_in)
+            wire(cls.O, op_out)
+            if has_valid:
+                wire(cls.valid_up, op.valid_up)
+                wire(cls.valid_down, op.valid_down)
+    return _DefineOpWithoutSSeq1Nesting
+
+@cache_definition
+def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
+    class _Reduce_S(Circuit):
+        assert type(strip_tseq_1_0_sseq_1(op.st_in_t[0])) == ST_Atom_Tuple
+        name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
+        binary_op = False
+        st_in_t = [ST_SSeq(n, replace_atom_tuple_with_t0(op.st_in_t[0]))]
+        st_out_t = ST_SSeq(1, op.st_out_t)
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+
+        @classmethod
+        def definition(cls):
+            op_renamed = tupleToTwoInputsForReduce(op, num_nested_space_layers(cls.st_in_t[0]) - 1)
             reduce = DefineReduceParallel(n, op_renamed)()
+            #op_in = remove_sseq_1_nesting_layers(cls.I, num_nested_space_layers(cls.st_in_t[0]) - 1)
+            #op_out = remove_sseq_1_nesting_layers(cls.O[0], num_nested_space_layers(cls.st_out_t) - 1)
             wire(cls.I, reduce.I)
             wire(cls.O[0], reduce.O)
             if has_valid:
@@ -98,20 +129,19 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
 def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
     class _Reduce_T(Circuit):
         # second case handles partially parallel generated code where reduce over a map_s 1
-        assert type(op.st_in_t[0]) == ST_Atom_Tuple or \
-               (type(op.st_in_t[0]) == ST_SSeq and op.st_in_t[0].n == 1 and type(op.st_in_t[0].t) == ST_Atom_Tuple)
+        atom_type = strip_tseq_1_0_sseq_1(type(op.st_in_t[0])).t0
+        assert strip_tseq_1_0_sseq_1(type(op.st_in_t[0])) == ST_Atom_Tuple
         name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
-        atom_type = op.st_in_t[0].t0 if type(op.st_in_t[0]) == ST_Atom_Tuple else ST_SSeq(1, op.st_in_t[0].t.t0)
         binary_op = False
-        st_in_t = [ST_TSeq(n, i, atom_type)]
-        st_out_t = ST_TSeq(1, n+i-1, atom_type)
+        st_in_t = [ST_TSeq(n, i, op.st_in_t[0])]
+        st_out_t = ST_TSeq(1, n+i-1, op.st_out_t)
         IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + valid_ports
 
         @classmethod
         def definition(cls):
-            op_renamed = tupleToTwoInputsForReduce(op, type(op.st_in_t[0]) == ST_SSeq)
+            op_renamed = tupleToTwoInputsForReduce(DefineOpWithoutSSeq1Nesting(op))
             reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
-            enable_counter = DefineNestedCounters(ST_TSeq(n, i, ST_Int()),
+            enable_counter = DefineNestedCounters(cls.st_in_t[0],
                                                   has_last=False,
                                                   has_ce=True)()
             wire(enable_counter.valid, reduce.CE)
