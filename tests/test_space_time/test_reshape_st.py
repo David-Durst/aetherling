@@ -225,6 +225,19 @@ def test_tseq_3_6_tseq_1_2_to_tseq_3_24():
     check_reshape(graph, 2, testcircuit.output_delay, tester, 0, 0, input_port_iterable=False,
                   output_port_iterable=False)
 
+
+def test_diff_sseq_on_diff_component_of_type():
+    # i would need to improve test bench for this to actually be tested
+    # just here to verify no errors on wiring. Need to manually check that for now.
+    input_type = ST_TSeq(4, 0, ST_TSeq(1, 1, ST_TSeq(4, 0, ST_SSeq(1, ST_SSeq(1, ST_Int())))))
+    output_type = ST_TSeq(4, 4, ST_SSeq(1, ST_TSeq(4, 0, ST_SSeq(1, ST_SSeq(1, ST_Int())))))
+    graph = build_permutation_graph(input_type, output_type)
+    testcircuit = DefineReshape_ST(input_type, output_type)
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+    tester.step(2)
+    compile_and_run(tester)
+
+
 def check_reshape(graph: InputOutputGraph, num_t, delay, tester, num_flattens_in, num_flattens_out,
                   input_port_iterable = True, output_port_iterable = True, has_ce = False, has_reset = False):
     clocks = len(graph.input_nodes)

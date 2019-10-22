@@ -371,7 +371,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                         for i in range(len(cur_input_port)):
                             wire(cur_input_port[i], cur_sort_port[i])
                     else:
-                        if num_nested_space_layers(t_in) == 0:
+                        if num_sseq_layers_inputs == 0:
                             # input_ports will be an array of bits for 1 element
                             # if no sseq in t_in
                             wire(input_ports, input_sorting_network.I[idx].val)
@@ -414,7 +414,7 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                         for i in range(len(cur_output_port)):
                             wire(cur_output_port[i], cur_sort_port[i])
                     else:
-                        if num_nested_space_layers(t_out) == 0:
+                        if num_sseq_layers_outputs == 0:
                             # output_ports will be an array of bits for 1 element
                             # if no sseq in t_out
                             wire(output_sorting_network.O[idx].val, output_ports)
