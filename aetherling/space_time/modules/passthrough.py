@@ -24,6 +24,7 @@ def DefinePassthrough(t_in: ST_Type, t_out: ST_Type, has_valid = False) -> Defin
             IO += valid_ports
         @classmethod
         def definition(cls):
+            cls.output_delay = 0
             flat_in_ports = get_nested_ports(cls.I, num_nested_space_layers(t_in), [])
             flat_out_ports = get_nested_ports(cls.O, num_nested_space_layers(t_out), [])
             for i_port, o_port in zip(flat_in_ports, flat_out_ports):

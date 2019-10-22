@@ -1,5 +1,5 @@
 import argparse
-from aetherling.modules.permutation import get_latency
+from aetherling.space_time.reshape_st import DefineReshape_ST
 from aetherling.space_time.space_time_types import *
 from aetherling.helpers.pnr import get_latex_from_results_str
 
@@ -42,7 +42,7 @@ args = parser.parse_args()
 
 if __name__ == "__main__":
     if args.subcommand == 'reshape_latency':
-        latency = get_latency(eval(args.in_type), eval(args.out_type))
+        latency = DefineReshape_ST(eval(args.in_type), eval(args.out_type))().output_delay
         with open(args.file, 'w+') as f:
             f.write(str(latency))
     elif args.subcommand == 'parse_results':
