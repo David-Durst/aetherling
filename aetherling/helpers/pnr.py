@@ -8,15 +8,22 @@ def get_latex_from_results_str(results_file):
     results_tex_str = ""
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     applications = ["map", "pyramid", "sharpen", "camera"]
-    application_lengths = [200, 200, 200, 200]
-    application_parallelisms = [[0.125, 0.25, 0.5, 1,2,4,5,10,20,200], [0.125, 0.25, 0.5, 1,2,4,8,16,32,64,128,256], [0.125, 0.25, 0.5, 1,2,4,8,16,32,64,128,256], [0.125, 0.25, 0.5, 1,2,4,8,16,32,64,128,256]]
+    application_lengths = [200, 64, 200, 200]
+    application_parallelisms = [[frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)],
+                                [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1),frac(32,1),frac(64,1)],
+                                [frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)],
+                                [frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)]]
+    application_parallelisms_others = [[frac(1,1), frac(2,1), frac(4,1)],
+                                       [frac(1,1), frac(2,1), frac(4,1)],
+                                       [frac(1,1), frac(2,1), frac(4,1)],
+                                       [frac(1,1), frac(2,1), frac(4,1)]]
     per_system_per_application_results = []
     for i, system in enumerate(systems):
         per_system_results = []
         for j, app in enumerate(applications):
             start_per_app_per_system = results[(results.System == system) & (results.Application == app)]
             paper_parallelism = fix_parallelism(start_per_app_per_system, application_lengths[j])
-            filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j])
+            filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
             sorted_by_parallelism = filled_in.sort_values("Parallelism")
             results_only_selected_columns = get_output_columns(sorted_by_parallelism)
             per_system_results.append(results_only_selected_columns)
@@ -35,9 +42,11 @@ def get_latex_from_results_str(results_file):
             results_tex_str += "System {}, App {}\n".format(systems[i], applications[j])
             results_tex_str += app_pd.to_latex(index=False, escape=False)
     for app_idx in range(len(applications)):
-        results_tex_str += "Comparison for App {}\n".format(applications[j])
+        results_tex_str += "Comparison for App {}\n".format(applications[app_idx])
+        ae_res = per_system_per_application_results[0][app_idx]
+        ae_res_for_comp = ae_res[ae_res.Parallelism.isin([int_if_not_nan(x) for x in application_parallelisms_others[0]])]
         results_tex_str += merge_columns(
-            per_system_per_application_results[0][app_idx],
+            ae_res_for_comp,
             per_system_per_application_results[1][app_idx],
             per_system_per_application_results[2][app_idx],
         ).to_latex(index=False, escape=False)
@@ -51,7 +60,7 @@ def add_missing_parallelisms(results_pd, system, application, parallelisms_to_ad
     return results_pd
 
 def fix_parallelism(results_pd, length):
-    results_pd['Parallelism'] = results_pd['Parallelism'].apply(lambda x: int(length / x))
+    results_pd['Parallelism'] = results_pd['Parallelism'].apply(lambda x: frac(length, x))
     return results_pd
 
 def get_output_columns(results_pd):
@@ -64,32 +73,39 @@ def get_output_columns(results_pd):
     return results_pd[['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'Clock Rate']]
 
 def percent_vs_aetherling(aetherling_results, other_results, column_name):
-    others = pd.to_numeric(other_results[column_name], errors='coerce')
-    ae = pd.to_numeric(aetherling_results[column_name], errors='coerce')
-    return ((others - ae) / ae).apply(int_if_not_nan)
+    #others = pd.to_numeric(other_results[column_name], errors='coerce')
+    #ae = pd.to_numeric(aetherling_results[column_name], errors='coerce')
+    #return others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
+    return other_results[column_name].apply(int_if_not_nan) #others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
 
 def merge_columns(aetherling_results, halide_results, spatial_results):
-    aetherling_results['Aetherling\nLUTs'] = aetherling_results['LUTs']
-    aetherling_results['Aetherling\nBRAMs'] = aetherling_results['BRAMs']
-    aetherling_results['Aetherling\nSlices'] = aetherling_results['Slices']
-    aetherling_results['HLUTs'] = percent_vs_aetherling(aetherling_results, halide_results, 'LUTs')
-    aetherling_results['HBRAMs'] = percent_vs_aetherling(aetherling_results, halide_results, 'BRAMs')
-    aetherling_results['HSlices'] = percent_vs_aetherling(aetherling_results, halide_results, 'Slices')
-    aetherling_results['SLUTs'] = percent_vs_aetherling(aetherling_results, spatial_results, 'LUTs')
-    aetherling_results['SBRAMs'] = percent_vs_aetherling(aetherling_results, spatial_results, 'BRAMs')
-    aetherling_results['SSlices'] = percent_vs_aetherling(aetherling_results, spatial_results, 'Slices')
-    return aetherling_results[['Parallelism',
+    aetherling_results['ALUTs'] = aetherling_results['LUTs']
+    aetherling_results['ABRAMs'] = aetherling_results['BRAMs']
+    aetherling_results['ASlices'] = aetherling_results['Slices']
+    halide_results['HLUTs'] = halide_results['LUTs']#percent_vs_aetherling(aetherling_results, halide_results, 'LUTs')
+    halide_results['HBRAMs'] = halide_results['BRAMs'] #percent_vs_aetherling(aetherling_results, halide_results, 'BRAMs')
+    halide_results['HSlices'] = halide_results['Slices'] #percent_vs_aetherling(aetherling_results, halide_results, 'Slices')
+    spatial_results['SLUTs'] = spatial_results['LUTs'] #percent_vs_aetherling(aetherling_results, spatial_results, 'LUTs')
+    spatial_results['SBRAMs'] = spatial_results['BRAMs'] #percent_vs_aetherling(aetherling_results, spatial_results, 'BRAMs')
+    spatial_results['SSlices'] = spatial_results['Slices'] #percent_vs_aetherling(aetherling_results, spatial_results, 'Slices')
+    joined = pd.merge(pd.merge(aetherling_results, halide_results, on='Parallelism'), spatial_results, on='Parallelism')
+    return joined[['Parallelism',
                                'HLUTs', 'HBRAMs', 'HSlices',
                                'SLUTs', 'SBRAMs', 'SSlices',
                                ]]
 
 
 def int_if_not_nan(x):
-    if isnan(x):
+    if type(x) == str:
+        return x
+    elif isnan(x):
         return "\\red{X}"
-    elif x == int(x):
+    elif type(x) is int:
+        return str(x)
+    elif type(x) is float and x == int(x):
         return str(int(x))
+    elif x.denominator == 1:
+        return str(x.numerator)
     else:
-        fr = frac(x)
         #return "$\\frac{" + str(fr.numerator) + "}{" + str(fr.denominator) + "}$"
-        return str(fr.numerator) + "/" + str(fr.denominator)
+        return str(x.numerator) + "/" + str(x.denominator)
