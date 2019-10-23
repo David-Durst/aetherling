@@ -13,10 +13,10 @@ def get_latex_from_results_str(results_file):
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1),frac(32,1),frac(64,1)],
                                 [frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)],
                                 [frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)]]
-    application_parallelisms_others = [[frac(1,1), frac(2,1), frac(4,1)],
-                                       [frac(1,1), frac(2,1), frac(4,1)],
-                                       [frac(1,1), frac(2,1), frac(4,1)],
-                                       [frac(1,1), frac(2,1), frac(4,1)]]
+    application_parallelisms_others = [[frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
+                                       [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
+                                       [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
+                                       [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)]]
     per_system_per_application_results = []
     for i, system in enumerate(systems):
         per_system_results = []
