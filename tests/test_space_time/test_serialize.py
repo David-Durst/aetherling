@@ -13,17 +13,74 @@ def test_serialize_basic():
     num_iterations = 2
     t = ST_Int()
 
-
     ser = DefineSerialize(n, i, t)
 
     tester = fault.Tester(ser, ser.CLK)
 
     tester.circuit.valid_up = 1
     tester.circuit.I = inputs
-    for clk in range(num_iterations):
+    for clk in range(num_iterations*(n+i)):
         tester.print("clk: {}\n".format(clk))
         tester.eval()
         tester.circuit.valid_down.expect(1)
-        #tester.circuit.O[0].expect(inputs[clk % n])
+        tester.circuit.O.expect(inputs[clk % n])
+        tester.step(2)
+    compile_and_run(tester)
+
+def test_serialize_with_invalid():
+    n = 5
+    i = 1
+    inputs = list(range(n))
+    wrong_inputs = [i+3 for i in range(n)]
+    num_iterations = 2
+    t = ST_Int()
+
+    ser = DefineSerialize(n, i, t)
+
+    tester = fault.Tester(ser, ser.CLK)
+
+    tester.circuit.valid_up = 1
+    for clk in range(num_iterations*(n+i)):
+        if clk % (n+i) == 0:
+            tester.circuit.I = inputs
+        else:
+            tester.circuit.I = wrong_inputs
+        tester.print("clk: {}\n".format(clk))
+        tester.eval()
+        tester.circuit.valid_down.expect(1)
+        if clk % (n+i) < n:
+            tester.circuit.O.expect(inputs[clk % (n+i)])
+        tester.step(2)
+    compile_and_run(tester)
+
+def test_serialize_multiple_clocks():
+    no = 2
+    io = 0
+    ni = 2
+    ii = 1
+    inputs = [[1,2], [3,4]]
+    wrong_inputs = [5,6]
+    outputs = [1,3,2,4]
+    num_iterations = 2
+    t = ST_TSeq(ni, ii, ST_Int())
+
+    ser = DefineSerialize(no, io, t)
+
+    tester = fault.Tester(ser, ser.CLK)
+
+    tester.circuit.valid_up = 1
+    output_counter = 0
+    for clk in range(num_iterations*(no+io)*t.time()):
+        if clk % ((no+io)*(ni+ii)) < ni:
+            tester.circuit.I = inputs[clk % (no+io)]
+        else:
+            tester.circuit.I = wrong_inputs
+        tester.print("clk: {}\n".format(clk))
+        tester.eval()
+        tester.circuit.valid_down.expect(1)
+        if clk in [0,1,3,4,6,7,9,10]:
+            tester.circuit.O.expect(outputs[output_counter])
+            output_counter += 1
+            output_counter = output_counter % 4
         tester.step(2)
     compile_and_run(tester)

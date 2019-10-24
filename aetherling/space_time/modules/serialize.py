@@ -13,7 +13,7 @@ from mantle.coreir import DefineSub
 import math
 
 @cache_definition
-def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuitKind:
+def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuitKind:
     """
     Convert sequences in space to sequences in time.
     TSeq no (vo+no*vi) (SSeq n T') -> TSeq no vo (TSeq n vi T')
@@ -37,16 +37,16 @@ def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuit
     """
     class _Serialize(Circuit):
         name = "serialize_t{}_n{}_i{}_hasRESET{}".format(cleanName(str(T)), \
-                                                                   str(n), str(i), str(has_reset))
-        st_in_t = [ST_TSeq(1, n-1+i, ST_SSeq_Tuple(n, T))]
-        st_out_t = ST_TSeq(n, i, T)
+                                                                   str(n), str(i_), str(has_reset))
+        st_in_t = [ST_TSeq(1, n-1+i_, ST_SSeq_Tuple(n, T))]
+        st_out_t = ST_TSeq(n, i_, T)
         IO = ["I", In(st_in_t[0].magma_repr()), "O", Out(st_out_t.magma_repr())] + \
              ClockInterface(False, has_reset) + valid_ports
 
         @classmethod
         def definition(cls):
             # the counter of the current element of output sequence, when hits 0, load the next input to serialize
-            element_idx_counter = SizedCounterModM(n+i, has_ce=True, has_reset=has_reset)
+            element_idx_counter = SizedCounterModM(n + i_, has_ce=True, has_reset=has_reset)
             if element_idx_counter.O.N == math.ceil(math.log(n, 2)):
                 element_idx_out = element_idx_counter.O
             else:
@@ -62,9 +62,9 @@ def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuit
 
             # if each element takes multiple clocks, need a ram so can write all them and read them over multiple clocks
             if is_nested(T) and T.time() > 1:
-                value_store = DefineNativeMapParallel(n, DefineRAMAnyType(T.magma_repr(), T.time()), merge_ready_valid_ce_reset=True, has_valid=False, has_ready=False)()
-                value_store_input = value_store.WDATA
-                value_store_output = value_store.RDATA
+                value_store = [DefineRAMAnyType(T.magma_repr(), T.time())() for _ in range(n)]
+                value_store_input = [ram.WDATA for ram in value_store]
+                value_store_output = [ram.RDATA for ram in value_store]
 
                 time_per_element_counter = SizedCounterModM(T.time(),
                                                             has_ce=True, has_reset=has_reset)
@@ -73,31 +73,33 @@ def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuit
                 wire(time_per_element_counter.CE, enabled)
                 wire(element_idx_counter.CE, enabled & go_to_next_element)
                 for input_idx in range(n):
-                    wire(value_store.WE[input_idx], is_first_element & enabled)
+                    wire(value_store[input_idx].WE, is_first_element & enabled)
                     # location in current element is where to read and write.
                     # will write on first iteration through element, read on later iterations
-                    wire(time_per_element_counter.O, value_store.WADDR[input_idx])
-                    wire(time_per_element_counter.O, value_store.RADDR[input_idx])
+                    wire(time_per_element_counter.O, value_store[input_idx].WADDR)
+                    wire(time_per_element_counter.O, value_store[input_idx].RADDR)
 
                 if has_reset:
                     wire(time_per_element_counter.RESET, cls.RESET)
 
             else:
-                value_store = DefineNativeMapParallel(n, DefineRegisterAnyType(T.magma_repr(), has_ce=True))()
-                value_store_input = value_store.I
-                value_store_output = value_store.O
+                value_store = [DefineRegisterAnyType(T.magma_repr(), has_ce=True)() for _ in range(n)]
+                value_store_input = [reg.I for reg in value_store]
+                value_store_output = [reg.O for reg in value_store]
 
                 wire(element_idx_counter.CE, enabled)
                 for input_idx in range(n):
-                    wire(value_store.CE[input_idx], is_first_element & enabled)
+                    wire(value_store[input_idx].CE, is_first_element & enabled)
 
 
-            wire(cls.I, value_store_input)
+            for i in range(n):
+                wire(cls.I[i], value_store_input[i])
 
             # to serialize, go through all different rams/registers in value store
             # and select the output from the ith one, where i is current output element
             value_store_output_selector = DefineMuxAnyType(T.magma_repr(), n)()
-            wire(value_store_output, value_store_output_selector.data)
+            for i in range(n):
+                wire(value_store_output[i], value_store_output_selector.data[i])
             wire(element_idx_out, value_store_output_selector.sel)
 
             # on first element, send the input directly out. otherwise, use the register

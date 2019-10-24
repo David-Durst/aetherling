@@ -11,3 +11,4 @@ from .fifo import DefineFIFO
 from .const import DefineConst
 from .downsample import DefineDown_S, DefineDown_T
 from .partition import DefinePartition_S, DefineUnpartition_S
+from .serialize import DefineSerialize
