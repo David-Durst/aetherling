@@ -40,6 +40,7 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
                                                                    str(n), str(i_), str(has_reset))
         st_in_t = [ST_TSeq(1, n-1+i_, ST_SSeq_Tuple(n, T))]
         st_out_t = ST_TSeq(n, i_, T)
+        binary_op=False
         IO = ["I", In(st_in_t[0].magma_repr()), "O", Out(st_out_t.magma_repr())] + \
              ClockInterface(False, has_reset) + valid_ports
 
@@ -52,9 +53,9 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
             else:
                 used_bits_length = (math.ceil(math.log(n, 2)))
                 unused_bits_length = element_idx_counter.O.N - used_bits_length
-                element_idx_out = element_idx_counter.O[:used_bits_length-1]
-                term = DefineTermAnyType(Array[unused_bits_length, Bit])
-                wire(element_idx_counter.O[used_bits_length:], term.I)
+                element_idx_out = element_idx_counter.O[:used_bits_length]
+                term = DefineTermAnyType(Array[unused_bits_length, Bit])()
+                wire(element_idx_counter.O[unused_bits_length:], term.I)
             is_first_element = Decode(0, element_idx_out.N)(element_idx_out)
 
             enabled = cls.valid_up
