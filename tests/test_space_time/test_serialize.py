@@ -19,7 +19,7 @@ def test_serialize_basic():
     tester = fault.Tester(ser, ser.CLK)
 
     tester.circuit.valid_up = 1
-    #tester.circuit.I = inputs
+    tester.circuit.I = inputs
     for clk in range(num_iterations):
         tester.print("clk: {}\n".format(clk))
         tester.eval()

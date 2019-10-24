@@ -40,7 +40,7 @@ def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuit
                                                                    str(n), str(i), str(has_reset))
         st_in_t = [ST_TSeq(1, n-1+i, ST_SSeq_Tuple(n, T))]
         st_out_t = ST_TSeq(n, i, T)
-        IO = ["I", st_in_t[0].magma_repr(), "O", st_out_t.magma_repr()] + \
+        IO = ["I", In(st_in_t[0].magma_repr()), "O", Out(st_out_t.magma_repr())] + \
              ClockInterface(False, has_reset) + valid_ports
 
         @classmethod
@@ -62,7 +62,7 @@ def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuit
 
             # if each element takes multiple clocks, need a ram so can write all them and read them over multiple clocks
             if is_nested(T) and T.time() > 1:
-                value_store = DefineNativeMapParallel(n, DefineRAMAnyType(T.magma_repr(), T.time()))()
+                value_store = DefineNativeMapParallel(n, DefineRAMAnyType(T.magma_repr(), T.time()), merge_ready_valid_ce_reset=True, has_valid=False, has_ready=False)()
                 value_store_input = value_store.WDATA
                 value_store_output = value_store.RDATA
 
@@ -103,7 +103,7 @@ def DefineSerialize(n:int, i:int, T: ST_Type,  has_reset=False) -> DefineCircuit
             # on first element, send the input directly out. otherwise, use the register
             first_element_output_selector = DefineMuxAnyType(T.magma_repr(), 2)()
             wire(is_first_element, first_element_output_selector.sel[0])
-            wire(value_store_output_selector, first_element_output_selector.data[0])
+            wire(value_store_output_selector.out, first_element_output_selector.data[0])
             wire(cls.I[0], first_element_output_selector.data[1])
             wire(first_element_output_selector.out, cls.O)
 
