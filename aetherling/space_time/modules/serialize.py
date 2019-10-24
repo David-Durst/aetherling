@@ -63,7 +63,7 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
 
             # if each element takes multiple clocks, need a ram so can write all them and read them over multiple clocks
             if is_nested(T) and T.time() > 1:
-                value_store = [DefineRAMAnyType(T.magma_repr(), T.time())() for _ in range(n)]
+                value_store = [DefineRAMAnyType(T.magma_repr(), T.time())() for _ in range(n-1)]
                 value_store_input = [ram.WDATA for ram in value_store]
                 value_store_output = [ram.RDATA for ram in value_store]
 
@@ -73,7 +73,7 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
 
                 wire(time_per_element_counter.CE, enabled)
                 wire(element_idx_counter.CE, enabled & go_to_next_element)
-                for input_idx in range(n):
+                for input_idx in range(n-1):
                     wire(value_store[input_idx].WE, is_first_element & enabled)
                     # location in current element is where to read and write.
                     # will write on first iteration through element, read on later iterations
@@ -84,23 +84,25 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
                     wire(time_per_element_counter.RESET, cls.RESET)
 
             else:
-                value_store = [DefineRegisterAnyType(T.magma_repr(), has_ce=True)() for _ in range(n)]
+                value_store = [DefineRegisterAnyType(T.magma_repr(), has_ce=True)() for _ in range(n-1)]
                 value_store_input = [reg.I for reg in value_store]
                 value_store_output = [reg.O for reg in value_store]
 
                 wire(element_idx_counter.CE, enabled)
-                for input_idx in range(n):
+                for input_idx in range(n-1):
                     wire(value_store[input_idx].CE, is_first_element & enabled)
 
 
-            for i in range(n):
-                wire(cls.I[i], value_store_input[i])
+            for i in range(n-1):
+                wire(cls.I[i+1], value_store_input[i])
 
             # to serialize, go through all different rams/registers in value store
             # and select the output from the ith one, where i is current output element
             value_store_output_selector = DefineMuxAnyType(T.magma_repr(), n)()
-            for i in range(n):
-                wire(value_store_output[i], value_store_output_selector.data[i])
+            for i in range(n-1):
+                wire(value_store_output[i], value_store_output_selector.data[i+1])
+            # just wiring this up to avoid any issues
+            wire(value_store_output[0], value_store_output_selector.data[0])
             wire(element_idx_out, value_store_output_selector.sel)
 
             # on first element, send the input directly out. otherwise, use the register
