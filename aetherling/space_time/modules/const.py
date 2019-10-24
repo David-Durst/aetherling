@@ -8,7 +8,7 @@ from magma.circuit import DefineCircuitKind
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.type_helpers import valid_ports, flatten as ae_flatten
-from aetherling.modules.ram_any_type import DefineRAMAnyType
+from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from collections.abc import Iterable
 import builtins
 from typing import Union, Tuple
@@ -45,7 +45,7 @@ def ts_arrays_to_bits(ts_xss: Tuple) -> Tuple:
 
 @cache_definition
 def DefineConst(t: ST_Type, ts_values: Tuple,
-               has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> DefineCircuitKind:
+               has_ce: bool = False, has_reset: bool = False, has_valid: bool = False, delay: int = 0) -> DefineCircuitKind:
     """
     Emits a constant over multiple clocks
 
@@ -69,7 +69,13 @@ def DefineConst(t: ST_Type, ts_values: Tuple,
             IO += valid_ports
         @classmethod
         def definition(cls):
-            enabled = DefineCoreirConst(1, 1)().O[0]
+            one_const = DefineCoreirConst(1, 1)().O[0]
+            if delay == 0:
+                enabled = one_const
+            else:
+                delay_counter = InitialDelayCounter(delay)
+                wire(delay_counter.CE, one_const)
+                enabled = delay_counter.valid
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
