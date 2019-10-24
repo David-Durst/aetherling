@@ -163,6 +163,10 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
     """
     if strip_tseq_1_0_sseq_1(t_in) == strip_tseq_1_0_sseq_1(t_out):
         return DefinePassthrough(t_in, t_out, has_valid=has_valid)
+    #elif (type(t_in) == ST_TSeq) and (type(t_out) == ST_TSeq) and \
+    #        (t_in.n == 1) and ((t_in.t) == ST_SSeq_Tuple or type(t_in.t) == ST_SSeq) and \
+    #        (t_in.t.t == t_out.t) and (t_in.n + t_in.i == t_out.n + t_out.i):
+
 
     class _Reshape_ST(Circuit):
         name = 'Reshape_ST{}_{}_hasCE{}_hasReset{}'.format(cleanName(str(t_in)), cleanName(str(t_out)),
