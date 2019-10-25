@@ -5,6 +5,7 @@ from mantle.coreir import DefineCoreirConst
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.type_helpers import valid_ports
 from aetherling.modules.mux_any_type import DefineMuxAnyType
+from aetherling.helpers.nameCleanup import cleanName
 
 int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
@@ -139,9 +140,30 @@ def DefineDiv_Atom(has_valid: bool = False):
     return _Div
 
 @cache_definition
+def DefineLt_Atom(has_valid: bool = False):
+    class _Lt(Circuit):
+        name = "Lt_Atom"
+        IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
+              'O', Out(ST_Bit().magma_repr())]
+        if has_valid:
+            IO += valid_ports
+        binary_op = False
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
+        st_out_t = ST_Bit()
+        @classmethod
+        def definition(cls):
+            op = DefineCoreirUlt(int_width)()
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
+            wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _Lt
+
+@cache_definition
 def DefineEq_Atom(t: ST_Type, has_valid: bool = False):
     class _Eq(Circuit):
-        name = "Eq_Atom"
+        name = "Eq_Atom_{}t".format(cleanName(str(t)))
         IO = ['I', In(ST_Atom_Tuple(t, t).magma_repr()),
               'O', Out(ST_Bit().magma_repr())]
         if has_valid:
@@ -158,3 +180,25 @@ def DefineEq_Atom(t: ST_Type, has_valid: bool = False):
             if has_valid:
                 wire(cls.valid_up, cls.valid_down)
     return _Eq
+
+@cache_definition
+def DefineIf_Atom(t: ST_Type, has_valid: bool = False):
+    class _If(Circuit):
+        name = "If_Atom_{}t".format(cleanName(str(t)))
+        binary_op = False
+        st_in_t = [ST_Atom_Tuple(ST_Bit(), ST_Atom_Tuple(t, t))]
+        st_out_t = ST_Bit()
+        IO = ['I', In(st_in_t[0].magma_repr()),
+              'O', Out(st_out_t.magma_repr())]
+        if has_valid:
+            IO += valid_ports
+        @classmethod
+        def definition(cls):
+            op = DefineMuxAnyType(t.magma_repr(), 2)()
+            wire(cls.I[0], op.sel)
+            wire(cls.I[1][0], op.data[0])
+            wire(cls.I[1][1], op.data[1])
+            wire(op.out, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _If
