@@ -179,7 +179,7 @@ class ST_Bit(ST_Type):
         return 1
 
     def magma_repr(self):
-        return Bit
+        return Array[1, Bit]
 
     def __str__(self):
         return "Bit"

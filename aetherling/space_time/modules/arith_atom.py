@@ -155,7 +155,7 @@ def DefineLt_Atom(has_valid: bool = False):
             op = DefineCoreirUlt(int_width)()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
-            wire(op.O, cls.O)
+            wire(op.O, cls.O[0])
             if has_valid:
                 wire(cls.valid_up, cls.valid_down)
     return _Lt
@@ -176,7 +176,7 @@ def DefineEq_Atom(t: ST_Type, has_valid: bool = False):
             op = DefineEQ(t.magma_repr().size())()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
-            wire(op.O, cls.O)
+            wire(op.O, cls.O[0])
             if has_valid:
                 wire(cls.valid_up, cls.valid_down)
     return _Eq
