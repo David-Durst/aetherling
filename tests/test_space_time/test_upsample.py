@@ -16,7 +16,7 @@ def test_up_s():
     tester = fault.Tester(up, up.CLK)
 
     tester.circuit.valid_up = 1
-    tester.circuit.I = test_val
+    tester.circuit.I[0] = test_val
     tester.eval()
     for i in range(num_out):
         tester.circuit.O[i].expect(test_val)

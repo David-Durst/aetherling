@@ -27,30 +27,34 @@ def DefineRegisterAnyType(t: Kind, init: int = 0, has_ce: bool = False, has_rese
                 ClockInterface(has_ce,has_reset)
         @classmethod
         def definition(cls):
-            type_size_in_bits = GetCoreIRBackend().get_type(t).size
-            type_to_bits = Dehydrate(t)
-            registers = DefineRegister(type_size_in_bits, has_ce=has_ce, has_reset=has_reset)()
-            bits_to_type = Hydrate(t)
-
-            #for bit_in_type in range(type_size_in_bits):
-            #    wire(type_to_bits.out[bit_in_type], sipos.I[bit_in_type])
-            #    for sipo_output in range(n):
-            #        wire(sipos.O[bit_in_type][sipo_output], bits_to_type.I[sipo_output][bit_in_type])
-
-            wire(cls.I, type_to_bits.I)
-            wire(type_to_bits.out, registers.I)
-            wire(registers.O, bits_to_type.I)
-            wire(bits_to_type.out, cls.O)
-
-            if has_ce:
-                wire(cls.CE, registers.CE)
-            if has_reset:
-                wire(cls.RESET, registers.RESET)
-            #for bit_in_type in range(type_size_in_bits):
-            #    if has_ce:
-            #        wire(cls.CE, sipos.CE[bit_in_type])
-            #    if has_reset:
-            #        wire(cls.RESET, sipos.RESET[bit_in_type])
+            # if using a layer of nesting
+            nested = False
+            if issubclass(type(t), ArrayKind):
+                if type(t.T) == BitKind:
+                    regs = [DefineRegister(t.N, has_ce=has_ce, has_reset=has_reset)()]
+                    nested = True
+                else:
+                    regs = [DefineRegisterAnyType(t.T, init, has_ce, has_reset)() for _ in range(t.N)]
+            elif issubclass(type(t), TupleKind):
+                regs = [DefineRegisterAnyType(t_inner, init, has_ce, has_reset)() for t_inner in t.Ts]
+            else:
+                regs = [DefineRegister(1, init, has_ce, has_reset)()]
+            if nested:
+                for i in range(t.N):
+                    wire(cls.I[i], regs[0].I[i])
+                    wire(cls.O[i], regs[0].O[i])
+                if has_ce:
+                    wire(cls.CE, regs[0].CE)
+                if has_reset:
+                    wire(cls.RESET, regs[0].RESET)
+            else:
+                for i,reg in enumerate(regs):
+                    wire(cls.I[i], reg.I)
+                    wire(cls.O[i], reg.O)
+                    if has_ce:
+                        wire(cls.CE, reg.CE)
+                    if has_reset:
+                        wire(cls.RESET, reg.RESET)
 
     return _Register
 
