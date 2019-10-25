@@ -187,7 +187,7 @@ def DefineIf_Atom(t: ST_Type, has_valid: bool = False):
         name = "If_Atom_{}t".format(cleanName(str(t)))
         binary_op = False
         st_in_t = [ST_Atom_Tuple(ST_Bit(), ST_Atom_Tuple(t, t))]
-        st_out_t = ST_Bit()
+        st_out_t = t
         IO = ['I', In(st_in_t[0].magma_repr()),
               'O', Out(st_out_t.magma_repr())]
         if has_valid:

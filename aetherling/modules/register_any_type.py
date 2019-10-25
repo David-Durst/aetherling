@@ -49,8 +49,12 @@ def DefineRegisterAnyType(t: Kind, init: int = 0, has_ce: bool = False, has_rese
                     wire(cls.RESET, regs[0].RESET)
             else:
                 for i,reg in enumerate(regs):
-                    wire(cls.I[i], reg.I)
-                    wire(cls.O[i], reg.O)
+                    if type(t) == BitKind:
+                        wire(cls.I, reg.I[0])
+                        wire(cls.O, reg.O[0])
+                    else:
+                        wire(cls.I[i], reg.I)
+                        wire(cls.O[i], reg.O)
                     if has_ce:
                         wire(cls.CE, reg.CE)
                     if has_reset:
