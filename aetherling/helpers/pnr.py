@@ -7,14 +7,16 @@ def get_latex_from_results_str(results_file):
     results['Clock Rate'] = nan
     results_tex_str = ""
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
-    applications = ["map", "pyramid", "conv2d_b2b", "sharpen", "camera"]
-    application_lengths = [200, 64, 16, 200, 200]
+    applications = ["map", "pyramid", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "sharpen", "camera"]
+    application_lengths = [200, 64, 16, 16, 200, 200]
     application_parallelisms = [[frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(8,1),frac(10,1),frac(20,1),frac(200,1)],
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1),frac(32,1),frac(64,1)],
+                                [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1)],
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1)],
                                 [frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)],
                                 [frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(10,1),frac(20,1),frac(200,1)]]
     application_parallelisms_others = [[frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
+                                       [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
                                        [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
                                        [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],
                                        [frac(1,1), frac(2,1), frac(4,1), frac(8, 1)],

@@ -105,7 +105,7 @@ def expect_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
 def compile(testcircuit, name=None):
     circuit_name = name if name is not None else testcircuit.name
     magma.compile("vBuild/" + circuit_name, testcircuit, output="coreir-verilog",
-                  passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst", "flattentypes", "flatten", "verifyconnectivity --noclkrst", "deletedeadinstances"],
+                  passes=["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst"],
                   namespaces=["aetherlinglib", "commonlib", "mantle", "coreir", "global"])
 
 
