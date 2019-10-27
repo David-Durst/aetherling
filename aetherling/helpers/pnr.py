@@ -73,7 +73,7 @@ def get_output_columns(results_pd):
     results_pd['BRAMs'] = results_pd['BRAMs'].apply(int_if_not_nan)
     results_pd['Slices'] = results_pd['Slices'].apply(int_if_not_nan)
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(int_if_not_nan)
-    results_pd['Clock Rate'] = results_pd['Clock Rate'].apply(int_if_not_nan)
+    results_pd['Clock Rate'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
     return results_pd[['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'Clock Rate']]
 
 def percent_vs_aetherling(aetherling_results, other_results, column_name):
@@ -98,6 +98,16 @@ def merge_columns(aetherling_results, halide_results, spatial_results):
                                'SLUTs', 'SBRAMs', 'SSlices',
                                ]]
 
+base_ns = 5.
+
+def fix_clock(x_str):
+    if str(x_str) == "nan":
+        return "\\red{X}"
+    x = float(x_str[:-2])
+    if x > 0:
+        return str(round(1000 / base_ns))
+    else:
+        return str(round(1000 / (base_ns + -1 * x)))
 
 def int_if_not_nan(x):
     if type(x) == str:
