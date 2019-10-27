@@ -9,6 +9,7 @@ def get_latex_from_results_str(results_file):
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     applications = ["map", "pyramid", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "sharpen", "camera"]
     application_lengths = [200, 64, 16, 16, 200, 200]
+    index_of_p_1_row = [3, 2, 2, 2, 3, 3]
     application_parallelisms = [[frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(8,1),frac(10,1),frac(20,1),frac(200,1)],
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1),frac(32,1),frac(64,1)],
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1)],
@@ -29,7 +30,7 @@ def get_latex_from_results_str(results_file):
             paper_parallelism = fix_parallelism(start_per_app_per_system, application_lengths[j])
             filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
             sorted_by_parallelism = filled_in.sort_values("Parallelism")
-            results_only_selected_columns = get_output_columns(sorted_by_parallelism)
+            results_only_selected_columns = get_output_columns(sorted_by_parallelism, index_of_p_1_row[j])
             per_system_results.append(results_only_selected_columns)
         per_system_per_application_results.append(per_system_results)
 #    per_system_results = [results[results.System == system] for system in systems]
@@ -67,20 +68,34 @@ def fix_parallelism(results_pd, length):
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(lambda x: frac(length, x))
     return results_pd
 
-def get_output_columns(results_pd):
+def get_output_columns(results_pd, index_of_p_1_row):
     results_pd['LUTs'] = results_pd['TotalLUTs'].apply(int_if_not_nan)
+    results_pd = percent_vs_base(results_pd, "LUTs", index_of_p_1_row)
     results_pd['BRAMs'] = results_pd['RAMB36'] + results_pd['RAMB18']
     results_pd['BRAMs'] = results_pd['BRAMs'].apply(int_if_not_nan)
+    results_pd = percent_vs_base(results_pd, "BRAMs", index_of_p_1_row)
     results_pd['Slices'] = results_pd['Slices'].apply(int_if_not_nan)
+    results_pd = percent_vs_base(results_pd, "Slices", index_of_p_1_row)
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(int_if_not_nan)
     results_pd['Clock Rate'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
     return results_pd[['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'Clock Rate']]
 
-def percent_vs_aetherling(aetherling_results, other_results, column_name):
+def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #others = pd.to_numeric(other_results[column_name], errors='coerce')
-    #ae = pd.to_numeric(aetherling_results[column_name], errors='coerce')
+    #base = pd.to_numeric(result_pd[column_name], errors='coerce')
+    #results_pd[column_name + '_diff'] = pd.to_numeric(results_pd.loc[:,column_name], errors='coerse') - \
+    #                                    results_pd.at[index_of_p_1_row, column_name]
+    p_1_value = results_pd[column_name].iloc[index_of_p_1_row]
+    def get_ratio(num):
+        if num == "\\red{X}" or str(num) == "nan" or p_1_value == "\\red{X}" or str(p_1_value) == "nan" or \
+                num == "0" or p_1_value == "0":
+            return num
+        else:
+            return num + " " + "(" + str(round((float(num) - float(p_1_value)) / float(p_1_value), 2)) + ")"
+    results_pd[column_name] = results_pd[column_name].apply(get_ratio)
+    return results_pd
     #return others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
-    return other_results[column_name].apply(int_if_not_nan) #others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
+    #return other_results[column_name].apply(int_if_not_nan) #others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
 
 def merge_columns(aetherling_results, halide_results, spatial_results):
     aetherling_results['ALUTs'] = aetherling_results['LUTs']
