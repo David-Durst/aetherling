@@ -77,8 +77,8 @@ def get_output_columns(results_pd, index_of_p_1_row):
     results_pd['Slices'] = results_pd['Slices'].apply(int_if_not_nan)
     results_pd = percent_vs_base(results_pd, "Slices", index_of_p_1_row)
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(int_if_not_nan)
-    results_pd['Clock Rate'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
-    return results_pd[['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'Clock Rate']]
+    results_pd['MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
+    return results_pd[['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'MHz']]
 
 def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #others = pd.to_numeric(other_results[column_name], errors='coerce')
