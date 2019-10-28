@@ -86,7 +86,7 @@ def set_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
             tester.poke(fault_port.port, value)
         return cur_idx + 1
 
-int_to_ignore = -23451
+int_to_ignore = 253
 def expect_nested_port(tester, fault_port, value, nesting_layers, cur_idx):
     if nesting_layers > 0:
         for sub_port in fault_port:
