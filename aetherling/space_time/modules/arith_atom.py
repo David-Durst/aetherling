@@ -147,6 +147,48 @@ def DefineDiv_Atom(has_valid: bool = False):
     return _Div
 
 @cache_definition
+def DefineRShift_Atom(has_valid: bool = False):
+    class _Mul(Circuit):
+        name = "RShift_Atom"
+        IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
+              'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
+        binary_op = False
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
+        st_out_t = ST_Int()
+        @classmethod
+        def definition(cls):
+            op = DefineLSR(int_width)()
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
+            wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _Mul
+
+@cache_definition
+def DefineLShift_Atom(has_valid: bool = False):
+    class _Mul(Circuit):
+        name = "LShift_Atom"
+        IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
+              'O', Out(ST_Int().magma_repr())]
+        if has_valid:
+            IO += valid_ports
+        binary_op = False
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
+        st_out_t = ST_Int()
+        @classmethod
+        def definition(cls):
+            op = DefineLSL(int_width)()
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
+            wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _Mul
+
+@cache_definition
 def DefineLt_Atom(has_valid: bool = False):
     class _Lt(Circuit):
         name = "Lt_Atom"
