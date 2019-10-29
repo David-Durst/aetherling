@@ -7,11 +7,13 @@ from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequenti
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from aetherling.modules.term_any_type import TermAnyType
 from aetherling.helpers.nameCleanup import cleanName
+from magma import *
 from mantle.coreir.arith import *
 from mantle.coreir.logic import *
 from mantle.coreir.compare import *
 from mantle.coreir import DefineCoreirConst
 from magma.circuit import DefineCircuitKind
+from aetherling.modules.register_any_type import DefineRegisterAnyType
 
 int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
@@ -115,10 +117,13 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
             wire(enable_counter.valid, reduce.CE)
             wire(cls.valid_up, enable_counter.CE)
             wire(cls.I, reduce.I)
-            wire(cls.O, reduce.out)
+
+            red_reg = DefineRegisterAnyType(cls.st_out_t.magma_repr())()
+            wire(reduce.out, red_reg.I)
+            wire(cls.O, red_reg.O)
 
             # valid output after first full valid input collected
-            valid_delay = InitialDelayCounter(time_last_valid(cls.st_in_t[0]))
+            valid_delay = InitialDelayCounter(time_last_valid(cls.st_in_t[0]) + 1)
             wire(cls.valid_up, valid_delay.CE)
             wire(cls.valid_down, valid_delay.valid)
 

@@ -6,6 +6,8 @@ from aetherling.space_time.space_time_types import *
 from aetherling.space_time.type_helpers import valid_ports
 from aetherling.modules.mux_any_type import DefineMuxAnyType
 from aetherling.helpers.nameCleanup import cleanName
+from mantle.common.register import DefineRegister
+from magma import *
 
 int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
@@ -134,9 +136,14 @@ def DefineDiv_Atom(has_valid: bool = False):
             op = DefineUDiv(int_width)()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
-            wire(op.O, cls.O)
+            div_reg = DefineRegister(cls.st_out_t.magma_repr().N)()
+            wire(op.O, div_reg.I)
+            wire(div_reg.O, cls.O)
+
             if has_valid:
-                wire(cls.valid_up, cls.valid_down)
+                valid_reg = DefineRegister(1)()
+                wire(cls.valid_up, valid_reg.I[0])
+                wire(valid_reg.O[0], cls.valid_down)
     return _Div
 
 @cache_definition
