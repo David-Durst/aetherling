@@ -54,6 +54,7 @@ def test_fifo_basic_2_clock_delay():
             tester.print("clk: {}\n".format(i*num_iterations + j))
             tester.circuit.I = test_vals[input_counter]
             tester.eval()
+            tester.print("O: %d\n", tester.circuit.O)
             if i == 0 and j < delay_amount:
                 tester.circuit.valid_down.expect(0)
             else:

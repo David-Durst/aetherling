@@ -21,10 +21,9 @@ def test_serialize_basic():
     tester.circuit.I = inputs
     for clk in range(num_iterations*(n+i)):
         tester.print("clk: {}\n".format(clk))
-        tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         tester.circuit.O.expect(inputs[clk % n])
-        tester.step(2)
     compile_and_run(tester)
 
 def test_serialize_with_invalid():
@@ -46,11 +45,10 @@ def test_serialize_with_invalid():
         else:
             tester.circuit.I = wrong_inputs
         tester.print("clk: {}\n".format(clk))
-        tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         if clk % (n+i) < n:
             tester.circuit.O.expect(inputs[clk % (n+i)])
-        tester.step(2)
     compile_and_run(tester)
 
 def test_serialize_multiple_clocks():
@@ -76,11 +74,10 @@ def test_serialize_multiple_clocks():
         else:
             tester.circuit.I = wrong_inputs
         tester.print("clk: {}\n".format(clk))
-        tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         if clk in [0,1,3,4,6,7,9,10]:
             tester.circuit.O.expect(outputs[output_counter])
             output_counter += 1
             output_counter = output_counter % 4
-        tester.step(2)
     compile_and_run(tester)
