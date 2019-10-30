@@ -8,7 +8,7 @@ from mantle.coreir.memory import DefineRAM, getRAMAddrWidth
 __all__ = ['DefineRAMAnyType', 'RAMAnyType']
 
 @cache_definition
-def DefineRAMAnyType(t: Kind, n: int):
+def DefineRAMAnyType(t: Kind, n: int, read_latency = 0):
     """
     Generate a RAM that handles n of any type.
 
@@ -27,7 +27,7 @@ def DefineRAMAnyType(t: Kind, n: int):
         @classmethod
         def definition(cls):
             type_size_in_bits = GetCoreIRBackend().get_type(t).size
-            ram = DefineRAM(n, type_size_in_bits)()
+            ram = DefineRAM(n, type_size_in_bits, read_latency=read_latency)()
 
             type_to_bits = Dehydrate(t)
             wire(cls.WDATA, type_to_bits.I)

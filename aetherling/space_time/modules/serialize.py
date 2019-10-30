@@ -8,6 +8,8 @@ from aetherling.space_time.type_helpers import *
 from aetherling.space_time.ram_st import DefineRAM_ST
 from aetherling.modules import DefineRAMAnyType, DefineRegisterAnyType, DefineMuxAnyType, DefineNativeMapParallel
 from mantle.common.countermod import SizedCounterModM
+from mantle.common.register import DefineRegister
+from mantle.coreir.memory import DefineRAM
 from mantle.common.decode import Decode
 from mantle.coreir import DefineSub
 import math
@@ -59,7 +61,9 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
             is_first_element = Decode(0, element_idx_out.N)(element_idx_out)
 
             enabled = cls.valid_up
-            wire(cls.valid_up, cls.valid_down)
+            valid_reg = DefineRegister(1)()
+            wire(cls.valid_up, valid_reg.I[0])
+            wire(valid_reg.O[0], cls.valid_down)
 
             # if each element takes multiple clocks, need a ram so can write all them and read them over multiple clocks
             if is_nested(T) and T.time() > 1:
@@ -110,7 +114,9 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
             wire(is_first_element, first_element_output_selector.sel[0])
             wire(value_store_output_selector.out, first_element_output_selector.data[0])
             wire(cls.I[0], first_element_output_selector.data[1])
-            wire(first_element_output_selector.out, cls.O)
+            out_reg = DefineRegisterAnyType(cls.st_out_t.magma_repr())()
+            wire(first_element_output_selector.out, out_reg.I)
+            wire(out_reg.O, cls.O)
 
     return _Serialize
 

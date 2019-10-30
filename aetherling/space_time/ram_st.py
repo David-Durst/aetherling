@@ -14,7 +14,7 @@ from magma.circuit import DefineCircuitKind, Circuit
 __all__ = ['DefineRAM_ST', 'RAM_ST']
 
 @cache_definition
-def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
+def DefineRAM_ST(t: ST_Type, n: int, has_reset = False, read_latency = 0) -> DefineCircuitKind:
     """
     Generate a RAM where t store n objects each of type t.
     WE, RE and RESET affect where in a t is being written/read.
@@ -46,7 +46,7 @@ def DefineRAM_ST(t: ST_Type, n: int, has_reset = False) -> DefineCircuitKind:
         def definition(cls):
             # each valid clock, going to get a magma_repr in
             # read or write each one of those to a location
-            rams = [DefineRAMAnyType(t.magma_repr(), t.valid_clocks())() for _ in range(n)]
+            rams = [DefineRAMAnyType(t.magma_repr(), t.valid_clocks(), read_latency=read_latency)() for _ in range(n)]
             read_time_position_counter = DefineNestedCounters(t, has_cur_valid=True, has_ce=True, has_reset=has_reset)()
             read_valid_term = TermAnyType(Bit)
             read_last_term = TermAnyType(Bit)
