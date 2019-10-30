@@ -19,10 +19,9 @@ def test_reduce_s_basic():
         tester.print("clk: {}\n".format(i))
         for j in range(num_in):
             tester.circuit.I[j] = test_vals[i*num_in + j]
-        tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         tester.circuit.O[0].expect(outputs[i])
-        tester.step(2)
     compile_and_run(tester)
 
 def test_reduce_s_map_1_s():
@@ -39,10 +38,9 @@ def test_reduce_s_map_1_s():
         tester.print("clk: {}\n".format(i))
         for j in range(num_in):
             tester.circuit.I[j][0] = test_vals[i*num_in + j]
-        tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         tester.circuit.O[0][0].expect(outputs[i])
-        tester.step(2)
     compile_and_run(tester)
 
 def test_reduce_s_map_1_t_map_1_s():
@@ -60,9 +58,10 @@ def test_reduce_s_map_1_t_map_1_s():
         for j in range(num_in):
             tester.circuit.I[j][0] = test_vals[i*num_in + j]
         tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         tester.circuit.O[0][0].expect(outputs[i])
-        tester.step(4)
+        tester.step(2)
     compile_and_run(tester)
 
 def test_reduce_s_map_1_s_map_1_s():
@@ -79,10 +78,10 @@ def test_reduce_s_map_1_s_map_1_s():
         tester.print("clk: {}\n".format(i))
         for j in range(num_in):
             tester.circuit.I[j][0][0] = test_vals[i*num_in + j]
-        tester.eval()
+        tester.step(2)
         tester.circuit.valid_down.expect(1)
         tester.circuit.O[0][0][0].expect(outputs[i])
-        tester.step(4)
+        tester.step(2)
     compile_and_run(tester)
 
 def test_reduce_t_basic():

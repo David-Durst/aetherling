@@ -11,7 +11,7 @@ from magma import *
 from mantle.coreir.arith import *
 from mantle.coreir.logic import *
 from mantle.coreir.compare import *
-from mantle.coreir import DefineCoreirConst
+from mantle.coreir import DefineCoreirConst, DefineRegister
 from magma.circuit import DefineCircuitKind
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 
@@ -91,9 +91,14 @@ def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCirc
             op_renamed = tupleToTwoInputsForReduce(op, num_nested_space_layers(cls.st_in_t[0]) - 1)
             reduce = DefineReduceParallel(n, op_renamed)()
             wire(cls.I, reduce.I)
-            wire(cls.O[0], reduce.O)
+            red_reg = DefineRegisterAnyType(cls.st_out_t.magma_repr())()
+            wire(reduce.O, red_reg.I[0])
+            wire(cls.O, red_reg.O)
+
             if has_valid:
-                wire(cls.valid_up, cls.valid_down)
+                valid_reg = DefineRegister(1)()
+                wire(cls.valid_up, valid_reg.I[0])
+                wire(valid_reg.O[0], cls.valid_down)
     return _Reduce_S
 
 @cache_definition
