@@ -247,7 +247,12 @@ def DefineIf_Atom(t: ST_Type, has_valid: bool = False):
             wire(cls.I[0], op.sel)
             wire(cls.I[1][0], op.data[1])
             wire(cls.I[1][1], op.data[0])
-            wire(op.out, cls.O)
+            if_reg = DefineRegister(cls.st_out_t.magma_repr().N)()
+            wire(op.out, if_reg.I)
+            wire(if_reg.O, cls.O)
+
             if has_valid:
-                wire(cls.valid_up, cls.valid_down)
+                valid_reg = DefineRegister(1)()
+                wire(cls.valid_up, valid_reg.I[0])
+                wire(valid_reg.O[0], cls.valid_down)
     return _If
