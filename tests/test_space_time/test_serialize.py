@@ -19,12 +19,14 @@ def test_serialize_basic():
 
     tester.circuit.valid_up = 1
     tester.circuit.I = inputs
-    for clk in range(num_iterations*(n+i)):
+    for clk in range(num_iterations*(n+i)+1):
+        pipelined_clk = clk - 1
         tester.print("clk: {}\n".format(clk))
         tester.eval()
-        tester.circuit.valid_down.expect(1)
-        tester.circuit.O.expect(inputs[clk % n])
         tester.step(2)
+        if pipelined_clk >= 0:
+            tester.circuit.valid_down.expect(1)
+            tester.circuit.O.expect(inputs[pipelined_clk % n])
     compile_and_run(tester)
 
 def test_serialize_with_invalid():
@@ -41,16 +43,17 @@ def test_serialize_with_invalid():
 
     tester.circuit.valid_up = 1
     for clk in range(num_iterations*(n+i)):
+        pipelined_clk = clk - 1
         if clk % (n+i) == 0:
             tester.circuit.I = inputs
         else:
             tester.circuit.I = wrong_inputs
         tester.print("clk: {}\n".format(clk))
-        tester.eval()
-        tester.circuit.valid_down.expect(1)
-        if clk % (n+i) < n:
-            tester.circuit.O.expect(inputs[clk % (n+i)])
         tester.step(2)
+        if pipelined_clk >= 0:
+            tester.circuit.valid_down.expect(1)
+            if pipelined_clk % (n+i) < n:
+                tester.circuit.O.expect(inputs[pipelined_clk % (n+i)])
     compile_and_run(tester)
 
 def test_serialize_multiple_clocks():
@@ -71,16 +74,17 @@ def test_serialize_multiple_clocks():
     tester.circuit.valid_up = 1
     output_counter = 0
     for clk in range(num_iterations*(no+io)*t.time()):
+        pipelined_clk = clk - 1
         if clk % ((no+io)*(ni+ii)) < ni:
             tester.circuit.I = inputs[clk % (no+io)]
         else:
             tester.circuit.I = wrong_inputs
         tester.print("clk: {}\n".format(clk))
-        tester.eval()
-        tester.circuit.valid_down.expect(1)
-        if clk in [0,1,3,4,6,7,9,10]:
-            tester.circuit.O.expect(outputs[output_counter])
-            output_counter += 1
-            output_counter = output_counter % 4
         tester.step(2)
+        if pipelined_clk >= 0:
+            tester.circuit.valid_down.expect(1)
+            if pipelined_clk in [0,1,3,4,6,7,9,10]:
+                tester.circuit.O.expect(outputs[output_counter])
+                output_counter += 1
+                output_counter = output_counter % 4
     compile_and_run(tester)

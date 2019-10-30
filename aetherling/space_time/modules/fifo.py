@@ -4,6 +4,7 @@ from aetherling.modules.initial_delay_counter import DefineInitialDelayCounter
 from mantle.coreir import DefineCoreirConst
 from magma import *
 from magma.circuit import DefineCircuitKind
+from mantle.common.register import DefineRegister
 from aetherling.helpers.nameCleanup import cleanName
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.type_helpers import valid_ports
@@ -62,10 +63,10 @@ def DefineFIFO(t: ST_Type, delay: int,
                     enabled = bit(cls.CE) & enabled
                 read_counter = AESizedCounterModM(delay, has_ce=True, has_reset=has_reset)
                 write_counter = AESizedCounterModM(delay, has_ce=True, has_reset=has_reset)
-                fifo_buffer = DefineRAMAnyType(per_clock_type, delay)()
+                fifo_buffer = DefineRAMAnyType(per_clock_type, delay, read_latency=1)()
 
                 # delay read for delay clocks
-                internal_delay_counter = DefineInitialDelayCounter(delay, has_ce=True, has_reset=has_reset)()
+                internal_delay_counter = DefineInitialDelayCounter(delay - 1, has_ce=True, has_reset=has_reset)()
                 advance_read_counter = internal_delay_counter.valid
                 wire(enabled, internal_delay_counter.CE)
                 wire(advance_read_counter & enabled, read_counter.CE)
@@ -83,7 +84,9 @@ def DefineFIFO(t: ST_Type, delay: int,
                 wire(fifo_buffer.WE, enabled)
 
                 if has_valid:
-                    wire(advance_read_counter, cls.valid_down)
+                    valid_reg = DefineRegister(1)()
+                    wire(advance_read_counter, valid_reg.I[0])
+                    wire(valid_reg.O[0], cls.valid_down)
 
     return _FIFO
 
