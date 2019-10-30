@@ -61,12 +61,13 @@ def DefineFIFO(t: ST_Type, delay: int,
                     enabled = cls.valid_up & enabled
                 if has_ce:
                     enabled = bit(cls.CE) & enabled
-                read_counter = AESizedCounterModM(delay, has_ce=True, has_reset=has_reset)
-                write_counter = AESizedCounterModM(delay, has_ce=True, has_reset=has_reset)
-                fifo_buffer = DefineRAMAnyType(per_clock_type, delay, read_latency=1)()
+                read_counter = AESizedCounterModM(delay-1, has_ce=True, has_reset=has_reset)
+                write_counter = AESizedCounterModM(delay-1, has_ce=True, has_reset=has_reset)
+                fifo_buffer = DefineRAMAnyType(per_clock_type, delay - 1)()
+                reg = DefineRegisterAnyType(t.magma_repr(), has_ce=False, has_reset=has_reset)()
 
                 # delay read for delay clocks
-                internal_delay_counter = DefineInitialDelayCounter(delay - 1, has_ce=True, has_reset=has_reset)()
+                internal_delay_counter = DefineInitialDelayCounter(delay - 1)()
                 advance_read_counter = internal_delay_counter.valid
                 wire(enabled, internal_delay_counter.CE)
                 wire(advance_read_counter & enabled, read_counter.CE)
@@ -80,7 +81,8 @@ def DefineFIFO(t: ST_Type, delay: int,
                 wire(fifo_buffer.WADDR, write_counter.O)
                 wire(fifo_buffer.RADDR, read_counter.O)
                 wire(fifo_buffer.WDATA, cls.I)
-                wire(fifo_buffer.RDATA, cls.O)
+                wire(fifo_buffer.RDATA, reg.I)
+                wire(reg.O, cls.O)
                 wire(fifo_buffer.WE, enabled)
 
                 if has_valid:
