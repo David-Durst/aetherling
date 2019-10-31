@@ -6,7 +6,7 @@ from aetherling.modules.map_fully_parallel_sequential import DefineNativeMapPara
 from aetherling.modules.reduce import DefineReduceParallel, DefineReduceSequential, tupleToTwoInputsForReduce
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from aetherling.modules.term_any_type import TermAnyType
-from aetherling.helpers.nameCleanup import cleanName
+from aetherling.helpers.nameCleanup import cleanName, undup_
 from magma import *
 from mantle.coreir.arith import *
 from mantle.coreir.logic import *
@@ -49,7 +49,7 @@ def DefineMap2_T(n: int, inv: int, op: DefineCircuitKind) -> DefineCircuitKind:
 @cache_definition
 def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) -> DefineCircuitKind:
     class _Map_T(Circuit):
-        name = "Map_T_n{}_i{}_op{}".format(str(n), str(inv), cleanName(str(op)))
+        name = undup_("Map_T_n{}_i{}_op{}".format(str(n), str(inv), cleanName(str(op))).replace("__","_"))
         op_num_ports = len(op.IO.Decl) // 2
         op_port_names = op.IO.Decl[::2]
         op_port_types = op.IO.Decl[1::2]

@@ -1,13 +1,14 @@
 from mantle.coreir.arith import *
 from mantle.coreir.logic import *
 from mantle.coreir.compare import *
-from mantle.coreir import DefineCoreirConst
+from mantle.coreir import DefineCoreirConst, DefineTerm
 from aetherling.space_time.space_time_types import *
 from aetherling.space_time.type_helpers import valid_ports
 from aetherling.modules.mux_any_type import DefineMuxAnyType
 from aetherling.helpers.nameCleanup import cleanName
 from mantle.common.register import DefineRegister
 from magma import *
+import os
 
 int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
@@ -117,12 +118,23 @@ def DefineMul_Atom(has_valid: bool = False):
         st_out_t = ST_Int()
         @classmethod
         def definition(cls):
-            op = DefineMul(int_width)()
-            wire(cls.I[0], op.I0)
-            wire(cls.I[1], op.I1)
-            wire(op.O, cls.O)
+            dir_path = os.path.dirname(os.path.realpath(__file__))
+            op = m.DefineFromVerilogFile(os.path.join(dir_path, "pipelined", "mul.v"), type_map={"CLK": m.In(m.Clock)})[0]()
+            zero_const = DefineCoreirConst(1, 0)()
+            one_const = DefineCoreirConst(1, 1)()
+            wire(zero_const.O[0], op.rst)
+            wire(one_const.O[0], op.ce)
+            wire(cls.I[0], op.a)
+            wire(cls.I[1], op.b)
+            wire(op.p[0:8], cls.O)
+            term = DefineTerm(8)()
+            wire(op.p[8:16], term.I)
             if has_valid:
-                wire(cls.valid_up, cls.valid_down)
+                reg0 = DefineRegister(1)()
+                reg1 = DefineRegister(1)()
+                wire(cls.valid_up, reg0.I[0])
+                wire(reg0.O, reg1.I)
+                wire(reg1.O[0], cls.valid_down)
     return _Mul
 
 @cache_definition
