@@ -23,6 +23,6 @@ def test_mul_pipelined():
         tester.eval()
         if i > delay:
             tester.circuit.valid_down.expect(1)
-            tester.circuit.O.expect(test_vals[0][i - 2] * test_vals[1][i - 2])
+            tester.circuit.O.expect(test_vals[0][i - delay] * test_vals[1][i - delay])
         tester.step(2)
     compile_and_run(tester)
