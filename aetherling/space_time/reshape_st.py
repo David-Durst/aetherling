@@ -384,8 +384,12 @@ def DefineReshape_ST(t_in: ST_Type, t_out: ST_Type, has_ce=False, has_reset=Fals
                     #wire(cls.ram_wr, input_sorting_network.O[idx].val)
                     #wire(cls.ram_rd, rams[idx].RDATA)
                 else:
-                    wire(DefineCoreirConst(ram_element_type.magma_repr().size(), 0)().O,
-                         input_sorting_network.I[idx].val)
+                    zero_const = DefineCoreirConst(ram_element_type.magma_repr().size(), 0)().O
+                    cur_sn_input = input_sorting_network.I[idx].val
+                    while len(cur_sn_input) != len(zero_const):
+                        cur_sn_input = cur_sn_input[0]
+                    wire(zero_const, cur_sn_input)
+
 
                 # wire input sorting network, write addr, and write valid luts to banks
                 wire(input_sorting_network.O[idx].val, rams[idx].WDATA)
