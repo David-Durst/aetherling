@@ -115,7 +115,7 @@ def merge_columns(aetherling_results, halide_results, spatial_results):
                                'SLUTs', 'SBRAMs', 'SSlices',
                                ]]
 
-base_ns = 5.
+base_ns = 5.6
 
 def fix_clock(x_str):
     if str(x_str) == "nan":
