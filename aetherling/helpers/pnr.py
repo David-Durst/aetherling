@@ -9,7 +9,8 @@ def get_latex_from_results_str(results_file):
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera"]
     application_lengths = [200, 16, 16, 16, 64, 16, 200]
-    index_of_p_1_row = [3, 2, 2, 2, 2, 2, 3]
+    index_of_p_1_row_ae = [3, 2, 2, 2, 2, 2, 3]
+    index_of_p_1_row_other = 0
     application_parallelisms = [[frac(1,8), frac(1,4), frac(1,2) , frac(1,1),frac(2,1),frac(4,1),frac(5,1),frac(8,1),frac(10,1),frac(20,1),frac(200,1)],
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1)],
                                 [frac(1,9), frac(1,3), frac(1,1), frac(2,1),frac(4,1),frac(8,1),frac(16,1)],
@@ -32,7 +33,7 @@ def get_latex_from_results_str(results_file):
             paper_parallelism = fix_parallelism(start_per_app_per_system, application_lengths[j])
             filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
             sorted_by_parallelism = filled_in.sort_values("Parallelism")
-            results_only_selected_columns = get_output_columns(sorted_by_parallelism, index_of_p_1_row[j])
+            results_only_selected_columns = get_output_columns(sorted_by_parallelism, index_of_p_1_row_ae[j] if i == 0 else index_of_p_1_row_other)
             per_system_results.append(results_only_selected_columns)
         per_system_per_application_results.append(per_system_results)
 #    per_system_results = [results[results.System == system] for system in systems]
