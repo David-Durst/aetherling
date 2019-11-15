@@ -150,6 +150,7 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
              ClockInterface(has_ce, has_reset)
         if has_valid:
             IO += valid_ports
+        #IO += ["inner_valid", Out(Bit)]
         @classmethod
         def definition(cls):
             enabled = DefineCoreirConst(1, 1)().O[0]
@@ -172,13 +173,14 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             ram_addr = AESizedCounterModM(shift_amount, has_ce=True, has_reset=has_reset)
             # this handles invalid clocks of inner TSeq
             inner_valid = DefineNestedCounters(ST_TSeq(ni, ii, ST_Int()), has_last=False,
-                                               has_ce=True, has_reset=has_reset)()
+                                               has_ce=True, has_reset=has_reset, valid_when_ce_off=True)()
 
             wire(ram_addr.O, value_store.WADDR)
             wire(ram_addr.O, value_store.RADDR)
 
             wire(enabled & inner_valid.valid, value_store.WE)
             wire(enabled & next_ram_addr.last, inner_valid.CE)
+            #wire(inner_valid.valid, cls.inner_valid)
             wire(enabled & inner_valid.valid, value_store.RE)
             wire(enabled & next_ram_addr.last & inner_valid.valid, ram_addr.CE)
             wire(enabled, next_ram_addr.CE)

@@ -16,7 +16,7 @@ __all__ = ['DefineNestedCounters', 'NestedCounters']
 
 @cache_definition
 def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool = False,
-                         has_ce: bool = False, has_reset: bool = False) \
+                         has_ce: bool = False, has_reset: bool = False, valid_when_ce_off = False) \
             -> DefineCircuitKind:
     """
     Generate a set of nested counters that emit valid according to the specified type t.
@@ -46,7 +46,7 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
             if type(t) == ST_TSeq:
                 outer_counter = AESizedCounterModM(t.n + t.i, has_ce=True, has_reset=has_reset)
                 inner_counters = DefineNestedCounters(t.t, has_last=True, has_cur_valid=False,
-                                                      has_ce=has_ce, has_reset=has_reset)()
+                                                      has_ce=has_ce, has_reset=has_reset, valid_when_ce_off=valid_when_ce_off)()
                 if has_last:
                     is_last = Decode(t.n + t.i - 1, outer_counter.O.N)(outer_counter.O)
                 if has_cur_valid:
@@ -87,7 +87,7 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
                     if has_cur_valid:
                         wire(inner_counters.valid & is_valid, cur_valid_counter.CE)
             elif is_nested(t):
-                inner_counters = DefineNestedCounters(t.t, has_last, has_cur_valid, has_ce, has_reset)()
+                inner_counters = DefineNestedCounters(t.t, has_last, has_cur_valid, has_ce, has_reset, valid_when_ce_off=valid_when_ce_off)()
 
                 wire(inner_counters.valid, cls.valid)
                 if has_last:
@@ -107,7 +107,12 @@ def DefineNestedCounters(t: ST_Type, has_last: bool = True, has_cur_valid: bool 
                     cur_valid = DefineCoreirConst(1, 0)()
                     wire(cur_valid.O, cls.cur_valid)
                 if has_ce:
-                    wire(cls.valid, cls.CE)
+                    if valid_when_ce_off:
+                        wire(cls.valid, valid_and_last.O[0])
+                        ce_term = TermAnyType(Bit)
+                        wire(cls.CE, ce_term.I)
+                    else:
+                        wire(cls.valid, cls.CE)
                 else:
                     wire(valid_and_last.O[0], cls.valid)
                 if has_reset:
