@@ -136,7 +136,7 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
     valid_up : In(Bit)
     valid_down : Out(Bit)
     """
-    class _ShiftT(Circuit):
+    class _ShiftTT(Circuit):
         name = "Shift_tt_no{}_ni{}_io{}_ii{}_amt{}_tEl{}__hasCE{}_hasReset{}_hasValid{}".format(str(no), str(ni), str(io), str(ii),
                                                                                    str(shift_amount),
                                                                                    cleanName(str(elem_t)),
@@ -165,18 +165,22 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             # will write on first iteration through element, write and read on later iterations
             # output for first iteration is undefined, so ok to read anything
             next_ram_addr = DefineNestedCounters(elem_t, has_ce=True, has_reset=has_reset)()
-            # its fine that this doesn't account for the invalid clocks.
+            # its fine that this doesn't account for the invalid clocks of outer TSeq
             # after the invalid clocks, the next iteration will start from
             # an index that is possibly not 0. That doesn't matter
             # as will just loop around
             ram_addr = AESizedCounterModM(shift_amount, has_ce=True, has_reset=has_reset)
+            # this handles invalid clocks of inner TSeq
+            inner_valid = DefineNestedCounters(ST_TSeq(ni, ii, ST_Int()), has_last=False,
+                                               has_ce=True, has_reset=has_reset)()
 
             wire(ram_addr.O, value_store.WADDR)
             wire(ram_addr.O, value_store.RADDR)
 
-            wire(enabled, value_store.WE)
-            wire(enabled, value_store.RE)
-            wire(enabled & next_ram_addr.last, ram_addr.CE)
+            wire(enabled & inner_valid.valid, value_store.WE)
+            wire(enabled & next_ram_addr.last, inner_valid.CE)
+            wire(enabled & inner_valid.valid, value_store.RE)
+            wire(enabled & next_ram_addr.last & inner_valid.valid, ram_addr.CE)
             wire(enabled, next_ram_addr.CE)
 
             next_ram_addr_term = TermAnyType(Bit)
@@ -188,8 +192,9 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
                 wire(next_ram_addr.RESET, cls.RESET)
+                wire(inner_valid.RESET, cls.RESET)
 
-    return _ShiftT
+    return _ShiftTT
 
 def Shift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t: ST_Type,
             has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> Circuit:

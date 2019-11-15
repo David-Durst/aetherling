@@ -111,7 +111,7 @@ def test_shift_t_invalid_v_delayed_true_ce():
     test_vals = [2,5,3,8,10]
     shift_amount = 1
     in_type = ST_TSeq(num_in, 1, ST_Int())
-    num_clocks_per_iteration = num_in
+    num_clocks_per_iteration = num_in + 1
     num_iterations = 2
 
     testcircuit = DefineShift_T(in_type.n, in_type.i, shift_amount, in_type.t, has_ce=True, has_valid=True)
@@ -126,10 +126,11 @@ def test_shift_t_invalid_v_delayed_true_ce():
     tester.circuit.valid_up = 1
     for i in range(num_iterations):
         for clk in range(num_clocks_per_iteration):
+            tester.print("CLK: {}\n".format(clk))
             val_idx = min(clk, len(test_vals) - 1)
             tester.circuit.I = test_vals[val_idx] + i
             tester.eval()
-            if clk >= shift_amount:
+            if clk >= shift_amount and clk < num_in:
                 tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
             tester.step(2)
@@ -157,6 +158,36 @@ def test_shift_tt_v_always_true_no_ce():
                 tester.circuit.O.expect(test_vals[clk - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
             tester.step(2)
+    compile_and_run(tester)
+
+def test_shift_tt_inner_invalid_v_always_true_no_ce():
+    num_in = [3,2]
+    test_vals = [2,5,7,3,8,9]
+    shift_amount = 1
+    ii = 2
+    in_type = ST_TSeq(num_in[0], 0, ST_TSeq(num_in[1], ii, ST_Int()))
+    num_iterations = 2
+
+    testcircuit = DefineShift_TT(in_type.n, in_type.t.n, in_type.i, in_type.t.i, shift_amount, in_type.t.t, has_valid=True)
+
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    tester.circuit.valid_up = 1
+    for i in range(num_iterations):
+        for clk_outer in range(num_in[0]):
+            for clk_inner in range(num_in[1] + ii):
+                tester.print("clk_outer: {}\n".format(clk_outer))
+                tester.print("clk_inner: {}\n".format(clk_inner))
+                val_idx = clk_outer * 2 + min(clk_inner, num_in[1] - 1)
+                in_val = test_vals[val_idx] + i + (0 if clk_inner < 2 else 32)
+                tester.circuit.I = in_val
+                tester.print("I: {}\n".format(str(in_val)))
+                tester.eval()
+                tester.print("O: %d\n", tester.circuit.O)
+                if val_idx >= shift_amount and clk_inner < 2:
+                    tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
+                tester.circuit.valid_down.expect(1)
+                tester.step(2)
     compile_and_run(tester)
 
 def test_shift_ts():
