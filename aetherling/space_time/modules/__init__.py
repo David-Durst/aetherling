@@ -6,7 +6,8 @@ from .higher_order import DefineMap_S, DefineMap_T, DefineMap2_S, \
     DefineAdd_1_S, DefineRemove_1_S, DefineAdd_1_0_T, DefineRemove_1_0_T
 from .tuple import DefineAtomTupleCreator, DefineSSeqTupleCreator, \
     DefineSSeqTupleAppender, DefineFst, DefineSnd
-from .shift import DefineShift_S, DefineShift_T, DefineShift_TS
+from .shift import DefineShift_S, DefineShift_T, DefineShift_TS, \
+    DefineShift_TT
 from .upsample import DefineUp_S, DefineUp_T
 from .fifo import DefineFIFO
 from .const import DefineConst

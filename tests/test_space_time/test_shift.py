@@ -135,6 +135,30 @@ def test_shift_t_invalid_v_delayed_true_ce():
             tester.step(2)
     compile_and_run(tester)
 
+def test_shift_tt_v_always_true_no_ce():
+    num_in = [3,2]
+    test_vals = [2,5,7,3,8,9]
+    shift_amount = 1
+    in_type = ST_TSeq(num_in[0], 0, ST_TSeq(num_in[1], 0, ST_Int()))
+    num_clocks_per_iteration = len(test_vals)
+    num_iterations = 2
+
+    testcircuit = DefineShift_TT(in_type.n, in_type.t.n, in_type.i, in_type.t.i, shift_amount, in_type.t.t, has_valid=True)
+
+    tester = fault.Tester(testcircuit, testcircuit.CLK)
+
+    tester.circuit.valid_up = 1
+    for i in range(num_iterations):
+        for clk in range(num_clocks_per_iteration):
+            tester.print("CLK: {}\n".format(clk))
+            tester.circuit.I = test_vals[clk] + i
+            tester.eval()
+            if clk >= shift_amount:
+                tester.circuit.O.expect(test_vals[clk - shift_amount] + i)
+            tester.circuit.valid_down.expect(1)
+            tester.step(2)
+    compile_and_run(tester)
+
 def test_shift_ts():
     no = 2
     io = 0

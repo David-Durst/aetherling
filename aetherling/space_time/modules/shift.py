@@ -120,6 +120,80 @@ def Shift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
     return DefineShift_T(n, i, shift_amount, elem_t, has_ce, has_reset, has_valid)()
 
 
+@cache_definition
+def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t: ST_Type,
+                  has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> DefineCircuitKind:
+    """
+    Shifts the elements in TSeq no io (TSeq ni ii elem_t) by shift_amount to the right.
+
+    I : In((TSeq(no, io, TSeq(ni, ii, elem_t)).magma_repr())
+    O : Out((TSeq(no, io, TSeq(ni, ii, elem_t)).magma_repr())
+    if has_ce:
+    CE : In(Bit)
+    if has_reset:
+    RESET : In(Bit)
+    if has_valid:
+    valid_up : In(Bit)
+    valid_down : Out(Bit)
+    """
+    class _ShiftT(Circuit):
+        name = "Shift_tt_no{}_ni{}_io{}_ii{}_amt{}_tEl{}__hasCE{}_hasReset{}_hasValid{}".format(str(no), str(ni), str(io), str(ii),
+                                                                                   str(shift_amount),
+                                                                                   cleanName(str(elem_t)),
+                                                                                   str(has_ce),
+                                                                                   str(has_reset),
+                                                                                   str(has_valid))
+        binary_op = False
+        st_in_t = [ST_TSeq(no, io, ST_TSeq(ni, ii, elem_t))]
+        st_out_t = ST_TSeq(no, io, ST_TSeq(ni, ii, elem_t))
+        IO = ['I', In(st_in_t[0].magma_repr()), 'O', Out(st_out_t.magma_repr())] + \
+             ClockInterface(has_ce, has_reset)
+        if has_valid:
+            IO += valid_ports
+        @classmethod
+        def definition(cls):
+            enabled = DefineCoreirConst(1, 1)().O[0]
+            if has_valid:
+                enabled = cls.valid_up & enabled
+                wire(cls.valid_up, cls.valid_down)
+            if has_ce:
+                enabled = bit(cls.CE) & enabled
+
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset)()
+
+            # write and read from same location
+            # will write on first iteration through element, write and read on later iterations
+            # output for first iteration is undefined, so ok to read anything
+            next_ram_addr = DefineNestedCounters(elem_t, has_ce=True, has_reset=has_reset)()
+            # its fine that this doesn't account for the invalid clocks.
+            # after the invalid clocks, the next iteration will start from
+            # an index that is possibly not 0. That doesn't matter
+            # as will just loop around
+            ram_addr = AESizedCounterModM(shift_amount, has_ce=True, has_reset=has_reset)
+
+            wire(ram_addr.O, value_store.WADDR)
+            wire(ram_addr.O, value_store.RADDR)
+
+            wire(enabled, value_store.WE)
+            wire(enabled, value_store.RE)
+            wire(enabled & next_ram_addr.last, ram_addr.CE)
+            wire(enabled, next_ram_addr.CE)
+
+            next_ram_addr_term = TermAnyType(Bit)
+            wire(next_ram_addr.valid, next_ram_addr_term.I)
+
+            wire(cls.I, value_store.WDATA)
+            wire(value_store.RDATA, cls.O)
+            if has_reset:
+                wire(value_store.RESET, cls.RESET)
+                wire(ram_addr.RESET, cls.RESET)
+                wire(next_ram_addr.RESET, cls.RESET)
+
+    return _ShiftT
+
+def Shift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t: ST_Type,
+            has_ce: bool = False, has_reset: bool = False, has_valid: bool = False) -> Circuit:
+    return DefineShift_TT(no, ni, io, ii, shift_amount, elem_t, has_ce, has_reset, has_valid)()
 """
 Shift Rewrite Rule ---
 Shift (no*ni) s in_seq ===
