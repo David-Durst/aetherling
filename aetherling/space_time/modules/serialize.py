@@ -57,7 +57,7 @@ def DefineSerialize(n:int, i_:int, T: ST_Type, has_reset=False) -> DefineCircuit
                 unused_bits_length = element_idx_counter.O.N - used_bits_length
                 element_idx_out = element_idx_counter.O[:used_bits_length]
                 term = DefineTermAnyType(Array[unused_bits_length, Bit])()
-                wire(element_idx_counter.O[unused_bits_length:], term.I)
+                wire(element_idx_counter.O[used_bits_length:], term.I)
             is_first_element = Decode(0, element_idx_out.N)(element_idx_out)
 
             enabled = cls.valid_up
