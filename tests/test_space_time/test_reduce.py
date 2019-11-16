@@ -98,9 +98,9 @@ def test_reduce_t_basic():
         tester.print("clk: {}\n".format(i))
         tester.circuit.I = test_vals[i]
         tester.eval()
-        if i >= num_in-1:
+        if i >= num_in:
             tester.circuit.valid_down.expect(1)
-        if i % num_in == num_in - 1:
+        if i % num_in == num_in:
             tester.circuit.O.expect(outputs[i // num_in])
         tester.step(2)
     compile_and_run(tester)
@@ -119,9 +119,9 @@ def test_reduce_t_map_1_s():
         tester.print("clk: {}\n".format(i))
         tester.circuit.I[0] = test_vals[i]
         tester.eval()
-        if i >= num_in-1:
+        if i >= num_in:
             tester.circuit.valid_down.expect(1)
-        if i % num_in == num_in - 1:
+        if i % num_in == num_in:
             tester.circuit.O[0].expect(outputs[i // num_in])
         tester.step(2)
     compile_and_run(tester)
@@ -140,9 +140,9 @@ def test_reduce_t_map_1_t_map_1_s():
         tester.print("clk: {}\n".format(i))
         tester.circuit.I[0] = test_vals[i]
         tester.eval()
-        if i >= num_in-1:
+        if i >= num_in:
             tester.circuit.valid_down.expect(1)
-        if i % num_in == num_in - 1:
+        if i % num_in == num_in:
             tester.circuit.O[0].expect(outputs[i // num_in])
         tester.step(4)
     compile_and_run(tester)
@@ -161,9 +161,9 @@ def test_reduce_t_map_1_2_t_map_1_s():
         tester.print("clk: {}\n".format(i))
         tester.circuit.I[0] = test_vals[i]
         tester.eval()
-        if i >= num_in-1:
+        if i >= num_in:
             tester.circuit.valid_down.expect(1)
-        if i % num_in == num_in - 1:
+        if i % num_in == num_in:
             tester.circuit.O[0].expect(outputs[i // num_in])
         tester.step(2)
         tester.circuit.valid_down.expect(i >= num_in-1)
@@ -186,9 +186,9 @@ def test_reduce_t_map_1_s_map_1_s():
         tester.print("clk: {}\n".format(i))
         tester.circuit.I[0][0] = test_vals[i]
         tester.eval()
-        if i >= num_in-1:
+        if i >= num_in:
             tester.circuit.valid_down.expect(1)
-        if i % num_in == num_in - 1:
+        if i % num_in == num_in:
             tester.circuit.O[0][0].expect(outputs[i // num_in])
         tester.step(2)
     compile_and_run(tester)
