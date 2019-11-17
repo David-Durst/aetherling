@@ -82,7 +82,7 @@ def get_output_columns(results_pd, index_of_p_1_row):
     results_pd = percent_vs_base(results_pd, "Slices", index_of_p_1_row)
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(int_if_not_nan)
     results_pd.loc[:,'MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
-    return results_pd[['Parallelism', 'LUTs', 'Slices', 'MHz']]
+    return results_pd[['Parallelism', 'LUTs', 'LUTsratio', 'Slices', 'Slicesratio', 'MHz']]
 
 def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #others = pd.to_numeric(other_results[column_name], errors='coerce')
@@ -93,10 +93,10 @@ def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     def get_ratio(num):
         if num == "\\red{X}" or str(num) == "nan" or p_1_value == "\\red{X}" or str(p_1_value) == "nan" or \
                 num == "0" or p_1_value == "0":
-            return num
+            return ""
         else:
-            return num + " " + "(" + str(round((float(num) / float(p_1_value)), 2)) + ")"
-    results_pd[column_name] = results_pd[column_name].apply(get_ratio)
+            return "(" + str(round((float(num) / float(p_1_value)), 2)) + ")"
+    results_pd[column_name + "ratio"] = results_pd[column_name].apply(get_ratio)
     return results_pd
     #return others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
     #return other_results[column_name].apply(int_if_not_nan) #others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
