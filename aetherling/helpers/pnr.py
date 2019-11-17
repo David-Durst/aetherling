@@ -53,11 +53,12 @@ def get_latex_from_results_str(results_file):
         results_tex_str += "Comparison for App {}\n".format(applications[app_idx])
         ae_res = per_system_per_application_results[0][app_idx]
         ae_res_for_comp = ae_res[ae_res.Parallelism.isin([int_if_not_nan(x) for x in application_parallelisms_others[0]])]
-        results_tex_str += merge_columns(
+        results_merged = merge_columns(
             ae_res_for_comp,
             per_system_per_application_results[1][app_idx],
             per_system_per_application_results[2][app_idx],
-        ).to_latex(index=False, escape=False)
+        ).reindex()
+        results_tex_str += results_merged.to_latex(index=False, escape=False)
     return results_tex_str
 
 
@@ -68,7 +69,7 @@ def add_missing_parallelisms(results_pd, system, application, parallelisms_to_ad
     return results_pd
 
 def fix_parallelism(results_pd, length):
-    results_pd['Parallelism'] = results_pd['Parallelism'].apply(lambda x: frac(length, x))
+    results_pd.loc[:,'Parallelism'] = results_pd['Parallelism'].apply(lambda x: frac(length, x))
     return results_pd
 
 def get_output_columns(results_pd, index_of_p_1_row):
@@ -80,8 +81,8 @@ def get_output_columns(results_pd, index_of_p_1_row):
     results_pd['Slices'] = results_pd['Slices'].apply(int_if_not_nan)
     results_pd = percent_vs_base(results_pd, "Slices", index_of_p_1_row)
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(int_if_not_nan)
-    results_pd['MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
-    return results_pd[['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'MHz']]
+    results_pd.loc[:,'MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
+    return results_pd[['Parallelism', 'LUTs', 'Slices', 'MHz']]
 
 def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #others = pd.to_numeric(other_results[column_name], errors='coerce')
@@ -101,19 +102,23 @@ def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #return other_results[column_name].apply(int_if_not_nan) #others.apply(int_if_not_nan)# ((others - ae) / ae).apply(int_if_not_nan)
 
 def merge_columns(aetherling_results, halide_results, spatial_results):
-    aetherling_results['ALUTs'] = aetherling_results['LUTs']
-    aetherling_results['ABRAMs'] = aetherling_results['BRAMs']
-    aetherling_results['ASlices'] = aetherling_results['Slices']
-    halide_results['HLUTs'] = halide_results['LUTs']#percent_vs_aetherling(aetherling_results, halide_results, 'LUTs')
-    halide_results['HBRAMs'] = halide_results['BRAMs'] #percent_vs_aetherling(aetherling_results, halide_results, 'BRAMs')
-    halide_results['HSlices'] = halide_results['Slices'] #percent_vs_aetherling(aetherling_results, halide_results, 'Slices')
-    spatial_results['SLUTs'] = spatial_results['LUTs'] #percent_vs_aetherling(aetherling_results, spatial_results, 'LUTs')
-    spatial_results['SBRAMs'] = spatial_results['BRAMs'] #percent_vs_aetherling(aetherling_results, spatial_results, 'BRAMs')
-    spatial_results['SSlices'] = spatial_results['Slices'] #percent_vs_aetherling(aetherling_results, spatial_results, 'Slices')
+    aetherling_results.loc[:,'ALUTs'] = aetherling_results['LUTs']
+    #aetherling_results['ABRAMs'] = aetherling_results['BRAMs']
+    aetherling_results.loc[:,'ASlices'] = aetherling_results['Slices']
+    aetherling_results.loc[:,'AMHz'] = aetherling_results.loc[:,'MHz']
+    halide_results.loc[:,'HLUTs'] = halide_results['LUTs']#percent_vs_aetherling(aetherling_results, halide_results, 'LUTs')
+    #halide_results['HBRAMs'] = halide_results['BRAMs'] #percent_vs_aetherling(aetherling_results, halide_results, 'BRAMs')
+    halide_results.loc[:,'HSlices'] = halide_results['Slices'] #percent_vs_aetherling(aetherling_results, halide_results, 'Slices')
+    halide_results.loc[:,'HMHz'] = halide_results['MHz'] #percent_vs_aetherling(aetherling_results, halide_results, 'Slices')
+    spatial_results.loc[:,'SLUTs'] = spatial_results['LUTs'] #percent_vs_aetherling(aetherling_results, spatial_results, 'LUTs')
+    #spatial_results['SBRAMs'] = spatial_results['BRAMs'] #percent_vs_aetherling(aetherling_results, spatial_results, 'BRAMs')
+    spatial_results.loc[:,'SSlices'] = spatial_results['Slices'] #percent_vs_aetherling(aetherling_results, spatial_results, 'Slices')
+    spatial_results.loc[:,'SMHz'] = spatial_results['MHz'] #percent_vs_aetherling(aetherling_results, spatial_results, 'Slices')
     joined = pd.merge(pd.merge(aetherling_results, halide_results, on='Parallelism'), spatial_results, on='Parallelism')
-    return joined[['Parallelism',
-                               'HLUTs', 'HBRAMs', 'HSlices',
-                               'SLUTs', 'SBRAMs', 'SSlices',
+    return joined.loc[:,['Parallelism',
+                              'ALUTs', 'ASlices', 'AMhz',
+                               'HLUTs', 'HSlices', 'HMhz',
+                               'SLUTs', 'SSlices', 'SMHz',
                                ]]
 
 base_ns = 5.6

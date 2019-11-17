@@ -46,121 +46,245 @@ def plot_from_results_str(results_file):
 #        [[per_system_result[per_system_result.Application == app]
 #          for app in applications]
 #         for per_system_result in per_system_results]
-    fig, (ax0, ax1, ax2, ax3) = plt.subplots(ncols=4)
+    fig, ((ax0_0, ax0_1, ax0_2, ax0_3), (ax1_0, ax1_1, ax1_2, ax1_3)) = plt.subplots(nrows=2, ncols=4)
     plt.rc('text', usetex=True)
-    x = fig.get_figwidth()
-    y = fig.get_figheight()
     fig.set_figwidth(20)
+    fig.set_figheight(12)
     # map
-    ax0.set_title('Map')
-    ax0.set_yscale('log')
-    ax0.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax0.set_xscale('log')
-    ax0.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
-    ax0.set_xticks([1,2,5,10,20,40,200])
+    ax0_0.set_title('Map')
+    ax0_0.set_yscale('log')
+    ax0_0.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax0_0.set_xscale('log')
+    ax0_0.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax0_0.set_xticks([1,2,5,10,20,40,200])
     res = per_system_per_application_results
     res[systb['h2h']][apptb['map']].plot(kind='line', y="LUTs", x="Parallelism",
-                                         ax=ax0, label="Halide-To-Hardware",
+                                         ax=ax0_0, label="Halide-To-Hardware",
                                          linestyle='--', marker='o' )
     print("plotting map h2h")
     print(res[systb['h2h']][apptb['map']])
     res[systb['sp']][apptb['map']].plot(kind='line', y="LUTs", x="Parallelism",
-                                        ax=ax0, label="Spatial",
+                                        ax=ax0_0, label="Spatial",
                                         linestyle='--', marker='o')
     print("plotting map sp")
     print(res[systb['sp']][apptb['map']])
     res[systb['ae']][apptb['map']].plot(kind='line', y="LUTs", x="Parallelism",
-                                        ax=ax0, label="Aetherling",
+                                        ax=ax0_0, label="Aetherling",
                                         linestyle='--', marker='o')
     print("plotting map ae")
     print(res[systb['ae']][apptb['map']])
-    ax0.set_ylabel('LUTs')
-    ax0.set_xlabel('Input Px Per Clock');
+    ax0_0.set_ylabel('LUTs')
+    ax0_0.set_xlabel('Input Px Per Clock');
 
     #conv2d
-    ax1.set_title('Single 3x3 Conv')
-    ax1.set_xscale('log')
-    ax1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
-    ax1.set_xticks([1/9,1/3,1,2,4,8,16])
-    #ax1.set_xticks([1/9,1/3])
-    #ax1.set_xticklabels([r'$\frac{1}{3}$'])
-    ax1.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+    ax0_1.set_title('Single 3x3 Conv')
+    ax0_1.set_yscale('log')
+    ax0_1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax0_1.set_xscale('log')
+    ax0_1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax0_1.set_xticks([1/9,1/3,1,2,4,8,16])
+    #ax0_1.set_xticks([1/9,1/3])
+    #ax0_1.set_xticklabels([r'$\frac{1}{3}$'])
+    ax0_1.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
     res = per_system_per_application_results
     res[systb['h2h']][apptb['conv2d']].plot(kind='line', y="LUTs", x="Parallelism",
-                                         ax=ax1, label="Halide-To-Hardware",
+                                         ax=ax0_1, label="Halide-To-Hardware",
                                          linestyle='--', marker='o' )
     print("plotting map h2h")
     print(res[systb['h2h']][apptb['conv2d']])
     res[systb['sp']][apptb['conv2d']].plot(kind='line', y="LUTs", x="Parallelism",
-                                        ax=ax1, label="Spatial",
+                                        ax=ax0_1, label="Spatial",
                                         linestyle='--', marker='o')
     print("plotting conv2d sp")
     print(res[systb['sp']][apptb['conv2d']])
     res[systb['ae']][apptb['conv2d']].plot(kind='line', y="LUTs", x="Parallelism",
-                                        ax=ax1, label="Aetherling",
+                                        ax=ax0_1, label="Aetherling",
                                         linestyle='--', marker='o')
     print("plotting conv2d ae")
     print(res[systb['ae']][apptb['conv2d']])
-    ax1.set_ylabel('LUTs')
-    ax1.set_xlabel('Input Px Per Clock');
+    ax0_1.set_ylabel('LUTs')
+    ax0_1.set_xlabel('Input Px Per Clock');
 
 
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
     plt.savefig(os.path.join(figs_dir, 'test.pdf'))
 
     #conv2d_b2b
-    ax2.set_title('3x3 Conv to 2x2 Conv')
-    ax2.set_xscale('log')
-    ax2.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
-    ax2.set_xticks([1/9,1/3,1,2,4,8,16])
-    #ax2.set_xticks([1/9,1/3])
-    #ax2.set_xticklabels([r'$\frac{1}{3}$'])
-    ax2.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+    ax0_2.set_title('3x3 Conv to 2x2 Conv')
+    ax0_2.set_yscale('log')
+    ax0_2.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax0_2.set_xscale('log')
+    ax0_2.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax0_2.set_xticks([1/9,1/3,1,2,4,8,16])
+    #ax0_2.set_xticks([1/9,1/3])
+    #ax0_2.set_xticklabels([r'$\frac{1}{3}$'])
+    ax0_2.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
     res = per_system_per_application_results
     res[systb['h2h']][apptb['conv2d_b2b']].plot(kind='line', y="LUTs", x="Parallelism",
-                                            ax=ax2, label="Halide-To-Hardware",
+                                            ax=ax0_2, label="Halide-To-Hardware",
                                             linestyle='--', marker='o' )
     print("plotting map h2h")
     print(res[systb['h2h']][apptb['conv2d_b2b']])
     res[systb['sp']][apptb['conv2d_b2b']].plot(kind='line', y="LUTs", x="Parallelism",
-                                           ax=ax2, label="Spatial",
+                                           ax=ax0_2, label="Spatial",
                                            linestyle='--', marker='o')
     print("plotting conv2d_b2b sp")
     print(res[systb['sp']][apptb['conv2d_b2b']])
     res[systb['ae']][apptb['conv2d_b2b']].plot(kind='line', y="LUTs", x="Parallelism",
-                                           ax=ax2, label="Aetherling",
+                                           ax=ax0_2, label="Aetherling",
                                            linestyle='--', marker='o')
     print("plotting conv2d_b2b ae")
     print(res[systb['ae']][apptb['conv2d_b2b']])
-    ax2.set_ylabel('LUTs')
-    ax2.set_xlabel('Input Px Per Clock');
+    ax0_2.set_ylabel('LUTs')
+    ax0_2.set_xlabel('Input Px Per Clock');
 
     #sharpen
-    ax3.set_title('Sharpen')
-    ax3.set_xscale('log')
-    ax3.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
-    ax3.set_xticks([1/9,1/3,1,2,4,8,16])
-    #ax3.set_xticks([1/9,1/3])
-    #ax3.set_xticklabels([r'$\frac{1}{3}$'])
-    ax3.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+    ax0_3.set_title('Sharpen')
+    ax0_3.set_yscale('log')
+    ax0_3.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax0_3.set_xscale('log')
+    ax0_3.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax0_3.set_xticks([1/9,1/3,1,2,4,8,16])
+    #ax0_3.set_xticks([1/9,1/3])
+    #ax0_3.set_xticklabels([r'$\frac{1}{3}$'])
+    ax0_3.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
     res = per_system_per_application_results
     res[systb['h2h']][apptb['sharpen']].plot(kind='line', y="LUTs", x="Parallelism",
-                                                ax=ax3, label="Halide-To-Hardware",
+                                                ax=ax0_3, label="Halide-To-Hardware",
                                                 linestyle='--', marker='o' )
     print("plotting map h2h")
     print(res[systb['h2h']][apptb['sharpen']])
     res[systb['sp']][apptb['sharpen']].plot(kind='line', y="LUTs", x="Parallelism",
-                                               ax=ax3, label="Spatial",
+                                               ax=ax0_3, label="Spatial",
                                                linestyle='--', marker='o')
     print("plotting sharpen sp")
     print(res[systb['sp']][apptb['sharpen']])
     res[systb['ae']][apptb['sharpen']].plot(kind='line', y="LUTs", x="Parallelism",
-                                               ax=ax3, label="Aetherling",
+                                               ax=ax0_3, label="Aetherling",
                                                linestyle='--', marker='o')
     print("plotting sharpen ae")
     print(res[systb['ae']][apptb['sharpen']])
-    ax3.set_ylabel('LUTs')
-    ax3.set_xlabel('Input Px Per Clock');
+    ax0_3.set_ylabel('LUTs')
+    ax0_3.set_xlabel('Input Px Per Clock');
+
+
+    ax1_0.set_title('Map')
+    ax1_0.set_yscale('log')
+    ax1_0.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax1_0.set_xscale('log')
+    ax1_0.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax1_0.set_xticks([1,2,5,10,20,40,200])
+    res = per_system_per_application_results
+    res[systb['h2h']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism",
+                                         ax=ax1_0, label="Halide-To-Hardware",
+                                         linestyle='--', marker='o' )
+    print("plotting map h2h")
+    print(res[systb['h2h']][apptb['map']])
+    res[systb['sp']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism",
+                                        ax=ax1_0, label="Spatial",
+                                        linestyle='--', marker='o')
+    print("plotting map sp")
+    print(res[systb['sp']][apptb['map']])
+    res[systb['ae']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism",
+                                        ax=ax1_0, label="Aetherling",
+                                        linestyle='--', marker='o')
+    print("plotting map ae")
+    print(res[systb['ae']][apptb['map']])
+    ax1_0.set_ylabel('Slices')
+    ax1_0.set_xlabel('Input Px Per Clock');
+
+    #conv2d
+    ax1_1.set_title('Single 3x3 Conv')
+    ax1_1.set_yscale('log')
+    ax1_1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax1_1.set_xscale('log')
+    ax1_1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax1_1.set_xticks([1/9,1/3,1,2,4,8,16])
+    #ax1_1.set_xticks([1/9,1/3])
+    #ax1_1.set_xticklabels([r'$\frac{1}{3}$'])
+    ax1_1.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+    res = per_system_per_application_results
+    res[systb['h2h']][apptb['conv2d']].plot(kind='line', y="Slices", x="Parallelism",
+                                            ax=ax1_1, label="Halide-To-Hardware",
+                                            linestyle='--', marker='o' )
+    print("plotting map h2h")
+    print(res[systb['h2h']][apptb['conv2d']])
+    res[systb['sp']][apptb['conv2d']].plot(kind='line', y="Slices", x="Parallelism",
+                                           ax=ax1_1, label="Spatial",
+                                           linestyle='--', marker='o')
+    print("plotting conv2d sp")
+    print(res[systb['sp']][apptb['conv2d']])
+    res[systb['ae']][apptb['conv2d']].plot(kind='line', y="Slices", x="Parallelism",
+                                           ax=ax1_1, label="Aetherling",
+                                           linestyle='--', marker='o')
+    print("plotting conv2d ae")
+    print(res[systb['ae']][apptb['conv2d']])
+    ax1_1.set_ylabel('Slices')
+    ax1_1.set_xlabel('Input Px Per Clock');
+
+
+    figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
+    plt.savefig(os.path.join(figs_dir, 'test.pdf'))
+
+    #conv2d_b2b
+    ax1_2.set_title('3x3 Conv to 2x2 Conv')
+    ax1_2.set_yscale('log')
+    ax1_2.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax1_2.set_xscale('log')
+    ax1_2.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax1_2.set_xticks([1/9,1/3,1,2,4,8,16])
+    #ax1_2.set_xticks([1/9,1/3])
+    #ax1_2.set_xticklabels([r'$\frac{1}{3}$'])
+    ax1_2.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+    res = per_system_per_application_results
+    res[systb['h2h']][apptb['conv2d_b2b']].plot(kind='line', y="Slices", x="Parallelism",
+                                                ax=ax1_2, label="Halide-To-Hardware",
+                                                linestyle='--', marker='o' )
+    print("plotting map h2h")
+    print(res[systb['h2h']][apptb['conv2d_b2b']])
+    res[systb['sp']][apptb['conv2d_b2b']].plot(kind='line', y="Slices", x="Parallelism",
+                                               ax=ax1_2, label="Spatial",
+                                               linestyle='--', marker='o')
+    print("plotting conv2d_b2b sp")
+    print(res[systb['sp']][apptb['conv2d_b2b']])
+    res[systb['ae']][apptb['conv2d_b2b']].plot(kind='line', y="Slices", x="Parallelism",
+                                               ax=ax1_2, label="Aetherling",
+                                               linestyle='--', marker='o')
+    print("plotting conv2d_b2b ae")
+    print(res[systb['ae']][apptb['conv2d_b2b']])
+    ax1_2.set_ylabel('Slices')
+    ax1_2.set_xlabel('Input Px Per Clock');
+
+    #sharpen
+    ax1_3.set_title('Sharpen')
+    ax1_3.set_yscale('log')
+    ax1_3.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+    ax1_3.set_xscale('log')
+    ax1_3.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+    ax1_3.set_xticks([1/9,1/3,1,2,4,8,16])
+    #ax1_3.set_xticks([1/9,1/3])
+    #ax1_3.set_xticklabels([r'$\frac{1}{3}$'])
+    ax1_3.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+    res = per_system_per_application_results
+    res[systb['h2h']][apptb['sharpen']].plot(kind='line', y="Slices", x="Parallelism",
+                                             ax=ax1_3, label="Halide-To-Hardware",
+                                             linestyle='--', marker='o' )
+    print("plotting map h2h")
+    print(res[systb['h2h']][apptb['sharpen']])
+    res[systb['sp']][apptb['sharpen']].plot(kind='line', y="Slices", x="Parallelism",
+                                            ax=ax1_3, label="Spatial",
+                                            linestyle='--', marker='o')
+    print("plotting sharpen sp")
+    print(res[systb['sp']][apptb['sharpen']])
+    res[systb['ae']][apptb['sharpen']].plot(kind='line', y="Slices", x="Parallelism",
+                                            ax=ax1_3, label="Aetherling",
+                                            linestyle='--', marker='o')
+    print("plotting sharpen ae")
+    print(res[systb['ae']][apptb['sharpen']])
+    ax1_3.set_ylabel('Slices')
+    ax1_3.set_xlabel('Input Px Per Clock');
+
+
 
 
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
@@ -183,7 +307,6 @@ def plot_from_results_str(results_file):
     #        per_system_per_application_results[2][app_idx],
     #    ).to_latex(index=False, escape=False)
     #return results_tex_str
-
 
 def add_missing_parallelisms(results_pd, system, application, parallelisms_to_add):
     for p in parallelisms_to_add:
