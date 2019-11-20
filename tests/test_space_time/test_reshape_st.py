@@ -5,6 +5,12 @@ from aetherling.space_time.reshape_st import DefineReshape_ST
 from aetherling.helpers.fault_helpers import compile_and_run
 import fault
 
+
+#def test_passthrough():
+#    testcircuit = DefineReshape_ST(ST_TSeq(9, 0, ST_SSeq(1, ST_SSeq(1, ST_Int()))),
+#                                   ST_TSeq(3, 0, ST_TSeq(3, 0, ST_SSeq(1, ST_Int()))))
+
+
 def test_2_3_flip_reshape():
     """
     Tests the most basic flip
