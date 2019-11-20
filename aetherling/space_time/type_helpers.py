@@ -161,6 +161,21 @@ def strip_tseq_1_n_sseq_1(t: ST_Type) -> ST_Type:
     else:
         return t
 
+def merge_layers(t: ST_Type) -> ST_Type:
+    if is_nested(t):
+        if type(t) == ST_SSeq and type(t.t) == ST_SSeq:
+            new_n = t.n * t.t.n
+            return merge_layers(ST_SSeq(new_n, t.t.t))
+        elif type(t) == ST_TSeq and type(t.t) == ST_TSeq and t.t.i == 0:
+            new_n = t.n * t.t.n
+            new_i = t.i * t.t.n
+            return merge_layers(ST_TSeq(new_n, new_i, t.t.t))
+        else:
+            new_t = merge_layers(t.t)
+            return replace(t, t=new_t)
+    else:
+        return t
+
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
