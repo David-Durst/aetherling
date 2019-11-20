@@ -155,9 +155,9 @@ def strip_tseq_1_n_sseq_1(t: ST_Type) -> ST_Type:
         t_no_inner = replace(t, t=ST_Tombstone())
         if t_no_inner == ST_SSeq(1, ST_Tombstone()) or \
                 (type(t_no_inner) == ST_TSeq and t_no_inner.n == 1):
-            return strip_tseq_1_0_sseq_1(t.t)
+            return strip_tseq_1_n_sseq_1(t.t)
         else:
-            return replace(t, t=strip_tseq_1_0_sseq_1(t.t))
+            return replace(t, t=strip_tseq_1_n_sseq_1(t.t))
     else:
         return t
 

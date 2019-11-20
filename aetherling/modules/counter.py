@@ -40,5 +40,5 @@ def AESizedCounterModM(m, cin=False, cout=False, incr=1,
                 if cin:
                     wire(cls.CIN, TermAnyType(Bit))
                 if cout:
-                    wire(cls.COUT, DefineCoreirConst(0, 1)())
+                    wire(cls.COUT, output[0])
         return _SizedCounter()

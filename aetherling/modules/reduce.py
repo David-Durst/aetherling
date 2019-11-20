@@ -8,6 +8,7 @@ from ..helpers.nameCleanup import cleanName
 from aetherling.helpers.magma_helpers import *
 from aetherling.modules.register_any_type import DefineRegisterAnyType
 from aetherling.modules.mux_any_type import DefineMuxAnyType
+from aetherling.modules.counter import AESizedCounterModM
 from aetherling.modules.initial_delay_counter import InitialDelayCounter
 from math import ceil
 
@@ -62,6 +63,9 @@ def DefineReduceParallel(numInputs: int, opDef: Circuit) -> Circuit:
 
         @classmethod
         def definition(cls):
+            if numInputs == 1:
+                wire(cls.I[0], cls.O)
+                return
             ops = [opDef() for _ in range(numInputs - 1)]
             unflattened_ports = [[get_in0(op), get_in1(op)] for op in ops]
             unwired_in_ports = set([port for op_ports in unflattened_ports for port in op_ports])
@@ -128,7 +132,7 @@ def DefineReduceSequential(numInputs: int, opDef: Circuit, has_ce=False) -> Circ
 
         @classmethod
         def definition(cls):
-            length_counter = SizedCounterModM(numInputs, has_ce=has_ce, cout=True)
+            length_counter = AESizedCounterModM(numInputs, has_ce=has_ce, cout=True)
             reg_input_mux = DefineMuxAnyType(cls.token_type, 2)()
             op_instance = opDef()
             accumulatorRegister = DefineRegisterAnyType(cls.token_type, has_ce=has_ce)()
