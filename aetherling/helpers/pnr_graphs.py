@@ -66,11 +66,11 @@ def plot_from_results_str(results_file, results_all_types_file):
                                         linestyle='--', marker='o', fontsize=fntsize)
     print("plotting map ae")
     print(res[systb['ae']][apptb['map']])
-    print("plotting map ae all types")
-    print(res_all_types[apptb['map']])
-    res_all_types[apptb['map']].plot(kind='scatter', y="Slices", x="Parallelism",
-                                        ax=ax1_0, label="Other Output Types", color=["black"],
-                                        marker='s', fontsize=fntsize)
+    #print("plotting map ae all types")
+    #print(res_all_types[apptb['map']])
+    #res_all_types[apptb['map']].plot(kind='scatter', y="Slices", x="Parallelism",
+    #                                    ax=ax1_0, label="Other Output Types", color=["black"],
+    #                                    marker='s', fontsize=fntsize)
     ax1_0.set_ylabel(y_label, fontsize=fntsize)
     ax1_0.set_xlabel(x_label, fontsize=fntsize)
 
@@ -93,11 +93,11 @@ def plot_from_results_str(results_file, results_all_types_file):
                                            linestyle='--', marker='o', fontsize=fntsize)
     print("plotting conv2d ae")
     print(res[systb['ae']][apptb['conv2d']])
-    print("plotting conv2d ae all types")
-    print(res_all_types[apptb['conv2d']])
-    res_all_types[apptb['conv2d']].plot(kind='scatter', y="Slices", x="Parallelism",
-                                           ax=ax1_1, label="Other Output Types", color=["black"],
-                                           marker='s', fontsize=fntsize)
+    #print("plotting conv2d ae all types")
+    #print(res_all_types[apptb['conv2d']])
+    #res_all_types[apptb['conv2d']].plot(kind='scatter', y="Slices", x="Parallelism",
+    #                                       ax=ax1_1, label="Other Output Types", color=["black"],
+    #                                       marker='s', fontsize=fntsize)
     ax1_1.set_ylabel(y_label, fontsize=fntsize)
     ax1_1.set_xlabel(x_label, fontsize=fntsize);
 
@@ -122,11 +122,11 @@ def plot_from_results_str(results_file, results_all_types_file):
                                                linestyle='--', marker='o', fontsize=fntsize)
     print("plotting conv2d_b2b ae")
     print(res[systb['ae']][apptb['conv2d_b2b']])
-    res_all_types[apptb['conv2d_b2b']].plot(kind='scatter', y="Slices", x="Parallelism",
-                                               ax=ax1_2, label="Other Output Types", color=["black"],
-                                               marker='s', fontsize=fntsize)
-    print("plotting conv2d_b2b ae")
-    print(res_all_types[apptb['conv2d_b2b']])
+    #res_all_types[apptb['conv2d_b2b']].plot(kind='scatter', y="Slices", x="Parallelism",
+    #                                           ax=ax1_2, label="Other Output Types", color=["black"],
+    #                                           marker='s', fontsize=fntsize)
+    #print("plotting conv2d_b2b ae")
+    #print(res_all_types[apptb['conv2d_b2b']])
     ax1_2.set_ylabel(y_label, fontsize=fntsize)
     ax1_2.set_xlabel(x_label, fontsize=fntsize);
 
@@ -150,11 +150,11 @@ def plot_from_results_str(results_file, results_all_types_file):
                                             linestyle='--', marker='o', fontsize=fntsize)
     print("plotting sharpen ae")
     print(res[systb['ae']][apptb['sharpen']])
-    res_all_types[apptb['sharpen']].plot(kind='scatter', y="Slices", x="Parallelism",
-                                            ax=ax1_3, label="Other Output Types", color=["black"],
-                                            marker='s', fontsize=fntsize)
-    print("plotting sharpen ae")
-    print(res_all_types[apptb['sharpen']])
+    #res_all_types[apptb['sharpen']].plot(kind='scatter', y="Slices", x="Parallelism",
+    #                                        ax=ax1_3, label="Other Output Types", color=["black"],
+    #                                        marker='s', fontsize=fntsize)
+    #print("plotting sharpen ae")
+    #print(res_all_types[apptb['sharpen']])
     ax1_3.set_ylabel(y_label, fontsize=fntsize)
     ax1_3.set_xlabel(x_label, fontsize=fntsize);
 
@@ -166,11 +166,15 @@ def plot_from_results_str(results_file, results_all_types_file):
     hth_maxes = []
     hth_mins = []
     joined_res_list = []
+    joined_sp_ratios_list = []
+    joined_hth_ratios_list = []
     for app in apptb:
         print("App " + str(app))
         (joined_res, joined_sp_ratios, joined_hth_ratios) = \
             comp_ae_and_others(res[systb['ae']][apptb[app]], res[systb['h2h']][apptb[app]], res[systb['sp']][apptb[app]])
         joined_res_list.append(joined_res)
+        joined_sp_ratios_list.append(joined_sp_ratios)
+        joined_hth_ratios_list.append(joined_hth_ratios)
         print("Max SP" + str(joined_sp_ratios.iloc[:,1].max()))
         print("Min SP" + str(joined_sp_ratios.iloc[:,1].min()))
         print("Max HTH" + str(joined_hth_ratios.iloc[:,1].max()))
@@ -190,27 +194,52 @@ def plot_from_results_str(results_file, results_all_types_file):
 
     fig, ((ax2_0, ax2_1), (ax2_2, ax2_3)) = plt.subplots(nrows=2, ncols=2)
     plt.rc('text', usetex=True)
-    fntsize = 20
     plt.rcParams.update({'font.size': fntsize})
     fig.set_figwidth(16)
     fig.set_figheight(18)
 
     def plot_bar_comp(axis, title, appname):
         axis.set_title(title)
-        joined_res_list[apptb_cmp[appname]].fillna(0)
-        joined_res_list[apptb_cmp[appname]].plot(kind='bar', y=["Aetherling", "Spatial"], x="Parallelism", xticks=[1,2,4,8], rot=0,
-                                              ax=axis, label=["Aetherling", "Spatial"], color=["g","r"],
+        joined_sp_ratios_list[apptb_cmp[appname]].fillna(0)
+        joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", xticks=[1,2,4,8], rot=0,
+                                              ax=axis, legend=False, color=["g"],
                                               fontsize=fntsize)
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         print("plotting " + str(appname) + " ae")
-        print(joined_res_list[apptb_cmp[appname]])
-        axis.set_ylabel(y_label, fontsize=fntsize)
+        print(joined_sp_ratios_list[apptb_cmp[appname]])
+        axis.set_ylabel("Spatial/Aetherling Ratio of Area (Slices)", fontsize=fntsize)
         axis.set_xlabel(x_label, fontsize=fntsize);
 
     plot_bar_comp(ax2_0, map_title, 'map')
     plot_bar_comp(ax2_1, conv2d_title, 'conv2d')
     plot_bar_comp(ax2_2, conv2d_b2b_title, 'conv2d_b2b')
     plot_bar_comp(ax2_3, sharpen_title, 'sharpen')
+
+    plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'))
+
+    hth_p1_values = []
+    hth_p1_titles = [map_title, conv2d_title, conv2d_b2b_title, sharpen_title]
+    for i in range(len(apptb_cmp)):
+        hth_p1_values.append(joined_hth_ratios_list[i].loc[joined_hth_ratios_list[i].loc[:, 'Parallelism'] == 1, :].iloc[0,1])
+
+    hth_p1_df = pd.DataFrame.from_dict({
+        'apps': hth_p1_titles,
+        'values': hth_p1_values
+    })
+    print("Halide-HLS Single Chart")
+    print(hth_p1_df)
+
+    fig, ax3 = plt.subplots()
+    fig.set_figwidth(8)
+    fig.set_figheight(11)
+    plt.rc('text', usetex=True)
+    plt.rcParams.update({'font.size': fntsize})
+    ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
+    hth_p1_df.plot(kind='bar', y='values', x='apps', rot=20,
+                   ax=ax3, legend=False, color=["g"],
+                   fontsize=fntsize)
+    plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'))
+
     # conv2d
     #ax2_0.set_yscale('log')
     #ax2_0.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
@@ -223,7 +252,6 @@ def plot_from_results_str(results_file, results_all_types_file):
     ##ax2_0.set_xticks([1/9,1/3])
     ##ax2_0.set_xticklabels([r'$\frac{1}{3}$'])
 
-    plt.savefig(os.path.join(figs_dir, 'ae_versus.pdf'))
 
     # get all Aetherling results into latex tables
     #aetherling_per_app = per_system_per_application_results[0]
