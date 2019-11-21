@@ -41,18 +41,19 @@ def plot_from_results_str(results_file, results_all_types_file):
 #        [[per_system_result[per_system_result.Application == app]
 #          for app in applications]
 #         for per_system_result in per_system_results]
-    fig, (ax1_0, ax1_1, ax1_2, ax1_3) = plt.subplots(nrows=1, ncols=4)
+    fig, ((ax1_0, ax1_1), (ax1_2, ax1_3)) = plt.subplots(nrows=2, ncols=2)
     plt.rc('text', usetex=True)
     fntsize = 20
     plt.rcParams.update({'font.size': fntsize})
-    fig.set_figwidth(26)
-    fig.set_figheight(7)
+    fig.set_figwidth(16)
+    fig.set_figheight(18)
     x_label = "Input Throughput"
     y_label = "Area (Slices)"
     # map
 
 
-    ax1_0.set_title('Map')
+    map_title = "Map"
+    ax1_0.set_title(map_title)
     ax1_0.set_yscale('log')
     ax1_0.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax1_0.set_xscale('log')
@@ -187,18 +188,18 @@ def plot_from_results_str(results_file, results_all_types_file):
 
 
 
-    fig, (ax2_0, ax2_1, ax2_2, ax2_3) = plt.subplots(nrows=1, ncols=4)
+    fig, ((ax2_0, ax2_1), (ax2_2, ax2_3)) = plt.subplots(nrows=2, ncols=2)
     plt.rc('text', usetex=True)
     fntsize = 20
     plt.rcParams.update({'font.size': fntsize})
-    fig.set_figwidth(26)
-    fig.set_figheight(7)
+    fig.set_figwidth(16)
+    fig.set_figheight(18)
 
     def plot_bar_comp(axis, title, appname):
         axis.set_title(title)
         joined_res_list[apptb_cmp[appname]].fillna(0)
-        joined_res_list[apptb_cmp[appname]].plot(kind='bar', y=["Aetherling", "Spatial", "Halide-HLS"], x="Parallelism", xticks=[1,2,4,8], rot=0,
-                                              ax=axis, label=["Aetherling", "Spatial", "Halide-HLS"], color=["g","r","b"],
+        joined_res_list[apptb_cmp[appname]].plot(kind='bar', y=["Aetherling", "Spatial"], x="Parallelism", xticks=[1,2,4,8], rot=0,
+                                              ax=axis, label=["Aetherling", "Spatial"], color=["g","r"],
                                               fontsize=fntsize)
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         print("plotting " + str(appname) + " ae")
@@ -206,7 +207,7 @@ def plot_from_results_str(results_file, results_all_types_file):
         axis.set_ylabel(y_label, fontsize=fntsize)
         axis.set_xlabel(x_label, fontsize=fntsize);
 
-    plot_bar_comp(ax2_0, conv2d_title, 'map')
+    plot_bar_comp(ax2_0, map_title, 'map')
     plot_bar_comp(ax2_1, conv2d_title, 'conv2d')
     plot_bar_comp(ax2_2, conv2d_b2b_title, 'conv2d_b2b')
     plot_bar_comp(ax2_3, sharpen_title, 'sharpen')
