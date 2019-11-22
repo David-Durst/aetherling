@@ -2,11 +2,11 @@ import pandas as pd
 from math import isnan, nan
 from fractions import Fraction as frac
 
+systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
 def get_latex_from_results_str(results_file):
     results = pd.read_csv(results_file)
     results['Clock Rate'] = nan
     results_tex_str = ""
-    systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera"]
     application_lengths = [200, 16, 16, 16, 64, 16, 200]
     index_of_p_1_row_ae = [3, 2, 2, 2, 2, 2, 3]
@@ -33,7 +33,7 @@ def get_latex_from_results_str(results_file):
             paper_parallelism = fix_parallelism(start_per_app_per_system, application_lengths[j])
             filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
             sorted_by_parallelism = filled_in.sort_values("Parallelism")
-            results_only_selected_columns = get_output_columns(sorted_by_parallelism, index_of_p_1_row_ae[j] if i == 0 else index_of_p_1_row_other)
+            results_only_selected_columns = get_output_columns(sorted_by_parallelism, index_of_p_1_row_ae[j] if i == 0 else index_of_p_1_row_other, system)
             per_system_results.append(results_only_selected_columns)
         per_system_per_application_results.append(per_system_results)
 #    per_system_results = [results[results.System == system] for system in systems]
@@ -72,7 +72,7 @@ def fix_parallelism(results_pd, length):
     results_pd.loc[:,'Parallelism'] = results_pd['Parallelism'].apply(lambda x: frac(length, x))
     return results_pd
 
-def get_output_columns(results_pd, index_of_p_1_row):
+def get_output_columns(results_pd, index_of_p_1_row, system):
     results_pd['LUTs'] = results_pd['TotalLUTs'].apply(int_if_not_nan)
     results_pd = percent_vs_base(results_pd, "LUTs", index_of_p_1_row)
     results_pd['BRAMs'] = results_pd['RAMB36'] + results_pd['RAMB18']
@@ -81,7 +81,12 @@ def get_output_columns(results_pd, index_of_p_1_row):
     results_pd['Slices'] = results_pd['Slices'].apply(int_if_not_nan)
     results_pd = percent_vs_base(results_pd, "Slices", index_of_p_1_row)
     results_pd['Parallelism'] = results_pd['Parallelism'].apply(int_if_not_nan)
-    results_pd.loc[:,'MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
+    if system == systems[0]:
+        results_pd.loc[:,'MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock_ae)
+    if system == systems[1]:
+        results_pd.loc[:,'MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock_hth)
+    if system == systems[2]:
+        results_pd.loc[:,'MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock_sp)
     return results_pd[['Parallelism', 'LUTs', 'LUTsratio', 'Slices', 'Slicesratio', 'MHz']]
 
 def percent_vs_base(results_pd, column_name, index_of_p_1_row):
@@ -121,16 +126,37 @@ def merge_columns(aetherling_results, halide_results, spatial_results):
                                'SLUTs', 'SSlices', 'SMHz',
                                ]]
 
-base_ns = 5.6
+base_ns_ae = 5.7
+base_ns_hth = 6.2
+base_ns_sp = 8.0
 
-def fix_clock(x_str):
+def fix_clock_ae(x_str):
     if str(x_str) == "nan":
         return "\\red{X}"
     x = float(x_str[:-2])
     if x > 0:
-        return str(round(1000 / base_ns))
+        return str(round(1000 / base_ns_ae))
     else:
-        return str(round(1000 / (base_ns + -1 * x)))
+        return str(round(1000 / (base_ns_ae + -1 * x)))
+
+def fix_clock_hth(x_str):
+    if str(x_str) == "nan":
+        return "\\red{X}"
+    x = float(x_str[:-2])
+    if x > 0:
+        return str(round(1000 / base_ns_hth))
+    else:
+        return str(round(1000 / (base_ns_hth + -1 * x)))
+
+def fix_clock_sp(x_str):
+    if str(x_str) == "nan":
+        return "\\red{X}"
+    x = float(x_str[:-2])
+    if x > 0:
+        return str(round(1000 / base_ns_sp))
+    else:
+        return str(round(1000 / (base_ns_sp + -1 * x)))
+
 
 def int_if_not_nan(x):
     if type(x) == str:
