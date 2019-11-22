@@ -72,7 +72,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     res_all_types = per_application_all_types_results
     res[systb['ae']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                         ax=ax1_0, label="Scheduler Result", color=["g"],
-                                        linestyle='--', marker='o', fontsize=fntsize,
+                                        linestyle='-', marker='o', fontsize=fntsize,
                                         markersize=ms, linewidth=lw
                                         )
     print("plotting map ae")
@@ -106,7 +106,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     ax1_1.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
     res[systb['ae']][apptb['conv2d']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                            ax=ax1_1, label="Scheduler Result", color=["g"],
-                                           linestyle='--', marker='o', fontsize=fntsize,
+                                           linestyle='-', marker='o', fontsize=fntsize,
                                            markersize=ms, linewidth=lw
                                            )
     print("plotting conv2d ae")
@@ -139,7 +139,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     ax1_2.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
     res[systb['ae']][apptb['conv2d_b2b']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                                ax=ax1_2, label="Scheduler Result", color=["g"],
-                                               linestyle='--', marker='o', fontsize=fntsize,
+                                               linestyle='-', marker='o', fontsize=fntsize,
                                                markersize=ms, linewidth=lw
                                                )
     print("plotting conv2d_b2b ae")
@@ -171,7 +171,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     ax1_3.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
     res[systb['ae']][apptb['sharpen']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                             ax=ax1_3, label="Scheduler Result", color=["g"],
-                                            linestyle='--', marker='o', fontsize=fntsize,
+                                            linestyle='-', marker='o', fontsize=fntsize,
                                             markersize=ms, linewidth=lw
                                             )
     print("plotting sharpen ae")
@@ -232,7 +232,7 @@ def plot_from_results_str(results_file, results_all_types_file):
         else:
             axis.set_yticks([0,1,2,4,6,8,10])
         joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", xticks=[1,2,4,8], rot=0,
-                                              ax=axis, legend=False, color=mcolors.TABLEAU_COLORS,
+                                              ax=axis, legend=False, color=["g"], width=0.8,
                                               fontsize=fntsize)
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         axis.set_ylim(bottom=0,top=10)
@@ -268,13 +268,13 @@ def plot_from_results_str(results_file, results_all_types_file):
     fig, ax3 = plt.subplots()
     plt.subplots_adjust(top=0.99, bottom=0.19)
     fig.set_figwidth(11)
-    fig.set_figheight(6)
+    fig.set_figheight(4)
     plt.rc('text', usetex=True)
     plt.rcParams.update({'font.size': fntsize})
     #ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
     ax3.spines['right'].set_visible(False)
     ax3.spines['top'].set_visible(False)
-    hth_p1_df.plot(kind='bar', y='values', x='apps', rot=20,
+    hth_p1_df.plot(kind='bar', y='values', x='apps', rot=10,
                    ax=ax3, legend=False, color=["g"],
                    fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'))
