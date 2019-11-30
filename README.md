@@ -21,7 +21,7 @@ The current overview of Aetherling is: https://github.com/David-Durst/embeddedHa
         ```
 1. Install Aetherling:
     ```Shell
-    git clone https://github.com/David-Durst/aetherling/
+    git clone git@github.com:David-Durst/aetherling.git
     cd aetherling
     pip install -e .
     ```
