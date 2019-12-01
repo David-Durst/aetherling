@@ -110,11 +110,10 @@ def compile(testcircuit, name=None):
 
 
 def compile_and_run(tester):
-    tester.compile_and_run(target="verilator", magma_opts={
-        "verilator_debug": True,
+    tester.compile_and_run(target="system-verilog", simulator="vcs", magma_opts={
         "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst"],
         "namespaces": ["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
-    }, directory="vBuild/", flags=["-Wno-fatal"])
+    }, directory="vBuild/")
 
 def compile_and_run_verilog(tester):
     tester.compile_and_run(magma_output="verilog", skip_compile=True, target="verilator", magma_opts={
