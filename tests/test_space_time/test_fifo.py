@@ -15,6 +15,7 @@ def test_fifo_basic_1_clock():
     rshift = DefineFIFO(in_type, delay_amount, has_valid=True)
 
     tester = fault.Tester(rshift, rshift.CLK)
+    tester.circuit.CLK = 0
 
     tester.circuit.valid_up = 1
     input_counter = 0
@@ -45,6 +46,7 @@ def test_fifo_basic_2_clock_delay():
     rshift = DefineFIFO(in_type, delay_amount, has_valid=True)
 
     tester = fault.Tester(rshift, rshift.CLK)
+    tester.circuit.CLK = 0
 
     tester.circuit.valid_up = 1
     input_counter = 0
@@ -76,6 +78,7 @@ def test_fifo_invalids():
     rshift = DefineFIFO(in_type, delay_amount, has_ce=True, has_valid=True)
 
     tester = fault.Tester(rshift, rshift.CLK)
+    tester.circuit.CLK = 0
 
     tester.circuit.valid_up = 1
     tester.circuit.CE = 1
@@ -110,6 +113,7 @@ def test_fifo_invalids_initial_delay():
     rshift = DefineFIFO(in_type, delay_amount, has_ce=True, has_valid=True)
 
     tester = fault.Tester(rshift, rshift.CLK)
+    tester.circuit.CLK = 0
 
     tester.circuit.CE = 1
     tester.circuit.valid_up = 0
