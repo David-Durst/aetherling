@@ -12,7 +12,7 @@ def test_down_s():
     down = DefineDown_S(1, 0, ST_Int(), has_valid=True)
 
     tester = fault.Tester(down, down.CLK)
-    tester.circuit.CLK = 1
+    tester.circuit.CLK = 0
 
     tester.circuit.valid_up = 1
     tester.circuit.I[0] = test_val
@@ -29,7 +29,7 @@ def test_down_t():
     down = DefineDown_T(3, 0, 1, ST_Int(), has_valid=True)
 
     tester = fault.Tester(down, down.CLK)
-    tester.circuit.CLK = 1
+    tester.circuit.CLK = 0
 
     tester.circuit.valid_up = 1
     tester.circuit.I = test_val
