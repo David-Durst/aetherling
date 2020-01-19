@@ -87,7 +87,7 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
-            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=1)()
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=0)()
 
             # write and read from same location
             # will write on first iteration through element, write and read on later iterations
@@ -111,7 +111,9 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
             wire(next_ram_addr.valid, next_ram_addr_term.I)
 
             wire(cls.I, value_store.WDATA)
-            wire(value_store.RDATA, cls.O)
+            value_delay = RegisterAnyType(elem_t.magma_repr())
+            wire(value_store.RDATA, value_delay.I)
+            wire(value_delay.O, cls.O)
             if has_reset:
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
@@ -166,7 +168,7 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
-            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=1)()
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=0)()
 
             # write and read from same location
             # will write on first iteration through element, write and read on later iterations
@@ -195,7 +197,9 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             wire(next_ram_addr.valid, next_ram_addr_term.I)
 
             wire(cls.I, value_store.WDATA)
-            wire(value_store.RDATA, cls.O)
+            value_delay = RegisterAnyType(elem_t.magma_repr())
+            wire(value_store.RDATA, value_delay.I)
+            wire(value_delay.O, cls.O)
             if has_reset:
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
@@ -255,7 +259,7 @@ def DefineShift_TN(no: int, nis: typing.Tuple, io: int, iis: typing.Tuple, shift
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
-            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=1)()
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=0)()
 
             # write and read from same location
             # will write on first iteration through element, write and read on later iterations
@@ -287,7 +291,9 @@ def DefineShift_TN(no: int, nis: typing.Tuple, io: int, iis: typing.Tuple, shift
             wire(next_ram_addr.valid, next_ram_addr_term.I)
 
             wire(cls.I, value_store.WDATA)
-            wire(value_store.RDATA, cls.O)
+            value_delay = RegisterAnyType(elem_t.magma_repr())
+            wire(value_store.RDATA, value_delay.I)
+            wire(value_delay.O, cls.O)
             if has_reset:
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
@@ -367,7 +373,9 @@ def DefineShift_TS(no: int, io: int, ni: int, shift_amount: int, elem_t: ST_Type
 
             for i in range(ni):
                 if shift_t_xs[i] is None:
-                    wire(cls.I[(i - shift_amount) % ni], cls.O[i])
+                    value_delay = RegisterAnyType(elem_t.magma_repr())
+                    wire(cls.I[(i - shift_amount) % ni], value_delay.I)
+                    wire(value_delay.O, cls.O[i])
                 else:
                     wire(cls.I[(i - shift_amount) % ni], shift_t_xs[i].I)
                     wire(shift_t_xs[i].O, cls.O[i])
