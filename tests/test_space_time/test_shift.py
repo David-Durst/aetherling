@@ -70,10 +70,10 @@ def test_shift_t_v_always_true_no_ce():
         for clk in range(num_clocks_per_iteration):
             tester.circuit.I = test_vals[clk] + i
             tester.eval()
-            tester.step(2)
             if clk >= shift_amount:
                 tester.circuit.O.expect(test_vals[clk - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
+            tester.step(2)
     compile_and_run(tester)
 
 def test_shift_t_invalid_v_delayed_true_no_ce():
@@ -98,10 +98,11 @@ def test_shift_t_invalid_v_delayed_true_no_ce():
         for clk in range(num_clocks_per_iteration):
             val_idx = min(clk, len(test_vals) - 1)
             tester.circuit.I = test_vals[val_idx] + i
-            tester.step(2)
+            tester.eval()
             if clk >= shift_amount:
                 tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
+            tester.step(2)
     compile_and_run(tester)
 
 def test_shift_t_invalid_v_delayed_true_ce():
@@ -128,10 +129,11 @@ def test_shift_t_invalid_v_delayed_true_ce():
             tester.print("CLK: {}\n".format(clk))
             val_idx = min(clk, len(test_vals) - 1)
             tester.circuit.I = test_vals[val_idx] + i
-            tester.step(2)
+            tester.eval()
             if clk >= shift_amount and clk < num_in:
                 tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
+            tester.step(2)
     compile_and_run(tester)
 
 def test_shift_t_elem_invalid_invalid_v_delayed_true_ce():
@@ -162,10 +164,11 @@ def test_shift_t_elem_invalid_invalid_v_delayed_true_ce():
                 tester.print("clk_inner: {}\n".format(clk_inner))
                 val_idx = min(clk_outer, len(test_vals) - 1)
                 tester.circuit.I = test_vals[val_idx] + i + (0 if clk_inner == 0 else 32)
-                tester.step(2)
+                tester.eval()
                 if clk_outer >= shift_amount and clk_outer < num_in and clk_inner == 0:
                     tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
                 tester.circuit.valid_down.expect(1)
+                tester.step(2)
     compile_and_run(tester)
 
 def test_shift_t_two_elem_and_invalid_invalid_v_delayed_true_ce():
@@ -196,10 +199,11 @@ def test_shift_t_two_elem_and_invalid_invalid_v_delayed_true_ce():
                 tester.print("clk_inner: {}\n".format(clk_inner))
                 val_idx = min(clk_outer * 2 + clk_inner, len(test_vals) - 1)
                 tester.circuit.I = test_vals[val_idx] + i + (0 if clk_inner < 2 else 32)
-                tester.step(2)
+                tester.eval()
                 if clk_outer >= shift_amount and clk_outer < num_in and clk_inner < 2:
                     tester.circuit.O.expect(test_vals[val_idx - shift_amount * 2] + i)
                 tester.circuit.valid_down.expect(1)
+                tester.step(2)
     compile_and_run(tester)
 
 def test_shift_tt_v_always_true_no_ce():
@@ -219,10 +223,11 @@ def test_shift_tt_v_always_true_no_ce():
         for clk in range(num_clocks_per_iteration):
             tester.print("CLK: {}\n".format(clk))
             tester.circuit.I = test_vals[clk] + i
-            tester.step(2)
+            tester.eval()
             if clk >= shift_amount:
                 tester.circuit.O.expect(test_vals[clk - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
+            tester.step(2)
     compile_and_run(tester)
 
 def test_shift_tt_inner_invalid_v_always_true_no_ce():
@@ -247,12 +252,13 @@ def test_shift_tt_inner_invalid_v_always_true_no_ce():
                 in_val = test_vals[val_idx] + i + (0 if clk_inner < 2 else 32)
                 tester.circuit.I = in_val
                 tester.print("I: {}\n".format(str(in_val)))
-                tester.step(2)
+                tester.eval()
                 tester.print("O: %d\n", tester.circuit.O)
                 #tester.print("inner_valid: %d\n", tester.circuit.inner_valid)
                 if val_idx >= shift_amount and clk_inner < 2:
                     tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
                 tester.circuit.valid_down.expect(1)
+                tester.step(2)
     compile_and_run(tester)
 
 def test_shift_tt_inner_invalid_elem_invalid_v_always_true_no_ce():
@@ -280,12 +286,13 @@ def test_shift_tt_inner_invalid_elem_invalid_v_always_true_no_ce():
                     in_val = test_vals[val_idx] + i + (0 if clk_inner < 2 and clk_innermost == 0 else 32)
                     tester.circuit.I = in_val
                     tester.print("I: {}\n".format(str(in_val)))
-                    tester.step(2)
+                    tester.eval()
                     tester.print("O: %d\n", tester.circuit.O)
                     #tester.print("inner_valid: %d\n", tester.circuit.inner_valid)
                     if val_idx >= shift_amount and clk_inner < 2 and clk_innermost == 0:
                         tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
                     tester.circuit.valid_down.expect(1)
+                    tester.step(2)
     compile_and_run(tester)
 
 
@@ -306,10 +313,11 @@ def test_shift_tn_v_always_true_no_ce():
         for clk in range(num_clocks_per_iteration):
             tester.print("CLK: {}\n".format(clk))
             tester.circuit.I = test_vals[clk] + i
-            tester.step(2)
+            tester.eval()
             if clk >= shift_amount:
                 tester.circuit.O.expect(test_vals[clk - shift_amount] + i)
             tester.circuit.valid_down.expect(1)
+            tester.step(2)
     compile_and_run(tester)
 
 def test_shift_tn_inner_invalid_v_always_true_no_ce():
@@ -336,12 +344,13 @@ def test_shift_tn_inner_invalid_v_always_true_no_ce():
                     in_val = test_vals[val_idx] + i + (0 if clk_inner < 2 and clk_ii < 2 else 110)
                     tester.circuit.I = in_val
                     tester.print("I: {}\n".format(str(in_val)))
-                    tester.step(2)
+                    tester.eval()
                     tester.print("O: %d\n", tester.circuit.O)
                     #tester.print("inner_valid: %d\n", tester.circuit.inner_valid)
                     if val_idx >= shift_amount and clk_inner < 2 and clk_ii < 2:
                         tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
                     tester.circuit.valid_down.expect(1)
+                    tester.step(2)
     compile_and_run(tester)
 
 def test_shift_tn_inner_invalid_elem_invalid_v_always_true_no_ce():
@@ -368,12 +377,13 @@ def test_shift_tn_inner_invalid_elem_invalid_v_always_true_no_ce():
                         in_val = test_vals[val_idx] + i + (0 if clk_inner < 2 and clk_ii < 2 and clk_innermost == 0 else 110)
                         tester.circuit.I = in_val
                         tester.print("I: {}\n".format(str(in_val)))
-                        tester.step(2)
+                        tester.eval()
                         tester.print("O: %d\n", tester.circuit.O)
                         #tester.print("inner_valid: %d\n", tester.circuit.inner_valid)
                         if val_idx >= shift_amount and clk_inner < 2 and clk_ii < 2 and clk_innermost == 0:
                             tester.circuit.O.expect(test_vals[val_idx - shift_amount] + i)
                         tester.circuit.valid_down.expect(1)
+                        tester.step(2)
     compile_and_run(tester)
 def test_shift_ts():
     no = 2
@@ -394,10 +404,11 @@ def test_shift_ts():
         set_nested_port(tester, tester.circuit.I, test_vals[clk], 1, 0)
         print_nested_port(tester, tester.circuit.I, 1)
         tester.print("\n")
-        tester.step(2)
+        tester.eval()
         #for i, val in enumerate(test_vals[i*ni+shift_amount:(i+1)*ni+shift_amount]):
         print_nested_port(tester, tester.circuit.O, 1)
         tester.print("\n")
         expect_nested_port(tester, tester.circuit.O, shifted_test_vals[clk], 1, 0)
         tester.circuit.valid_down.expect(1)
+        tester.step(2)
     compile_and_run(tester)

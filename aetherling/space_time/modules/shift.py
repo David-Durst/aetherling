@@ -2,7 +2,6 @@ from aetherling.space_time import *
 from aetherling.space_time.type_helpers import valid_ports
 from aetherling.space_time.ram_st import DefineRAM_ST
 from aetherling.modules.counter import AESizedCounterModM
-from aetherling.modules.register_any_type import RegisterAnyType
 from aetherling.modules.term_any_type import TermAnyType
 from magma import *
 from magma.circuit import DefineCircuitKind
@@ -81,13 +80,11 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay.I)
-                wire(valid_delay.O, cls.valid_down)
+                wire(cls.valid_up, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
-            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=1)()
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset)()
 
             # write and read from same location
             # will write on first iteration through element, write and read on later iterations
@@ -160,13 +157,11 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay.I)
-                wire(valid_delay.O, cls.valid_down)
+                wire(cls.valid_up, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
-            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=1)()
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset)()
 
             # write and read from same location
             # will write on first iteration through element, write and read on later iterations
@@ -249,13 +244,11 @@ def DefineShift_TN(no: int, nis: typing.Tuple, io: int, iis: typing.Tuple, shift
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay.I)
-                wire(valid_delay.O, cls.valid_down)
+                wire(cls.valid_up, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
-            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset, read_latency=1)()
+            value_store = DefineRAM_ST(elem_t, shift_amount, has_reset=has_reset)()
 
             # write and read from same location
             # will write on first iteration through element, write and read on later iterations
@@ -350,9 +343,7 @@ def DefineShift_TS(no: int, io: int, ni: int, shift_amount: int, elem_t: ST_Type
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay.I)
-                wire(valid_delay.O, cls.valid_down)
+                wire(cls.valid_up, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
