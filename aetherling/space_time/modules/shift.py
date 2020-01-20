@@ -81,11 +81,9 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay0 = RegisterAnyType(Bit)
-                valid_delay1 = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay0.I)
-                wire(valid_delay0.O, valid_delay1.I)
-                wire(valid_delay1.O, cls.valid_down)
+                valid_delay = RegisterAnyType(Bit)
+                wire(cls.valid_up, valid_delay.I)
+                wire(valid_delay.O, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
@@ -113,11 +111,9 @@ def DefineShift_T(n: int, i: int, shift_amount: int, elem_t: ST_Type,
             wire(next_ram_addr.valid, next_ram_addr_term.I)
 
             wire(cls.I, value_store.WDATA)
-            value_delay0 = RegisterAnyType(elem_t.magma_repr())
-            value_delay1 = RegisterAnyType(elem_t.magma_repr())
-            wire(value_store.RDATA, value_delay0.I)
-            wire(value_delay0.O, value_delay1.I)
-            wire(value_delay1.O, cls.O)
+            value_delay = RegisterAnyType(elem_t.magma_repr())
+            wire(value_store.RDATA, value_delay.I)
+            wire(value_delay.O, cls.O)
             if has_reset:
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
@@ -166,11 +162,9 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay0 = RegisterAnyType(Bit)
-                valid_delay1 = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay0.I)
-                wire(valid_delay0.O, valid_delay1.I)
-                wire(valid_delay1.O, cls.valid_down)
+                valid_delay = RegisterAnyType(Bit)
+                wire(cls.valid_up, valid_delay.I)
+                wire(valid_delay.O, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
@@ -186,10 +180,6 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             # as will just loop around
             ram_addr = AESizedCounterModM(shift_amount, has_ce=True, has_reset=has_reset)
             # this handles invalid clocks of inner TSeq
-            # it matters that handle inner invalid clocks because we preserve
-            # data across multiple inner TSeqs so need to save what was going to be
-            # emitted until next valid. Draw ShiftT of two TSeq 2 1 Int vs ShiftTT of one TSeq 2 0 (TSeq 2 1 Int)
-            # to see and example
             inner_valid = DefineNestedCounters(ST_TSeq(ni, ii, ST_Int()), has_last=False,
                                                has_ce=True, has_reset=has_reset, valid_when_ce_off=True)()
 
@@ -207,11 +197,9 @@ def DefineShift_TT(no: int, ni: int, io: int, ii: int, shift_amount: int, elem_t
             wire(next_ram_addr.valid, next_ram_addr_term.I)
 
             wire(cls.I, value_store.WDATA)
-            value_delay0 = RegisterAnyType(elem_t.magma_repr())
-            value_delay1 = RegisterAnyType(elem_t.magma_repr())
-            wire(value_store.RDATA, value_delay0.I)
-            wire(value_delay0.O, value_delay1.I)
-            wire(value_delay1.O, cls.O)
+            value_delay = RegisterAnyType(elem_t.magma_repr())
+            wire(value_store.RDATA, value_delay.I)
+            wire(value_delay.O, cls.O)
             if has_reset:
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
@@ -265,11 +253,9 @@ def DefineShift_TN(no: int, nis: typing.Tuple, io: int, iis: typing.Tuple, shift
             enabled = DefineCoreirConst(1, 1)().O[0]
             if has_valid:
                 enabled = cls.valid_up & enabled
-                valid_delay0 = RegisterAnyType(Bit)
-                valid_delay1 = RegisterAnyType(Bit)
-                wire(cls.valid_up, valid_delay0.I)
-                wire(valid_delay0.O, valid_delay1.I)
-                wire(valid_delay1.O, cls.valid_down)
+                valid_delay = RegisterAnyType(Bit)
+                wire(cls.valid_up, valid_delay.I)
+                wire(valid_delay.O, cls.valid_down)
             if has_ce:
                 enabled = bit(cls.CE) & enabled
 
@@ -285,10 +271,6 @@ def DefineShift_TN(no: int, nis: typing.Tuple, io: int, iis: typing.Tuple, shift
             # as will just loop around
             ram_addr = AESizedCounterModM(shift_amount, has_ce=True, has_reset=has_reset)
             # this handles invalid clocks of inner TSeq
-            # it matters that handle inner invalid clocks because we preserve
-            # data across multiple inner TSeqs so need to save what was going to be
-            # emitted until next valid. Draw ShiftT of two TSeq 2 1 Int vs ShiftTT of one TSeq 2 0 (TSeq 2 1 Int)
-            # to see and example
             inner_valid_t = ST_Int()
             for i in range(len(nis))[::-1]:
                 inner_valid_t = ST_TSeq(nis[i], iis[i], inner_valid_t)
@@ -309,11 +291,9 @@ def DefineShift_TN(no: int, nis: typing.Tuple, io: int, iis: typing.Tuple, shift
             wire(next_ram_addr.valid, next_ram_addr_term.I)
 
             wire(cls.I, value_store.WDATA)
-            value_delay0 = RegisterAnyType(elem_t.magma_repr())
-            value_delay1 = RegisterAnyType(elem_t.magma_repr())
-            wire(value_store.RDATA, value_delay0.I)
-            wire(value_delay0.O, value_delay1.I)
-            wire(value_delay1.O, cls.O)
+            value_delay = RegisterAnyType(elem_t.magma_repr())
+            wire(value_store.RDATA, value_delay.I)
+            wire(value_delay.O, cls.O)
             if has_reset:
                 wire(value_store.RESET, cls.RESET)
                 wire(ram_addr.RESET, cls.RESET)
@@ -393,11 +373,9 @@ def DefineShift_TS(no: int, io: int, ni: int, shift_amount: int, elem_t: ST_Type
 
             for i in range(ni):
                 if shift_t_xs[i] is None:
-                    value_delay0 = RegisterAnyType(elem_t.magma_repr())
-                    value_delay1 = RegisterAnyType(elem_t.magma_repr())
-                    wire(cls.I[(i - shift_amount) % ni], value_delay0.I)
-                    wire(value_delay0.O, value_delay1.I)
-                    wire(value_delay1.O, cls.O[i])
+                    value_delay = RegisterAnyType(elem_t.magma_repr())
+                    wire(cls.I[(i - shift_amount) % ni], value_delay.I)
+                    wire(value_delay.O, cls.O[i])
                 else:
                     wire(cls.I[(i - shift_amount) % ni], shift_t_xs[i].I)
                     wire(shift_t_xs[i].O, cls.O[i])
