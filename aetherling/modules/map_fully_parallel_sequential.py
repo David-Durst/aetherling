@@ -51,7 +51,7 @@ def MapParallel(numInputs: int, op: DefineCircuitKind) -> Circuit:
 def DefineNativeMapParallel(numInputs: int, op: DefineCircuitKind, merge_ready_valid_ce_reset: bool = False,
                             has_ready: bool = True, has_valid: bool = True) -> DefineCircuitKind:
     class _Map(Circuit):
-        name = "NativeMapParallel_n{}_op{}".format(str(numInputs), cleanName(str(op)))
+        name = "NativeMapParallel_n{}".format(str(numInputs))
         num_ports = len(op.IO.Decl) // 2
         port_names = op.IO.Decl[::2]
         port_types = op.IO.Decl[1::2]

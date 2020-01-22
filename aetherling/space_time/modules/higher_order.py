@@ -49,7 +49,7 @@ def DefineMap2_T(n: int, inv: int, op: DefineCircuitKind) -> DefineCircuitKind:
 @cache_definition
 def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) -> DefineCircuitKind:
     class _Map_T(Circuit):
-        name = undup_("Map_T_n{}_i{}_op{}".format(str(n), str(inv), cleanName(str(op))).replace("__","_"))
+        name = undup_("Map_T_n{}_i{}".format(str(n), str(inv)).replace("__","_"))
         op_num_ports = len(op.IO.Decl) // 2
         op_port_names = op.IO.Decl[::2]
         op_port_types = op.IO.Decl[1::2]
@@ -78,7 +78,7 @@ def DefineMap_T_1_or_2(n: int, inv: int, op: DefineCircuitKind, is_unary: bool) 
 def DefineReduce_S(n: int, op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Reduce_S(Circuit):
         assert type(strip_tseq_1_n_sseq_1(op.st_in_t[0])) == ST_Atom_Tuple
-        name = "Reduce_S_n{}_op{}".format(str(n), cleanName(str(op)))
+        name = "Reduce_S_n{}".format(str(n))
         binary_op = False
         st_in_t = [ST_SSeq(n, replace_atom_tuple_with_t0(op.st_in_t[0]))]
         st_out_t = ST_SSeq(1, op.st_out_t)
@@ -106,7 +106,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
     class _Reduce_T(Circuit):
         # second case handles partially parallel generated code where reduce over a map_s 1
         assert type(strip_tseq_1_n_sseq_1(op.st_in_t[0])) == ST_Atom_Tuple
-        name = "Reduce_T_n{}_i{}_op{}".format(str(n), str(i), cleanName(str(op)))
+        name = "Reduce_T_n{}_i{}".format(str(n), str(i))
         binary_op = False
         st_in_t = [ST_TSeq(n, i, replace_atom_tuple_with_t0(op.st_in_t[0]))]
         st_out_t = ST_TSeq(1, n+i-1, op.st_out_t)
@@ -140,7 +140,7 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
 @cache_definition
 def DefineAdd_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Add_1_S(Circuit):
-        name = "Add_1_S_op{}".format( cleanName(str(op)))
+        name = "Add_1_S"
         binary_op = False
         st_in_t = op.st_in_t
         st_out_t = ST_SSeq(1, op.st_out_t)
@@ -163,7 +163,7 @@ def DefineAdd_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
 @cache_definition
 def DefineRemove_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Remove_1_S(Circuit):
-        name = "Remove_1_S_op{}".format( cleanName(str(op)))
+        name = "Remove_1_S"
         binary_op = False
         st_in_t = [ST_SSeq(1, op.st_in_t[0])]
         st_out_t = op.st_out_t
@@ -186,7 +186,7 @@ def DefineRemove_1_S(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKin
 @cache_definition
 def DefineAdd_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Add_1_0_T(Circuit):
-        name = "Add_1_S_op{}".format( cleanName(str(op)))
+        name = "Add_1_S"
         binary_op = False
         st_in_t = op.st_in_t
         st_out_t = ST_TSeq(1, 0, op.st_out_t)
@@ -209,7 +209,7 @@ def DefineAdd_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind
 @cache_definition
 def DefineRemove_1_0_T(op: DefineCircuitKind, has_valid=False) -> DefineCircuitKind:
     class _Remove_1_0_T(Circuit):
-        name = "Remove_1_S_op{}".format( cleanName(str(op)))
+        name = "Remove_1_S"
         binary_op = False
         st_in_t = [ST_TSeq(1, 0, op.st_in_t[0])]
         st_out_t = op.st_out_t

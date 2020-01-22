@@ -56,7 +56,7 @@ def DefineReduceParallel(numInputs: int, opDef: Circuit) -> Circuit:
     out: Out(T)
     """
     class _ReduceParallel(Circuit):
-        name = "ReduceParallel_n{}_op{}".format(str(numInputs), cleanName(str(opDef)))
+        name = "ReduceParallel_n{}".format(str(numInputs))
         token_type = type(opDef.interface.outputs()[0])
 
         IO = ['I', In(Array[numInputs, token_type]), 'O', Out(token_type)]
@@ -124,7 +124,7 @@ def DefineReduceSequential(numInputs: int, opDef: Circuit, has_ce=False) -> Circ
     CE : In(Enable)
     """
     class _ReduceSequential(Circuit):
-        name = "ReduceSequential_n{}_op{}_ce{}".format(str(numInputs), cleanName(str(opDef)), str(has_ce))
+        name = "ReduceSequential_n{}_ce{}".format(str(numInputs), str(has_ce))
         token_type = type(opDef.interface.outputs()[0])
 
         IO = ['I', In(token_type), 'out', Out(token_type), 'ready', Out(Bit),
@@ -287,7 +287,7 @@ def renameCircuitForReduce(opDef: DefineCircuitKind) -> DefineCircuitKind:
     assert In(output[0][1]) == inputs[0][1] # need to do Out instead of in conversion as types reversed here
 
     class _RenamedCircuit(Circuit):
-        name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
+        name = "renamedForReduce"
         IO = ["in0", In(inputs[0][1]), "in1", In(inputs[1][1]), "out", Out(inputs[0][1])]
 
         @classmethod
@@ -335,7 +335,7 @@ def tupleToTwoInputsForReduce(opDef: DefineCircuitKind, extra_sseq=0) -> DefineC
         in1_type = Array[1, in1_type]
 
     class _RenamedCircuit(Circuit):
-        name = "renamedForReduce_op{}".format(cleanName(str(opDef)))
+        name = "renamedForReduce"
         IO = ["in0", in0_type, "in1", in1_type, "out", Out(type(output[0]))]
 
         @classmethod
