@@ -20,6 +20,9 @@ def DefinePassthrough(t_in: ST_Type, t_out: ST_Type, has_valid = False) -> Defin
     class _Passthrough(Circuit):
         name = "Passthrough_tIn{}_tOut{}".format(cleanName(str(t_in)), str(cleanName(str(t_out))))
         IO = ['I', In(t_in.magma_repr()), 'O', Out(t_out.magma_repr())]
+        binary_op = False
+        st_in_t = [t_in]
+        st_out_t = t_out
         if has_valid:
             IO += valid_ports
         @classmethod

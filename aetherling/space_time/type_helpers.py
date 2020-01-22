@@ -163,7 +163,8 @@ def strip_tseq_1_n_sseq_1(t: ST_Type) -> ST_Type:
 
 def merge_layers(t: ST_Type) -> ST_Type:
     if is_nested(t):
-        if type(t) == ST_SSeq and type(t.t) == ST_SSeq:
+        if (type(t) == ST_SSeq or type(t) == ST_SSeq_Tuple) and \
+                (type(t.t) == ST_SSeq or type(t.t) == ST_SSeq_Tuple):
             new_n = t.n * t.t.n
             return merge_layers(ST_SSeq(new_n, t.t.t))
         elif type(t) == ST_TSeq and type(t.t) == ST_TSeq and t.t.i == 0:
