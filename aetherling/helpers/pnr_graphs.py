@@ -157,24 +157,24 @@ def plot_from_results_str(results_file):
     joined_sp_ratios_list = []
     joined_hth_ratios_list = []
     for app in apptb:
-        print("App " + str(app))
+        #print("App " + str(app))
         (joined_res, joined_sp_ratios, joined_hth_ratios) = \
             comp_ae_and_others(res[systb['ae']][apptb[app]], res[systb['h2h']][apptb[app]], res[systb['sp']][apptb[app]])
         joined_res_list.append(joined_res)
         joined_sp_ratios_list.append(joined_sp_ratios)
         joined_hth_ratios_list.append(joined_hth_ratios)
-        print("Max SP" + str(joined_sp_ratios.iloc[:,1].max()))
-        print("Min SP" + str(joined_sp_ratios.iloc[:,1].min()))
-        print("Max HTH" + str(joined_hth_ratios.iloc[:,1].max()))
-        print("Min HTH" + str(joined_hth_ratios.iloc[:,1].min()))
+        #print("Max SP" + str(joined_sp_ratios.iloc[:,1].max()))
+        #print("Min SP" + str(joined_sp_ratios.iloc[:,1].min()))
+        #print("Max HTH" + str(joined_hth_ratios.iloc[:,1].max()))
+        #print("Min HTH" + str(joined_hth_ratios.iloc[:,1].min()))
         sp_maxes.append(joined_sp_ratios.iloc[:,1].max())
         sp_mins.append(joined_sp_ratios.iloc[:,1].min())
         hth_maxes.append(joined_hth_ratios.iloc[:,1].max())
         hth_mins.append(joined_hth_ratios.iloc[:,1].min())
-    print("sp_maxes: " + str(sp_maxes))
-    print("sp_mins: " + str(sp_mins))
-    print("hth_maxes: " + str(hth_maxes))
-    print("hth_mins: " + str(hth_mins))
+    print("AE_SP_Slices_Ratio max: " + str(max(sp_maxes)))
+    print("AE_SP_Slices_Ratio min: " + str(min(sp_mins)))
+    #print("hth_maxes: " + str(hth_maxes))
+    #print("hth_mins: " + str(hth_mins))
 
 
 
@@ -198,7 +198,7 @@ def plot_from_results_str(results_file):
                                               fontsize=fntsize)
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         axis.set_ylim(bottom=0,top=10)
-        print("plotting " + str(appname) + " ae")
+        print("plotting " + str(appname) + " Aetherling vs Spatial")
         print(joined_sp_ratios_list[apptb_cmp[appname]])
         axis.spines['right'].set_visible(has_right)
         axis.spines['right'].set_linewidth(3)
@@ -288,8 +288,8 @@ def comp_ae_and_others(ae_pd, hth_pd, sp_pd):
     joined_res = joined_res.loc[:, ['Parallelism', 'AE_Slices', 'SP_Slices', 'HTH_Slices']].rename(
         columns={"AE_Slices":"Aetherling","SP_Slices":"Spatial","HTH_Slices":"Halide-HLS"}
     )
-    print(joined_sp_ratios)
-    print(joined_hth_ratios)
+    #print(joined_sp_ratios)
+    #print(joined_hth_ratios)
     return (joined_res, joined_sp_ratios, joined_hth_ratios)
 
 def add_missing_parallelisms(results_pd, system, application, parallelisms_to_add):
