@@ -171,8 +171,8 @@ def plot_from_results_str(results_file):
         sp_mins.append(joined_sp_ratios.iloc[:,1].min())
         hth_maxes.append(joined_hth_ratios.iloc[:,1].max())
         hth_mins.append(joined_hth_ratios.iloc[:,1].min())
-    print("AE_SP_Slices_Ratio max: " + str(max(sp_maxes)))
-    print("AE_SP_Slices_Ratio min: " + str(min(sp_mins)))
+    #print("AE_SP_Slices_Ratio max: " + str(max(sp_maxes)))
+    #print("AE_SP_Slices_Ratio min: " + str(min(sp_mins)))
     #print("hth_maxes: " + str(hth_maxes))
     #print("hth_mins: " + str(hth_mins))
 
@@ -193,9 +193,10 @@ def plot_from_results_str(results_file):
             axis.set_yticks([])
         else:
             axis.set_yticks([0,1,2,4,6,8,10])
-        joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", xticks=[1,2,4,8], rot=0,
+        joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
                                               ax=axis, legend=False, color=["g"], width=0.8,
                                               fontsize=fntsize)
+        axis.set_xticks([1,2,4,8])
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         axis.set_ylim(bottom=0,top=10)
         print("plotting " + str(appname) + " Aetherling vs Spatial")
