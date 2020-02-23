@@ -196,8 +196,6 @@ def plot_from_results_str(results_file):
         joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
                                               ax=axis, legend=False, color=["g"], width=0.8,
                                               fontsize=fntsize)
-        axis.set_xscale('log', basex=2)
-        axis.set_xticks([1,2,4,8])
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         axis.set_ylim(bottom=0,top=10)
         print("plotting " + str(appname) + " Aetherling vs Spatial")
