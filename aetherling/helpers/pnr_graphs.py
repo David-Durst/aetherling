@@ -6,11 +6,9 @@ import os
 import matplotlib.ticker as ticker
 import matplotlib.colors as mcolors
 
-def plot_from_results_str(results_file, results_all_types_file):
+def plot_from_results_str(results_file):
     results = pd.read_csv(results_file)
-    results_all_types = pd.read_csv(results_all_types_file)
     print("all types")
-    print(results_all_types)
     results['Clock Rate'] = nan
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     systb = {"ae": 0, "h2h": 1, "sp": 2}
@@ -29,19 +27,6 @@ def plot_from_results_str(results_file, results_all_types_file):
             results_only_selected_columns = get_output_columns(sorted_by_parallelism)
             per_system_results.append(results_only_selected_columns)
         per_system_per_application_results.append(per_system_results)
-    per_application_all_types_results = []
-    for j, app in enumerate(applications):
-        start_per_system = results_all_types.loc[results_all_types.Application == app,:]
-        paper_parallelism = fix_parallelism(start_per_system, application_lengths[j])
-        #filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
-        sorted_by_parallelism = paper_parallelism.sort_values("Parallelism")
-        results_only_selected_columns = get_output_columns(sorted_by_parallelism)
-        per_application_all_types_results.append(results_only_selected_columns)
-#    per_system_results = [results[results.System == system] for system in systems]
-#    per_system_per_application = \
-#        [[per_system_result[per_system_result.Application == app]
-#          for app in applications]
-#         for per_system_result in per_system_results]
     fig, ((ax1_0, ax1_1), (ax1_2, ax1_3)) = plt.subplots(nrows=2, ncols=2)
     for axis in [ax1_0, ax1_1, ax1_2, ax1_3]:
         axis.spines['right'].set_visible(False)
@@ -69,7 +54,6 @@ def plot_from_results_str(results_file, results_all_types_file):
     ax1_0.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
     ax1_0.set_xticks([1,2,5,10,20,40,200])
     res = per_system_per_application_results
-    res_all_types = per_application_all_types_results
     res[systb['ae']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                         ax=ax1_0, label="Scheduler Result", color=["g"],
                                         linestyle='-', marker='o', fontsize=fntsize,
@@ -77,11 +61,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                         )
     print("plotting map ae")
     print(res[systb['ae']][apptb['map']])
-    #print("plotting map ae all types")
-    #print(res_all_types[apptb['map']])
-    #res_all_types[apptb['map']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                    ax=ax1_0, label="Other Output Types", color=["black"],
-    #                                    marker='s', fontsize=fntsize)
     ax1_0.set_ylabel(y_label, fontsize=fntsize)
     ax1_0.set_xlabel("", fontsize=fntsize)
 
@@ -111,12 +90,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                            )
     print("plotting conv2d ae")
     print(res[systb['ae']][apptb['conv2d']])
-    #print("plotting conv2d ae all types")
-    #print(res_all_types[apptb['conv2d']])
-    #res_all_types[apptb['conv2d']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                       ax=ax1_1, label="Other Output Types", color=["black"],
-    #                                       marker='s', fontsize=fntsize)
-    #ax1_1.set_ylabel(y_label, fontsize=fntsize)
     ax1_1.set_xlabel("", fontsize=fntsize);
 
 
@@ -144,11 +117,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                                )
     print("plotting conv2d_b2b ae")
     print(res[systb['ae']][apptb['conv2d_b2b']])
-    #res_all_types[apptb['conv2d_b2b']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                           ax=ax1_2, label="Other Output Types", color=["black"],
-    #                                           marker='s', fontsize=fntsize)
-    #print("plotting conv2d_b2b ae")
-    #print(res_all_types[apptb['conv2d_b2b']])
     ax1_2.set_ylabel(y_label, fontsize=fntsize)
     ax1_2.set_xlabel(x_label, fontsize=fntsize);
 
@@ -176,12 +144,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                             )
     print("plotting sharpen ae")
     print(res[systb['ae']][apptb['sharpen']])
-    #res_all_types[apptb['sharpen']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                        ax=ax1_3, label="Other Output Types", color=["black"],
-    #                                        marker='s', fontsize=fntsize)
-    #print("plotting sharpen ae")
-    #print(res_all_types[apptb['sharpen']])
-    #ax1_3.set_ylabel(y_label, fontsize=fntsize)
     ax1_3.set_xlabel(x_label, fontsize=fntsize);
 
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
