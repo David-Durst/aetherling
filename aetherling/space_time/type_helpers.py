@@ -177,6 +177,16 @@ def merge_layers(t: ST_Type) -> ST_Type:
     else:
         return t
 
+def replace_stuple_with_sseq(t: ST_Type) -> ST_Type:
+    if is_nested(t):
+        if (type(t) == ST_SSeq_Tuple) :
+            return ST_SSeq(t.n, replace_stuple_with_sseq(t.t))
+        else:
+            new_t = replace_stuple_with_sseq(t.t)
+            return replace(t, t=new_t)
+    else:
+        return t
+
 def flatten(l):
     return [item for sublist in l for item in sublist]
 
