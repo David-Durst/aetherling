@@ -27,22 +27,52 @@ def DefineRAMAnyType(t: Kind, n: int, read_latency = 0):
         @classmethod
         def definition(cls):
             type_size_in_bits = GetCoreIRBackend().get_type(t).size
-            ram = DefineRAM(n, type_size_in_bits, read_latency=read_latency)()
+            if read_latency == 1:
+                ram = DefineCoreirMem2(n, type_size_in_bits)()
+                type_to_bits = Dehydrate(t)
+                wire(cls.WDATA, type_to_bits.I)
+                wire(type_to_bits.out, ram.wdata)
 
-            type_to_bits = Dehydrate(t)
-            wire(cls.WDATA, type_to_bits.I)
-            wire(type_to_bits.out, ram.WDATA)
+                bits_to_type = Hydrate(t)
+                wire(ram.rdata, bits_to_type.I)
+                wire(bits_to_type.out, cls.RDATA)
 
-            bits_to_type = Hydrate(t)
-            wire(ram.RDATA, bits_to_type.I)
-            wire(bits_to_type.out, cls.RDATA)
+                wire(cls.RADDR, ram.raddr)
+                wire(ram.waddr, cls.WADDR)
 
-            wire(cls.RADDR, ram.RADDR)
-            wire(ram.WADDR, cls.WADDR)
+                wire(cls.WE, ram.wen)
+            else:
+                ram = DefineRAM(n, type_size_in_bits, read_latency=read_latency)()
 
-            wire(cls.WE, ram.WE)
+                type_to_bits = Dehydrate(t)
+                wire(cls.WDATA, type_to_bits.I)
+                wire(type_to_bits.out, ram.WDATA)
+
+                bits_to_type = Hydrate(t)
+                wire(ram.RDATA, bits_to_type.I)
+                wire(bits_to_type.out, cls.RDATA)
+
+                wire(cls.RADDR, ram.RADDR)
+                wire(ram.WADDR, cls.WADDR)
+
+                wire(cls.WE, ram.WE)
 
     return _RAM
 
 def RAMAnyType(t: Kind, n: int):
     return DefineRAMAnyType(t, n)()
+
+def DefineCoreirMem2(depth, width):
+    name = "coreir_mem2_{}x{}".format(depth,width)
+    addr_width = getRAMAddrWidth(depth)
+    IO = ["raddr", In(Bits[ addr_width ]),
+          "rdata", Out(Bits[ width ]),
+          "waddr", In(Bits[ addr_width ]),
+          "wdata", In(Bits[ width ]),
+          "clk", In(Clock),
+          "wen", In(Bit) ]
+    return DeclareCircuit(name, *IO, verilog_name="syncram",
+                          coreir_name="SyncRam", coreir_lib="memory",
+                          coreir_genargs={"width": width, "depth": depth})
+    # coreir_configargs={"init": "0"})
+
