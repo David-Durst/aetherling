@@ -6,49 +6,29 @@ import os
 import matplotlib.ticker as ticker
 import matplotlib.colors as mcolors
 
-def plot_from_results_str(results_file, results_all_types_file):
+def plot_from_results_str(results_file):
     results = pd.read_csv(results_file)
-    #results_all_types = pd.read_csv(results_all_types_file)
-    #print("all types")
-    #print(results_all_types)
+    print("all types")
     results['Clock Rate'] = nan
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     systb = {"ae": 0, "h2h": 1, "sp": 2}
-    applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera", "big_conv2d"]
-    apptb = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 5, "big_conv2d": 7}
-    apptb_cmp = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 3, "big_conv2d": 4}
-    application_lengths = [200, 16, 16, 16, 64, 16, 200, 1920*1080]
+    applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera"]
+    apptb = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 5}
+    apptb_cmp = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 3}
+    application_lengths = [200, 16, 16, 16, 64, 16, 200]
     per_system_per_application_results = []
     for i, system in enumerate(systems):
         per_system_results = []
         for j, app in enumerate(applications):
             start_per_app_per_system = results[(results.System == system) & (results.Application == app)]
-            if app == "big_conv2d" and system == "aetherling_copies":
-                print("big_conv_custom")
-                print(results[results.Application == "big_conv2d"])
-                print("big_conv_standard")
-                print(start_per_app_per_system)
             paper_parallelism = fix_parallelism(start_per_app_per_system, application_lengths[j])
             #filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
             sorted_by_parallelism = paper_parallelism.sort_values("Parallelism")
             results_only_selected_columns = get_output_columns(sorted_by_parallelism)
             per_system_results.append(results_only_selected_columns)
         per_system_per_application_results.append(per_system_results)
-    per_application_all_types_results = []
-    #for j, app in enumerate(applications):
-    #    start_per_system = results_all_types.loc[results_all_types.Application == app,:]
-    #    paper_parallelism = fix_parallelism(start_per_system, application_lengths[j])
-    #    #filled_in = add_missing_parallelisms(paper_parallelism, system, app, application_parallelisms[j] if i == 0 else application_parallelisms_others[j])
-    #    sorted_by_parallelism = paper_parallelism.sort_values("Parallelism")
-    #    results_only_selected_columns = get_output_columns(sorted_by_parallelism)
-    #    per_application_all_types_results.append(results_only_selected_columns)
-#    per_system_results = [results[results.System == system] for system in systems]
-#    per_system_per_application = \
-#        [[per_system_result[per_system_result.Application == app]
-#          for app in applications]
-#         for per_system_result in per_system_results]
-    fig, ((ax1_0, ax1_1), (ax1_2, ax1_3), (ax1_4, ax1_5)) = plt.subplots(nrows=3, ncols=2)
-    for axis in [ax1_0, ax1_1, ax1_2, ax1_3, ax1_4, ax1_5]:
+    fig, ((ax1_0, ax1_1), (ax1_2, ax1_3)) = plt.subplots(nrows=2, ncols=2)
+    for axis in [ax1_0, ax1_1, ax1_2, ax1_3]:
         axis.spines['right'].set_visible(False)
         axis.spines['top'].set_visible(False)
     plt.subplots_adjust(hspace=0.4, top=0.95)
@@ -56,7 +36,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     fntsize = 34
     plt.rcParams.update({'font.size': fntsize})
     fig.set_figwidth(18)
-    fig.set_figheight(27)
+    fig.set_figheight(18)
     x_label = "Throughput (Input Px / Clk)"
     y_label = "Area (Slices)"
     ms = 18
@@ -74,7 +54,6 @@ def plot_from_results_str(results_file, results_all_types_file):
     ax1_0.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
     ax1_0.set_xticks([1,2,5,10,20,40,200])
     res = per_system_per_application_results
-    res_all_types = per_application_all_types_results
     res[systb['ae']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                         ax=ax1_0, label="Scheduler Result", color=["g"],
                                         linestyle='-', marker='o', fontsize=fntsize,
@@ -82,11 +61,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                         )
     print("plotting map ae")
     print(res[systb['ae']][apptb['map']])
-    #print("plotting map ae all types")
-    #print(res_all_types[apptb['map']])
-    #res_all_types[apptb['map']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                    ax=ax1_0, label="Other Output Types", color=["black"],
-    #                                    marker='s', fontsize=fntsize)
     ax1_0.set_ylabel(y_label, fontsize=fntsize)
     ax1_0.set_xlabel("", fontsize=fntsize)
 
@@ -102,7 +76,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     ax1_1.tick_params(axis='y', which='both', pad=20)
     ax1_1.set_yticks([50,100,300])
     ax1_1.set_yticks([], minor=True)
-    ax1_1.set_ylim(bottom=50,top=350)
+    ax1_1.set_ylim(bottom=40,top=350)
     ax1_1.set_xscale('log')
     ax1_1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
     ax1_1.set_xticks([1/9,1/3,1,2,4,8,16])
@@ -116,12 +90,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                            )
     print("plotting conv2d ae")
     print(res[systb['ae']][apptb['conv2d']])
-    #print("plotting conv2d ae all types")
-    #print(res_all_types[apptb['conv2d']])
-    #res_all_types[apptb['conv2d']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                       ax=ax1_1, label="Other Output Types", color=["black"],
-    #                                       marker='s', fontsize=fntsize)
-    #ax1_1.set_ylabel(y_label, fontsize=fntsize)
     ax1_1.set_xlabel("", fontsize=fntsize);
 
 
@@ -149,11 +117,6 @@ def plot_from_results_str(results_file, results_all_types_file):
                                                )
     print("plotting conv2d_b2b ae")
     print(res[systb['ae']][apptb['conv2d_b2b']])
-    #res_all_types[apptb['conv2d_b2b']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                           ax=ax1_2, label="Other Output Types", color=["black"],
-    #                                           marker='s', fontsize=fntsize)
-    #print("plotting conv2d_b2b ae")
-    #print(res_all_types[apptb['conv2d_b2b']])
     ax1_2.set_ylabel(y_label, fontsize=fntsize)
     ax1_2.set_xlabel(x_label, fontsize=fntsize);
 
@@ -181,62 +144,10 @@ def plot_from_results_str(results_file, results_all_types_file):
                                             )
     print("plotting sharpen ae")
     print(res[systb['ae']][apptb['sharpen']])
-    #res_all_types[apptb['sharpen']].plot(kind='scatter', y="Slices", x="Parallelism",
-    #                                        ax=ax1_3, label="Other Output Types", color=["black"],
-    #                                        marker='s', fontsize=fntsize)
-    #print("plotting sharpen ae")
-    #print(res_all_types[apptb['sharpen']])
-    #ax1_3.set_ylabel(y_label, fontsize=fntsize)
     ax1_3.set_xlabel(x_label, fontsize=fntsize);
 
-    print("plotting big conv 2d slices ae")
-    print(res[systb['ae']][apptb['big_conv2d']])
-    print(res[systb['h2h']][apptb['big_conv2d']])
-    big_conv2d_slices_title = "CONV Slices"
-    #ax1_4.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax1_4.set_title(big_conv2d_slices_title)
-    ax1_4.set_yscale('log')
-    ax1_4.minorticks_off()
-    ax1_4.set_ylim(bottom=40, top=700)
-    ax1_4.set_yticks([50,100,600])
-    ax1_4.tick_params(axis='both', which='major', labelsize=fntsize)
-    #ax1_4.set_ylim(bottom=50, top=600)
-    ax1_4.set_xscale('log')
-    ax1_4.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
-    ax1_4.set_xticks([1,2,4,8,16])
-    ax1_4.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
-    res[systb['ae']][apptb['big_conv2d']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                            ax=ax1_4, label="Scheduler Result", color=["g"],
-                                            linestyle='-', marker='o', fontsize=fntsize,
-                                            markersize=ms, linewidth=lw
-                                            )
-    ax1_4.set_ylabel(y_label, fontsize=fntsize)
-    ax1_4.set_xlabel(x_label, fontsize=fntsize);
-
-
-    big_conv2d_brams_title = "CONV BRAMs"
-    ax1_5.set_title(big_conv2d_brams_title)
-    ax1_5.set_yscale('log')
-    ax1_5.minorticks_off()
-    ax1_5.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-    ax1_5.tick_params(axis='both', which='major', labelsize=fntsize)
-    ax1_5.set_yticks([2,8,32])
-    #ax1_5.set_ylim(bottom=50, top=600)
-    ax1_5.set_xscale('log')
-    ax1_5.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
-    ax1_5.set_xticks([1,2,4,8,16])
-    ax1_5.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
-    res[systb['ae']][apptb['big_conv2d']].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
-                                               ax=ax1_5, label="Scheduler Result", color=["g"],
-                                               linestyle='-', marker='o', fontsize=fntsize,
-                                               markersize=ms, linewidth=lw
-                                               )
-    print("plotting big conv 2d brams ae")
-    ax1_5.set_ylabel("BRAMs", fontsize=fntsize)
-    ax1_5.set_xlabel(x_label, fontsize=fntsize);
-
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
-    plt.savefig(os.path.join(figs_dir, 'ae_results.svg'))
+    plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'))
 
     sp_maxes = []
     sp_mins = []
@@ -246,24 +157,24 @@ def plot_from_results_str(results_file, results_all_types_file):
     joined_sp_ratios_list = []
     joined_hth_ratios_list = []
     for app in apptb:
-        print("App " + str(app))
+        #print("App " + str(app))
         (joined_res, joined_sp_ratios, joined_hth_ratios) = \
             comp_ae_and_others(res[systb['ae']][apptb[app]], res[systb['h2h']][apptb[app]], res[systb['sp']][apptb[app]])
         joined_res_list.append(joined_res)
         joined_sp_ratios_list.append(joined_sp_ratios)
         joined_hth_ratios_list.append(joined_hth_ratios)
-        print("Max SP" + str(joined_sp_ratios.iloc[:,1].max()))
-        print("Min SP" + str(joined_sp_ratios.iloc[:,1].min()))
-        print("Max HTH" + str(joined_hth_ratios.iloc[:,1].max()))
-        print("Min HTH" + str(joined_hth_ratios.iloc[:,1].min()))
+        #print("Max SP" + str(joined_sp_ratios.iloc[:,1].max()))
+        #print("Min SP" + str(joined_sp_ratios.iloc[:,1].min()))
+        #print("Max HTH" + str(joined_hth_ratios.iloc[:,1].max()))
+        #print("Min HTH" + str(joined_hth_ratios.iloc[:,1].min()))
         sp_maxes.append(joined_sp_ratios.iloc[:,1].max())
         sp_mins.append(joined_sp_ratios.iloc[:,1].min())
         hth_maxes.append(joined_hth_ratios.iloc[:,1].max())
         hth_mins.append(joined_hth_ratios.iloc[:,1].min())
-    print("sp_maxes: " + str(sp_maxes))
-    print("sp_mins: " + str(sp_mins))
-    print("hth_maxes: " + str(hth_maxes))
-    print("hth_mins: " + str(hth_mins))
+    #print("AE_SP_Slices_Ratio max: " + str(max(sp_maxes)))
+    #print("AE_SP_Slices_Ratio min: " + str(min(sp_mins)))
+    #print("hth_maxes: " + str(hth_maxes))
+    #print("hth_mins: " + str(hth_mins))
 
 
 
@@ -282,12 +193,12 @@ def plot_from_results_str(results_file, results_all_types_file):
             axis.set_yticks([])
         else:
             axis.set_yticks([0,1,2,4,6,8,10])
-        joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", xticks=[1,2,4,8], rot=0,
+        joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
                                               ax=axis, legend=False, color=["g"], width=0.8,
                                               fontsize=fntsize)
         axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
         axis.set_ylim(bottom=0,top=10)
-        print("plotting " + str(appname) + " ae")
+        print("plotting " + str(appname) + " Aetherling vs Spatial")
         print(joined_sp_ratios_list[apptb_cmp[appname]])
         axis.spines['right'].set_visible(has_right)
         axis.spines['right'].set_linewidth(3)
@@ -377,8 +288,8 @@ def comp_ae_and_others(ae_pd, hth_pd, sp_pd):
     joined_res = joined_res.loc[:, ['Parallelism', 'AE_Slices', 'SP_Slices', 'HTH_Slices']].rename(
         columns={"AE_Slices":"Aetherling","SP_Slices":"Spatial","HTH_Slices":"Halide-HLS"}
     )
-    print(joined_sp_ratios)
-    print(joined_hth_ratios)
+    #print(joined_sp_ratios)
+    #print(joined_hth_ratios)
     return (joined_res, joined_sp_ratios, joined_hth_ratios)
 
 def add_missing_parallelisms(results_pd, system, application, parallelisms_to_add):
@@ -394,12 +305,10 @@ def fix_parallelism(results_pd, length):
 def get_output_columns(results_pd):
     results_pd['LUTs'] = results_pd['TotalLUTs']
     results_pd['BRAMs'] = results_pd['RAMB36'] + results_pd['RAMB18']
-    results_pd['Flip Flops'] = results_pd['FFs']
-    results_pd['Shift Registers'] = results_pd['SRLs']
     results_pd['Slices'] = results_pd['Slices']
     results_pd['Parallelism'] = results_pd['Parallelism']
     results_pd['MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
-    return results_pd.loc[:,['Parallelism', 'LUTs', 'BRAMs', 'Flip Flops', 'Shift Registers', 'Slices', 'MHz']]
+    return results_pd.loc[:,['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'MHz']]
 
 def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #others = pd.to_numeric(other_results[column_name], errors='coerce')
@@ -434,7 +343,7 @@ def merge_columns(aetherling_results, halide_results, spatial_results):
                                'SLUTs', 'SBRAMs', 'SSlices',
                                ]]
 
-base_ns = 6.1
+base_ns = 5.6
 
 def fix_clock(x_str):
     if str(x_str) == "nan":

@@ -33,16 +33,6 @@ parser_results.add_argument(
 )
 
 parser_results = subparsers.add_parser('graph_results')
-parser_results.add_argument(
-    'in_results_file',
-    type=str,
-    help='File to read results from.'
-)
-parser_results.add_argument(
-    'in_results_file_all_types',
-    type=str,
-    help='File to read all types results from.'
-)
 
 #  subparser for upload
 #parser_upload = subparsers.add_parser('upload')
@@ -63,7 +53,7 @@ if __name__ == "__main__":
         with open(args.file, 'w+') as f_out:
             f_out.write(get_latex_from_results_str(args.in_results_file))
     elif args.subcommand == 'graph_results':
-        plot_from_results_str(args.in_results_file, args.in_results_file_all_types)
+        plot_from_results_str(args.file)
 
 
 
