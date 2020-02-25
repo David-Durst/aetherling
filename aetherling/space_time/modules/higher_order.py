@@ -114,17 +114,20 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
 
         @classmethod
         def definition(cls):
-            op_renamed = tupleToTwoInputsForReduce(op, num_nested_space_layers(cls.st_in_t[0]))
-            reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
-            enable_counter = DefineNestedCounters(cls.st_in_t[0],
-                                                  has_last=False,
-                                                  has_ce=True)()
-            wire(enable_counter.valid, reduce.CE)
-            wire(cls.valid_up, enable_counter.CE)
-            wire(cls.I, reduce.I)
-
             red_reg = DefineRegisterAnyType(cls.st_out_t.magma_repr())()
-            wire(reduce.out, red_reg.I)
+            if n > 1:
+                op_renamed = tupleToTwoInputsForReduce(op, num_nested_space_layers(cls.st_in_t[0]))
+                reduce = DefineReduceSequential(n, op_renamed, has_ce=True)()
+                enable_counter = DefineNestedCounters(cls.st_in_t[0],
+                                                      has_last=False,
+                                                      has_ce=True)()
+                wire(enable_counter.valid, reduce.CE)
+                wire(cls.valid_up, enable_counter.CE)
+                wire(cls.I, reduce.I)
+
+                wire(reduce.out, red_reg.I)
+            else:
+                wire(cls.I, red_reg.I)
             wire(cls.O, red_reg.O)
 
             # valid output after first full valid input collected
@@ -132,9 +135,10 @@ def DefineReduce_T(n: int, i: int, op: DefineCircuitKind) -> DefineCircuitKind:
             wire(cls.valid_up, valid_delay.CE)
             wire(cls.valid_down, valid_delay.valid)
 
-            # ignore inner reduce ready and valid
-            wire(reduce.valid, TermAnyType(Bit).I)
-            wire(reduce.ready, TermAnyType(Bit).I)
+            if n > 1:
+                # ignore inner reduce ready and valid
+                wire(reduce.valid, TermAnyType(Bit).I)
+                wire(reduce.ready, TermAnyType(Bit).I)
     return _Reduce_T
 
 @cache_definition
