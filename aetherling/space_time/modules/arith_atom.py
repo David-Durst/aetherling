@@ -64,6 +64,46 @@ def DefineNot_Atom(has_valid: bool = False):
     return _Not
 
 @cache_definition
+def DefineAnd_Atom(has_valid: bool = False):
+    class _And(Circuit):
+        name = "And_Atom"
+        IO = ['I', In(ST_Atom_Tuple(ST_Bit(), ST_Bit()).magma_repr()), 'O', Out(ST_Bit().magma_repr())]
+        if has_valid:
+            IO += valid_ports
+        binary_op = False
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
+        st_out_t = ST_Bit()
+        @classmethod
+        def definition(cls):
+            op = DefineAnd(width=bit_width)()
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
+            wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _And
+
+@cache_definition
+def DefineOr_Atom(has_valid: bool = False):
+    class _Or(Circuit):
+        name = "Or_Atom"
+        IO = ['I', In(ST_Atom_Tuple(ST_Bit(), ST_Bit()).magma_repr()), 'O', Out(ST_Bit().magma_repr())]
+        if has_valid:
+            IO += valid_ports
+        binary_op = False
+        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
+        st_out_t = ST_Bit()
+        @classmethod
+        def definition(cls):
+            op = DefineOr(width=bit_width)()
+            wire(cls.I[0], op.I0)
+            wire(cls.I[1], op.I1)
+            wire(op.O, cls.O)
+            if has_valid:
+                wire(cls.valid_up, cls.valid_down)
+    return _Or
+
+@cache_definition
 def DefineAdd_Atom(has_valid: bool = False):
     class _Add(Circuit):
         name = "Add_Atom"
