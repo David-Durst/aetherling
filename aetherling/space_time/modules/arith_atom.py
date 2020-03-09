@@ -14,20 +14,20 @@ int_width = ST_Int().magma_repr().size()
 bit_width = ST_Bit().magma_repr().size()
 
 @cache_definition
-def DefineAbs_Atom(has_valid: bool = False):
+def DefineAbs_Atom(has_valid: bool = False, t: ST_Type = ST_Int()):
     class _Abs(Circuit):
         name = "Abs_Atom"
-        IO = ['I', In(ST_Int().magma_repr()), 'O', Out(ST_Int().magma_repr())]
+        IO = ['I', In(t.magma_repr()), 'O', Out(t.magma_repr())]
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = [ST_Int()]
-        st_out_t = ST_Int()
+        st_in_t = [t]
+        st_out_t = t
         @classmethod
         def definition(cls):
-            neg = DefineNegate(int_width)()
-            cmp = DefineCoreirUgt(int_width)()
-            mux = DefineMuxAnyType(ST_Int().magma_repr(), 2)()
+            neg = DefineNegate(t.length())()
+            cmp = DefineCoreirUgt(t.length())()
+            mux = DefineMuxAnyType(t.magma_repr(), 2)()
             wire(cls.I, mux.data[0])
             wire(cls.I, neg.I)
             wire(neg.O, mux.data[1])
@@ -104,19 +104,19 @@ def DefineOr_Atom(has_valid: bool = False):
     return _Or
 
 @cache_definition
-def DefineAdd_Atom(has_valid: bool = False):
+def DefineAdd_Atom(has_valid: bool = False, t: ST_Type = ST_Int()):
     class _Add(Circuit):
         name = "Add_Atom"
-        IO = ['I', In(ST_Atom_Tuple(ST_Int(), ST_Int()).magma_repr()),
-              'O', Out(ST_Int().magma_repr())]
+        IO = ['I', In(ST_Atom_Tuple(t, t).magma_repr()),
+              'O', Out(t.magma_repr())]
         if has_valid:
             IO += valid_ports
         binary_op = False
-        st_in_t = [ST_Atom_Tuple(ST_Int(), ST_Int())]
-        st_out_t = ST_Int()
+        st_in_t = [ST_Atom_Tuple(t, t)]
+        st_out_t = t
         @classmethod
         def definition(cls):
-            op = DefineAdd(int_width)()
+            op = DefineAdd(t.length())()
             wire(cls.I[0], op.I0)
             wire(cls.I[1], op.I1)
             wire(op.O, cls.O)

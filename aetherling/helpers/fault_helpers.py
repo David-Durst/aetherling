@@ -113,7 +113,11 @@ def compile_and_run(tester):
     tester.compile_and_run(target="verilator", magma_opts={
         "passes": ["rungenerators", "wireclocks-coreir", "verifyconnectivity --noclkrst"],
         "namespaces": ["aetherlinglib", "commonlib", "mantle", "coreir", "global"]
-    }, directory="vBuild/", flags=["-Wno-fatal"])
+     # }, directory="vBuild/", flags=["-Wno-fatal",  "--no-decoration", "-O3"])
+    }, directory="vBuild/",
+       flags=["-Wno-fatal", "--compiler", "clang", "--no-decoration", "--output-split", "20000",
+         "--output-split-ctrace", "10000", "-O3"])
+
 
 def compile_and_run_verilog(tester):
     tester.compile_and_run(magma_output="verilog", skip_compile=True, target="verilator", magma_opts={

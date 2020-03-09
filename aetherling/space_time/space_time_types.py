@@ -2,7 +2,7 @@
 The classes for constructing types in Aetherling's space-time IR
 """
 from dataclasses import dataclass
-from magma import Type, Kind, Array, Bit, Tuple
+from magma import Type, Kind, Array, Bit, Tuple, UInt, SInt
 
 
 def is_nested(st_type):
@@ -146,8 +146,11 @@ class ST_Atom_Tuple(ST_Type):
 int_width = 8
 @dataclass(frozen=True)
 class ST_Int(ST_Type):
+    width: int = 8
+    signed: bool = False
+
     def length(self):
-        return 8
+        return self.width
 
     def port_width(self):
         return 1
@@ -159,7 +162,10 @@ class ST_Int(ST_Type):
         return 1
 
     def magma_repr(self):
-        return Array[int_width, Bit]
+        if self.signed:
+            return SInt[self.width]
+        else:
+            return UInt[self.width]
 
     def __str__(self):
         return "Int"

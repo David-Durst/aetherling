@@ -14,3 +14,4 @@ from .type_helpers import *
 # can't export this as permutation.__init__.py imports files from
 # this module and reshape_st imports from permtuation, creating a loop
 #from .reshape_st import DefineReshape_ST
+undef = 0

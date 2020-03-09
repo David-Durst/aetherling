@@ -3,6 +3,7 @@ from aetherling.space_time.reshape_st import DefineReshape_ST
 from aetherling.space_time.space_time_types import *
 from aetherling.helpers.pnr import get_latex_from_results_str
 from aetherling.helpers.pnr_graphs import plot_from_results_str
+from aetherling.helpers import pnr_graphs_big
 import os
 
 parser = argparse.ArgumentParser()
@@ -33,6 +34,7 @@ parser_results.add_argument(
 )
 
 parser_results = subparsers.add_parser('graph_results')
+parser_results = subparsers.add_parser('graph_results_big')
 
 #  subparser for upload
 #parser_upload = subparsers.add_parser('upload')
@@ -54,6 +56,8 @@ if __name__ == "__main__":
             f_out.write(get_latex_from_results_str(args.in_results_file))
     elif args.subcommand == 'graph_results':
         plot_from_results_str(args.file)
+    elif args.subcommand == 'graph_results_big':
+        pnr_graphs_big.plot_from_results_str(args.file)
 
 
 

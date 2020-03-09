@@ -12,10 +12,10 @@ def plot_from_results_str(results_file):
     results['Clock Rate'] = nan
     systems = ["aetherling_copies", "halide_to_hardware", "spatial"]
     systb = {"ae": 0, "h2h": 1, "sp": 2}
-    applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera"]
-    apptb = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 5}
+    applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera", "big_conv2d"]
+    apptb = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 5, "big_conv2d": 7}
     apptb_cmp = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 3}
-    application_lengths = [200, 16, 16, 16, 64, 16, 200]
+    application_lengths = [200, 16, 16, 16, 64, 16, 200, 1920*1080]
     per_system_per_application_results = []
     for i, system in enumerate(systems):
         per_system_results = []
@@ -27,7 +27,7 @@ def plot_from_results_str(results_file):
             results_only_selected_columns = get_output_columns(sorted_by_parallelism)
             per_system_results.append(results_only_selected_columns)
         per_system_per_application_results.append(per_system_results)
-    fig, ((ax1_0, ax1_1), (ax1_2, ax1_3)) = plt.subplots(nrows=2, ncols=2)
+    fig, ((ax1_0, ax1_1), (ax1_2, ax1_3), (ax1_4, ax1_5)) = plt.subplots(nrows=3, ncols=2)
     for axis in [ax1_0, ax1_1, ax1_2, ax1_3]:
         axis.spines['right'].set_visible(False)
         axis.spines['top'].set_visible(False)
@@ -36,7 +36,7 @@ def plot_from_results_str(results_file):
     fntsize = 34
     plt.rcParams.update({'font.size': fntsize})
     fig.set_figwidth(18)
-    fig.set_figheight(18)
+    fig.set_figheight(27)
     x_label = "Throughput (Input Px / Clk)"
     y_label = "Area (Slices)"
     ms = 18
@@ -145,6 +145,59 @@ def plot_from_results_str(results_file):
     print("plotting sharpen ae")
     print(res[systb['ae']][apptb['sharpen']])
     ax1_3.set_xlabel(x_label, fontsize=fntsize);
+
+
+    axes_slices = [ax1_4]
+    axes_brams = [ax1_5]
+    app_name = ['big_conv2d']
+    titles = ["Big Conv2D Slices"]
+    y_bottom_slices = [40]
+    y_top_slices = [700]
+    y_ticks_slices = [[50,100,600]]
+    y_ticks_brams = [2,8,32]
+    for index in range(len(titles)):
+        #ax1_4.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+        axes_slices[index].set_title(titles[index] + " Slices")
+        axes_slices[index].set_yscale('log')
+        axes_slices[index].minorticks_off()
+        axes_slices[index].set_ylim(bottom=y_bottom_slices[index], top=y_top_slices[index])
+        axes_slices[index].set_yticks(y_ticks_slices[index])
+        axes_slices[index].tick_params(axis='both', which='major', labelsize=fntsize)
+        #axes_slices[index].set_ylim(bottom=50, top=600)
+        axes_slices[index].set_xscale('log')
+        axes_slices[index].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+        axes_slices[index].set_xticks([1,2,4,8,16])
+        axes_slices[index].set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+        res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="Slices", x="Parallelism", legend=False,
+                                                   ax=axes_slices[index], label="Scheduler Result", color=["g"],
+                                                   linestyle='-', marker='o', fontsize=fntsize,
+                                                   markersize=ms, linewidth=lw
+                                                   )
+        axes_slices[index].set_ylabel(y_label, fontsize=fntsize)
+        axes_slices[index].set_xlabel(x_label, fontsize=fntsize);
+
+
+        axes_brams[index].set_title(titles[index])
+        axes_brams[index].set_yscale('log')
+        axes_brams[index].minorticks_off()
+        axes_brams[index].yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
+        axes_brams[index].tick_params(axis='both', which='major', labelsize=fntsize)
+        axes_brams[index].set_yticks(y_ticks_brams)
+        #axes_brams[index].set_ylim(bottom=50, top=600)
+        axes_brams[index].set_xscale('log')
+        axes_brams[index].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
+        axes_brams[index].set_xticks([1,2,4,8,16])
+        axes_brams[index].set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
+        res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
+                                                   ax=axes_brams[index], label="Scheduler Result", color=["g"],
+                                                   linestyle='-', marker='o', fontsize=fntsize,
+                                                   markersize=ms, linewidth=lw
+                                                   )
+
+        print("plotting " + app_name[index])
+        print(res[systb['ae']][apptb[app_name[index]]])
+        axes_brams[index].set_ylabel(y_label, fontsize=fntsize)
+        axes_brams[index].set_xlabel(x_label, fontsize=fntsize);
 
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
     plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'))
@@ -305,10 +358,12 @@ def fix_parallelism(results_pd, length):
 def get_output_columns(results_pd):
     results_pd['LUTs'] = results_pd['TotalLUTs']
     results_pd['BRAMs'] = results_pd['RAMB36'] + results_pd['RAMB18']
+    results_pd['Flip Flops'] = results_pd['FFs']
+    results_pd['Shift Registers'] = results_pd['SRLs']
     results_pd['Slices'] = results_pd['Slices']
     results_pd['Parallelism'] = results_pd['Parallelism']
     results_pd['MHz'] = results_pd['Slack(VIOLATED)'].apply(fix_clock)
-    return results_pd.loc[:,['Parallelism', 'LUTs', 'BRAMs', 'Slices', 'MHz']]
+    return results_pd.loc[:, ['Parallelism', 'LUTs', 'BRAMs', 'Flip Flops', 'Shift Registers', 'Slices', 'MHz']]
 
 def percent_vs_base(results_pd, column_name, index_of_p_1_row):
     #others = pd.to_numeric(other_results[column_name], errors='coerce')

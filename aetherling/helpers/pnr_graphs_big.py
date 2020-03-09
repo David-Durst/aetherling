@@ -6,7 +6,7 @@ import os
 import matplotlib.ticker as ticker
 import matplotlib.colors as mcolors
 
-def plot_from_results_str(results_file, results_all_types_file):
+def plot_from_results_str(results_file):
     results = pd.read_csv(results_file)
     #results_all_types = pd.read_csv(results_all_types_file)
     #print("all types")
@@ -189,9 +189,12 @@ def plot_from_results_str(results_file, results_all_types_file):
     #ax1_3.set_ylabel(y_label, fontsize=fntsize)
     ax1_3.set_xlabel(x_label, fontsize=fntsize);
 
+    axes_to_use = [ax1_4]
+    titles = ["Big Conv2D Slices"]
+    y_bottom = 40
+    y_top = 700
+    y_ticks = [50,100,600]
     print("plotting big conv 2d slices ae")
-    print(res[systb['ae']][apptb['big_conv2d']])
-    print(res[systb['h2h']][apptb['big_conv2d']])
     big_conv2d_slices_title = "CONV Slices"
     #ax1_4.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
     ax1_4.set_title(big_conv2d_slices_title)
@@ -245,7 +248,7 @@ def plot_from_results_str(results_file, results_all_types_file):
     joined_res_list = []
     joined_sp_ratios_list = []
     joined_hth_ratios_list = []
-    for app in apptb:
+    for app in apptb_cmp:
         print("App " + str(app))
         (joined_res, joined_sp_ratios, joined_hth_ratios) = \
             comp_ae_and_others(res[systb['ae']][apptb[app]], res[systb['h2h']][apptb[app]], res[systb['sp']][apptb[app]])

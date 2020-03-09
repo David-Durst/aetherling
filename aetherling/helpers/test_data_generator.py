@@ -12,7 +12,7 @@ def stencil_generator(row_size, inputs_2d):
   return [
       [
           [
-            get_input(r - stencil_r, c - stencil_c)
+                253 if ((r - stencil_r < 0) or (c - stencil_c < 0)) else inputs_2d[(r - stencil_r) * row_size + (c - stencil_c)]
               for stencil_c in [2,1,0]
           ] for stencil_r in [2,1,0]
       ] for r in range(num_rows) for c in range(num_cols)
