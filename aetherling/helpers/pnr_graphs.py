@@ -211,7 +211,7 @@ def plot_from_results_str(results_file):
                                                    markersize=ms, linewidth=lw
                                                    )
 
-        print(res[systb['ae']][apptb[app_name[index]]])
+        #print(res[systb['ae']][apptb[app_name[index]]])
         axes_brams[index].set_ylabel(y_label, fontsize=fntsize)
         #axes_brams[index].set_xlabel(x_label, fontsize=fntsize);
 
@@ -396,8 +396,9 @@ def fix_parallelism(results_pd, length):
 
 def get_output_columns(results_pd):
     results_pd['LUTs'] = results_pd['TotalLUTs']
-    # https://forums.xilinx.com/t5/Design-Entry/RAMB36-vs-RAMB18/td-p/150442
-    results_pd['BRAMs'] = results_pd['RAMB36'] + 2*results_pd['RAMB18']
+    # https://forums.xilinx.com/t5/Design-Entry/RAMB36-vs-RAMB18/td-p/150442 - this is old link, ignore, here for history
+    # p. 11 of - https://www.xilinx.com/support/documentation/user_guides/ug473_7Series_Memory_Resources.pdf 
+    results_pd['BRAMs'] = results_pd['BRAMTiles']
     results_pd['DSPs'] = results_pd['DSP48Blocks']
     results_pd['Flip Flops'] = results_pd['FFs']
     results_pd['Shift Registers'] = results_pd['SRLs']
