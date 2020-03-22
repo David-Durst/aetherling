@@ -6,6 +6,9 @@ import os
 import matplotlib.ticker as ticker
 import matplotlib.colors as mcolors
 
+pd.set_option('display.max_columns', 20)
+
+
 def plot_from_results_str(results_file):
     results = pd.read_csv(results_file)
     print("all types")
@@ -27,7 +30,6 @@ def plot_from_results_str(results_file):
     big_apptb = {name:idx+4 for (idx, name) in enumerate(all_big_apps)}
     apptb = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 3}
     apptb.update(big_apptb)
-    apptb_cmp = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 3}
     application_lengths = [200, 16, 16, 16] + ([1920*1080] * 21)
     per_system_per_application_results = []
     for i, system in enumerate(systems):
@@ -245,24 +247,28 @@ def plot_from_results_str(results_file):
     sp_mins = []
     hth_maxes = []
     hth_mins = []
-    joined_res_list = []
+    joined_sp_res_list = []
+    joined_hth_res_list = []
     joined_sp_ratios_list = []
-    joined_hth_ratios_list = []
+    joined_hth_slices_ratios_list = []
+    joined_hth_brams_ratios_list = []
     for app in apptb:
         #print("App " + str(app))
-        (joined_res, joined_sp_ratios, joined_hth_ratios) = \
+        (joined_sp_res, joined_hth_res, joined_sp_ratios, joined_hth_slices_ratios, joined_hth_brams_ratios) = \
             comp_ae_and_others(res[systb['ae']][apptb[app]], res[systb['h2h']][apptb[app]], res[systb['sp']][apptb[app]])
-        joined_res_list.append(joined_res)
+        joined_sp_res_list.append(joined_sp_res)
+        joined_hth_res_list.append(joined_hth_res)
         joined_sp_ratios_list.append(joined_sp_ratios)
-        joined_hth_ratios_list.append(joined_hth_ratios)
+        joined_hth_slices_ratios_list.append(joined_hth_slices_ratios)
+        joined_hth_brams_ratios_list.append(joined_hth_brams_ratios)
         #print("Max SP" + str(joined_sp_ratios.iloc[:,1].max()))
         #print("Min SP" + str(joined_sp_ratios.iloc[:,1].min()))
         #print("Max HTH" + str(joined_hth_ratios.iloc[:,1].max()))
         #print("Min HTH" + str(joined_hth_ratios.iloc[:,1].min()))
         sp_maxes.append(joined_sp_ratios.iloc[:,1].max())
         sp_mins.append(joined_sp_ratios.iloc[:,1].min())
-        hth_maxes.append(joined_hth_ratios.iloc[:,1].max())
-        hth_mins.append(joined_hth_ratios.iloc[:,1].min())
+        hth_maxes.append(joined_hth_slices_ratios.iloc[:,1].max())
+        hth_mins.append(joined_hth_brams_ratios.iloc[:,1].min())
     #print("AE_SP_Slices_Ratio max: " + str(max(sp_maxes)))
     #print("AE_SP_Slices_Ratio min: " + str(min(sp_mins)))
     #print("hth_maxes: " + str(hth_maxes))
@@ -272,52 +278,93 @@ def plot_from_results_str(results_file):
 
 
 
-    fig, (ax2_0, ax2_1, ax2_2, ax2_3) = plt.subplots(nrows=1, ncols=4)
+    fig, ((ax2_0_0, ax2_0_1, ax2_0_2, ax2_0_3), (ax2_1_0, ax2_1_1, ax2_1_2, ax2_1_3), (ax2_2_0, ax2_2_1, ax2_2_2, ax2_2_3)) = plt.subplots(nrows=3, ncols=4)
     plt.subplots_adjust(wspace=0, top=0.97)
     plt.rc('text', usetex=True)
     plt.rcParams.update({'font.size': fntsize})
     fig.set_figwidth(18)
     fig.set_figheight(10)
 
-    def plot_bar_comp(axis, title, appname, has_y_label=True, has_right=True):
-        joined_sp_ratios_list[apptb_cmp[appname]].fillna(0)
-        if not has_y_label:
-            axis.set_yticks([])
+    def plot_bar_comp(axis_slices, axis_brams, axis_dsps, title, appname, leftmost=False, rightmost=False):
+        joined_sp_ratios_list[apptb[appname]].fillna(0)
+        if leftmost:
+            axis_slices.set_yticks([0,1,2,4,6,8,10])
+            axis_brams.set_yticks([0,1,2,3,4])
+            axis_dsps.set_yticks([0.,0.2,0.4,0.6,0.8,1.0])
         else:
-            axis.set_yticks([0,1,2,4,6,8,10])
-        joined_sp_ratios_list[apptb_cmp[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
-                                              ax=axis, legend=False, color=["g"], width=0.8,
+            axis_slices.set_yticks([])
+            axis_brams.set_yticks([])
+            axis_dsps.set_yticks([])
+        joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
+                                              ax=axis_slices, legend=False, color=["g"], width=0.8,
                                               fontsize=fntsize)
-        axis.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
-        axis.set_ylim(bottom=0,top=10)
+        joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_BRAMs_Ratio", x="Parallelism", rot=0,
+                                                   ax=axis_brams, legend=False, color=["g"], width=0.8,
+                                                   fontsize=fntsize)
+        joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_DSPs_Ratio", x="Parallelism", rot=0,
+                                                   ax=axis_dsps, legend=False, color=["g"], width=0.8,
+                                                   fontsize=fntsize)
+        axis_slices.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
+        axis_brams.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
+        axis_dsps.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
+        axis_slices.set_ylim(bottom=0,top=10)
+        axis_brams.set_ylim(bottom=0,top=4.5)
+        axis_dsps.set_ylim(bottom=0,top=1)
         print("plotting " + str(appname) + " Aetherling vs Spatial")
-        print(joined_sp_ratios_list[apptb_cmp[appname]])
-        axis.spines['right'].set_visible(has_right)
-        axis.spines['right'].set_linewidth(3)
-        axis.spines['left'].set_visible(has_y_label)
-        axis.spines['top'].set_visible(False)
-        if has_y_label:
-            axis.set_ylabel("Area Ratio (Slices)", fontsize=fntsize)
-        axis.set_xlabel(title, fontsize=fntsize);
+        print(joined_sp_ratios_list[apptb[appname]])
 
-    plot_bar_comp(ax2_0, map_title, 'map')
-    plot_bar_comp(ax2_1, conv2d_title, 'conv2d', has_y_label=False)
-    plot_bar_comp(ax2_2, conv2d_b2b_title, 'conv2d_b2b', has_y_label=False)
-    plot_bar_comp(ax2_3, sharpen_title, 'sharpen', has_y_label=False, has_right=False)
+        axis_slices.spines['right'].set_visible(rightmost == False)
+        axis_brams.spines['right'].set_visible(rightmost == False)
+        axis_dsps.spines['right'].set_visible(rightmost == False)
+
+        axis_slices.spines['right'].set_linewidth(3)
+        axis_brams.spines['right'].set_linewidth(3)
+        axis_dsps.spines['right'].set_linewidth(3)
+
+        axis_slices.spines['left'].set_visible(leftmost == True)
+        axis_brams.spines['left'].set_visible(leftmost == True)
+        axis_dsps.spines['left'].set_visible(leftmost == True)
+
+        axis_slices.spines['top'].set_visible(False)
+        axis_brams.spines['top'].set_visible(False)
+        axis_dsps.spines['top'].set_visible(False)
+
+        if leftmost == True:
+            axis_slices.set_ylabel("Slices Ratio", fontsize=fntsize)
+            axis_brams.set_ylabel("BRAMs Ratio", fontsize=fntsize)
+            axis_dsps.set_ylabel("DSPs Ratio", fontsize=fntsize)
+        axis_slices.set_xlabel("", fontsize=fntsize);
+        axis_brams.set_xlabel("", fontsize=fntsize);
+        axis_dsps.set_xlabel(title.replace("_", " "), fontsize=fntsize);
+
+    plot_bar_comp(ax2_0_0, ax2_1_0, ax2_2_0, map_title, 'map', leftmost=True)
+    plot_bar_comp(ax2_0_1, ax2_1_1, ax2_2_1, 'CONV2D', "big_real_32_conv2d")
+    plot_bar_comp(ax2_0_2, ax2_1_2, ax2_2_2, 'CONV2D B2B', "big_real_32_conv2d_b2b")
+    plot_bar_comp(ax2_0_3, ax2_1_3, ax2_2_3, 'SHARPEN', "big_real_32_sharpen", rightmost=True)
 
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'))
 
-    hth_p1_values = []
-    hth_p1_titles = [map_title, conv2d_title, conv2d_b2b_title, sharpen_title]
-    for i in range(len(apptb_cmp)):
-        hth_p1_values.append(joined_hth_ratios_list[i].loc[joined_hth_ratios_list[i].loc[:, 'Parallelism'] == 1, :].iloc[0,1])
+    hth_p1_slices_values = []
+    hth_p1_brams_values = []
+    hth_p1_titles = ["map", "big_32_conv2d", "big_32_conv2d_b2b", "big_32_sharpen"]
+    for title in hth_p1_titles:
+        i = apptb[title]
+        hth_p1_slices_values.append(joined_hth_slices_ratios_list[i].loc[joined_hth_slices_ratios_list[i].loc[:, 'Parallelism'] == 1, :].iloc[0,1])
+        hth_p1_brams_values.append(joined_hth_brams_ratios_list[i].loc[joined_hth_brams_ratios_list[i].loc[:, 'Parallelism'] == 1, :].iloc[0,1])
 
-    hth_p1_df = pd.DataFrame.from_dict({
-        'apps': hth_p1_titles,
-        'values': hth_p1_values
+    hth_p1_slices_df = pd.DataFrame.from_dict({
+        'apps': [x.replace("_", " ") for x in hth_p1_titles],
+        'values': hth_p1_slices_values
     })
-    print("Halide-HLS Single Chart")
-    print(hth_p1_df)
+    print("Halide-HLS Single Chart Slices")
+    print(hth_p1_slices_df)
+
+    hth_p1_brams_df = pd.DataFrame.from_dict({
+        'apps': [x.replace("_", " ") for x in hth_p1_titles],
+        'values': hth_p1_brams_values
+    })
+    print("Halide-HLS Single Chart BRAMs")
+    print(hth_p1_brams_df)
 
     fig, ax3 = plt.subplots()
     plt.subplots_adjust(top=0.99, bottom=0.19)
@@ -328,11 +375,24 @@ def plot_from_results_str(results_file):
     #ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
     ax3.spines['right'].set_visible(False)
     ax3.spines['top'].set_visible(False)
-    hth_p1_df.plot(kind='bar', y='values', x='apps', rot=10,
+    hth_p1_slices_df.plot(kind='bar', y='values', x='apps', rot=10,
                    ax=ax3, legend=False, color=["g"],
                    fontsize=fntsize)
+    #ax3_1.spines['right'].set_visible(False)
+    #ax3_1.spines['top'].set_visible(False)
+    #hth_p1_brams_df.plot(kind='bar', y='values', x='apps', rot=10,
+    #                          ax=ax3_1, legend=False, color=["g"],
+    #                          fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'))
 
+    apps_to_print_sp = ['map', "big_real_32_conv2d", "big_real_32_conv2d_b2b", 'big_real_32_sharpen']
+    apps_to_print_hth = ['map', "big_32_conv2d", "big_32_conv2d_b2b", 'big_32_sharpen']
+    for appname in apps_to_print_sp:
+        print("printing all comp res for " + str(appname))
+        print(joined_sp_res_list[apptb[appname]])
+    for appname in apps_to_print_hth:
+        print("printing all comp res for " + str(appname))
+        print(joined_hth_res_list[apptb[appname]])
     # conv2d
     #ax2_0.set_yscale('log')
     #ax2_0.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
@@ -364,25 +424,37 @@ def plot_from_results_str(results_file):
     #return results_tex_str
 
 def comp_ae_and_others(ae_pd, hth_pd, sp_pd):
-    ae_pd = ae_pd.rename(columns={"Slices": "AE_Slices", "Parallelism": "AE_Parallelism"}).loc[:,["AE_Slices", "AE_Parallelism"]]
-    hth_pd = hth_pd.rename(columns={"Slices": "HTH_Slices", "Parallelism": "HTH_Parallelism"}).loc[:,["HTH_Slices", "HTH_Parallelism"]]
-    sp_pd = sp_pd.rename(columns={"Slices": "SP_Slices", "Parallelism": "SP_Parallelism"}).loc[:, ["SP_Slices", "SP_Parallelism"]]
+    ae_pd = ae_pd.rename(columns={"Slices": "AE_Slices", "Parallelism": "AE_Parallelism", "BRAMs": "AE_BRAMs",
+                                  "DSPs": "AE_DSPs"}).loc[:,["AE_Slices", "AE_Parallelism", "AE_BRAMs", "AE_DSPs"]]
+    hth_pd = hth_pd.rename(columns={"Slices": "HTH_Slices", "Parallelism": "HTH_Parallelism","BRAMs": "HTH_BRAMs",
+                                  "DSPs": "HTH_DSPs"}).loc[:,["HTH_Slices", "HTH_Parallelism", "HTH_BRAMs", "HTH_DSPs"]]
+    sp_pd = sp_pd.rename(columns={"Slices": "SP_Slices", "Parallelism": "SP_Parallelism", "BRAMs": "SP_BRAMs",
+                                  "DSPs": "SP_DSPs"}).loc[:, ["SP_Slices", "SP_Parallelism", "SP_BRAMs", "SP_DSPs"]]
     joined_sp = ae_pd.merge(sp_pd, left_on='AE_Parallelism', right_on='SP_Parallelism', how="inner")
+    joined_res_sp = joined_sp
+    joined_res_sp.loc[:,'Parallelism'] = joined_res_sp.loc[:,'AE_Parallelism']
     joined_hth = ae_pd.merge(hth_pd, left_on='AE_Parallelism', right_on='HTH_Parallelism', how="inner")
-    joined_res = joined_sp.merge(hth_pd, left_on='AE_Parallelism', right_on='HTH_Parallelism', how="left")
+    joined_res_hth = joined_hth
+    joined_res_hth.loc[:,'Parallelism'] = joined_res_hth.loc[:,'AE_Parallelism']
     joined_sp.loc[:,'Parallelism'] = joined_sp.loc[:,'SP_Parallelism']
     joined_hth.loc[:,'Parallelism'] = joined_hth.loc[:,'HTH_Parallelism']
-    joined_res.loc[:,'Parallelism'] = joined_res.loc[:,'AE_Parallelism']
     joined_sp.loc[:,'AE_SP_Slices_Ratio'] = joined_sp.loc[:,'SP_Slices'] / joined_sp.loc[:, 'AE_Slices']
+    joined_sp.loc[:,'AE_SP_BRAMs_Ratio'] = joined_sp.loc[:,'SP_BRAMs'] / joined_sp.loc[:, 'AE_BRAMs']
+    joined_sp.loc[:,'AE_SP_DSPs_Ratio'] = joined_sp.loc[:,'SP_DSPs'] / joined_sp.loc[:, 'AE_DSPs']
     joined_hth.loc[:,'AE_HTH_Slices_Ratio'] = joined_hth.loc[:,'HTH_Slices'] / joined_hth.loc[:, 'AE_Slices']
-    joined_sp_ratios = joined_sp.loc[:,['Parallelism', 'AE_SP_Slices_Ratio']]
-    joined_hth_ratios = joined_hth.loc[:,['Parallelism', 'AE_HTH_Slices_Ratio']]
-    joined_res = joined_res.loc[:, ['Parallelism', 'AE_Slices', 'SP_Slices', 'HTH_Slices']].rename(
-        columns={"AE_Slices":"Aetherling","SP_Slices":"Spatial","HTH_Slices":"Halide-HLS"}
-    )
+    joined_hth.loc[:,'AE_HTH_BRAMs_Ratio'] = joined_hth.loc[:,'HTH_BRAMs'] / joined_hth.loc[:, 'AE_BRAMs']
+    joined_sp_ratios = joined_sp.loc[:,['Parallelism', 'AE_SP_Slices_Ratio', 'AE_SP_BRAMs_Ratio', 'AE_SP_DSPs_Ratio']]
+    joined_hth_slices_ratios = joined_hth.loc[:,['Parallelism', 'AE_HTH_Slices_Ratio']]
+    joined_hth_brams_ratios = joined_hth.loc[:,['Parallelism', 'AE_HTH_BRAMs_Ratio']]
+    joined_res_sp = joined_res_sp.loc[:, ['Parallelism', 'AE_Slices', 'AE_BRAMs', 'AE_DSPs',
+                                    'SP_Slices', 'SP_BRAMs', 'SP_DSPs']]#.rename(
+    joined_res_hth = joined_res_hth.loc[:, ['Parallelism', 'AE_Slices', 'AE_BRAMs', 'AE_DSPs',
+                                          'HTH_Slices', 'HTH_BRAMs']]  # .rename(
+    #columns={"AE_Slices":"Aetherling","SP_Slices":"Spatial","HTH_Slices":"Halide-HLS"}
+    #)
     #print(joined_sp_ratios)
     #print(joined_hth_ratios)
-    return (joined_res, joined_sp_ratios, joined_hth_ratios)
+    return (joined_res_sp, joined_res_hth, joined_sp_ratios, joined_hth_slices_ratios, joined_hth_brams_ratios)
 
 def add_missing_parallelisms(results_pd, system, application, parallelisms_to_add):
     for p in parallelisms_to_add:
