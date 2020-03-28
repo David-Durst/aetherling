@@ -273,7 +273,7 @@ def plot_from_results_str(results_file):
     y_bottom_dsps = [0] + ([10] * (len(axes_slices)-1))
     y_top_dsps = [2.2] + ([710] * (len(axes_slices)-1))
     y_ticks_dsps = [[0,1,2]] + ([[10,100,500]] * (len(axes_slices)-1))
-    fntsize = 34
+    fntsize = 40
     ticksize = 30
     ms = 18
     lw = 7
@@ -295,8 +295,8 @@ def plot_from_results_str(results_file):
         axes_slices[index].spines['right'].set_visible(False)
         axes_slices[index].spines['top'].set_visible(False)
         if index == 0:
-            axes_slices[index].set_xticks([1,2, 5, 10, 20, 40, 200])
-            axes_slices[index].set_xticklabels(['1','2','5','10','20','40','200'])
+            axes_slices[index].set_xticks([1,2, 5, 10, 40, 200])
+            axes_slices[index].set_xticklabels(['1','2','5','10','40','200'])
         elif index == 2:
             axes_slices[index].set_xticks([1 / 3, 1, 2, 4, 8])
             axes_slices[index].set_xticklabels(['1/3', '1', '2', '4', '8'])
@@ -336,8 +336,8 @@ def plot_from_results_str(results_file):
         axes_brams[index].spines['right'].set_visible(False)
         axes_brams[index].spines['top'].set_visible(False)
         if index == 0:
-            axes_brams[index].set_xticks([1,2, 5, 10, 20, 40, 200])
-            axes_brams[index].set_xticklabels(['1','2','5','10','20','40','200'])
+            axes_brams[index].set_xticks([1,2, 5, 10, 40, 200])
+            axes_brams[index].set_xticklabels(['1','2','5','10','40','200'])
         elif index == 2:
             axes_brams[index].set_xticks([1 / 3, 1, 2, 4, 8])
             axes_brams[index].set_xticklabels(['1/3', '1', '2', '4', '8'])
@@ -376,8 +376,8 @@ def plot_from_results_str(results_file):
         axes_dsps[index].spines['right'].set_visible(False)
         axes_dsps[index].spines['top'].set_visible(False)
         if index == 0:
-            axes_dsps[index].set_xticks([1,2, 5, 10, 20, 40, 200])
-            axes_dsps[index].set_xticklabels(['1','2','5','10','20','40','200'])
+            axes_dsps[index].set_xticks([1,2, 5, 10, 40, 200])
+            axes_dsps[index].set_xticklabels(['1','2','5','10','40','200'])
         elif index == 2:
             axes_dsps[index].set_xticks([1 / 3, 1, 2, 4, 8])
             axes_dsps[index].set_xticklabels(['1/3', '1', '2', '4', '8'])
@@ -461,13 +461,14 @@ def plot_from_results_str(results_file):
 
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
                                               ax=axis_slices, legend=False, color=["g"], width=0.8,
-                                              fontsize=fntsize, zorder=0)
+                                              fontsize=fntsize, zorder=3)
+        axis_slices.axhline(y=1,color='r',zorder=0)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_BRAMs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_brams, legend=False, color=["g"], width=0.8,
-                                                   fontsize=fntsize, zorder=0)
+                                                   fontsize=fntsize, zorder=3)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_DSPs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_dsps, legend=False, color=["g"], width=0.8,
-                                                   fontsize=fntsize, zorder=0)
+                                                   fontsize=fntsize, zorder=3)
         axis_slices.set_xticklabels(['1','2','4','8'])
         axis_brams.set_xticklabels(['1','2','4','8'])
         axis_dsps.set_xticklabels(['1','2','4','8'])
@@ -493,12 +494,9 @@ def plot_from_results_str(results_file):
         axis_brams.spines['top'].set_visible(False)
         axis_dsps.spines['top'].set_visible(False)
 
-        axis_slices.grid(which='major', axis='y', linestyle='--', zorder=100, alpha=0.5)
-        axis_slices.set_axisbelow(True)
-        axis_brams.grid(which='major', axis='y', linestyle='--', zorder=100, alpha=0.5)
-        axis_brams.set_axisbelow(True)
-        axis_dsps.grid(which='major', axis='y', linestyle='--', zorder=100, alpha=0.5)
-        axis_dsps.set_axisbelow(True)
+        axis_slices.grid(which='major', axis='y', linestyle='--', zorder=0, alpha=0.5)
+        axis_brams.grid(which='major', axis='y', linestyle='--', zorder=0, alpha=0.5)
+        axis_dsps.grid(which='major', axis='y', linestyle='--', zorder=0, alpha=0.5)
 
         axis_slices.tick_params(axis="both", labelsize=ticksize)
         axis_brams.tick_params(axis="both", labelsize=ticksize)
@@ -525,10 +523,11 @@ def plot_from_results_str(results_file):
     plot_bar_comp(ax2_0_3, ax2_1_3, ax2_2_3, 'SHARPEN', "big_real_32_sharpen", rightmost=True)
 
     fig.align_ylabels()
-    plt.tight_layout()
+    plt.tight_layout(rect=[0,0,1,0.9])
+    #plt.tight_layout()
     plt.subplots_adjust(wspace=0, top=0.97)
     fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=fntsize)
-    plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
+    #plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
 
     hth_p1_slices_values = []
@@ -554,15 +553,20 @@ def plot_from_results_str(results_file):
     print(hth_p1_brams_df)
 
     fig, ax3 = plt.subplots()
-    plt.subplots_adjust(top=0.99, bottom=0.19)
-    fig.set_figwidth(11)
-    fig.set_figheight(4)
-    plt.rc('text', usetex=True)
-    plt.rcParams.update({'font.size': fntsize})
+    #plt.subplots_adjust(top=0.99, bottom=0.19)
+    #textwidth = 7 in
+    # linewidth = 3.334 in
+    scaling_factor = 3.334/(7.0*0.7)
+    fig.set_figwidth(24*scaling_factor)
+    fig.set_figheight(10*scaling_factor)
+    fig.suptitle("Area of Halide-HLS Designs (Relative to Aetherling)", fontsize=fntsize)
+    #plt.rc('text', usetex=True)
+    #plt.rcParams.update({'font.size': fntsize})
     #ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
     ax3.spines['right'].set_visible(False)
     ax3.spines['top'].set_visible(False)
     ax3.set_ylabel("Slices Ratio", fontsize=fntsize)
+    ax3.set_yticks([0,2,4])
     hth_p1_slices_df.plot(kind='bar', y='values', x='apps',rot=0,
                    ax=ax3, legend=False, color=["g"],
                    fontsize=fntsize)
@@ -572,6 +576,8 @@ def plot_from_results_str(results_file):
     #hth_p1_brams_df.plot(kind='bar', y='values', x='apps', rot=10,
     #                          ax=ax3_1, legend=False, color=["g"],
     #                          fontsize=fntsize)
+    ax3.grid(which='major', axis='y', linestyle='--')
+    plt.tight_layout(rect=[0,0,1,0.95])
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'), transparent=True)
 
     apps_to_print_sp = ['map', "big_real_32_conv2d", "big_real_32_conv2d_b2b", 'big_real_32_sharpen']
