@@ -306,6 +306,8 @@ def plot_from_results_str(results_file):
 
 
         #axes_brams[index].set_title(app_name[index].replace("_", " ") + " BRAMs")
+        if index > 0:
+            axes_brams[index].set_yscale('log')
         axes_brams[index].minorticks_off()
         axes_brams[index].yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
         axes_brams[index].tick_params(axis='both', which='major', labelsize=fntsize)
@@ -320,7 +322,7 @@ def plot_from_results_str(results_file):
             axes_brams[index].set_xticklabels([r'$1$',r'$2$',r'$5$',r'$10$',r'$20$',r'$40$',r'$200$'])
         elif index == 2:
             axes_brams[index].set_xticks([1 / 3, 1, 2, 4, 8])
-            axes_brams[index].set_xticklabels([r'$\frac{1}{3}$', r'$1$', r'$2$', r'$4$', r'$8$'])
+            axes_brams[index].set_xticklabels([r'$1/3$', r'$1$', r'$2$', r'$4$', r'$8$'])
         else:
             axes_brams[index].set_xticks([1/3,1,2,4,8,16])
             axes_brams[index].set_xticklabels([r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
@@ -335,10 +337,8 @@ def plot_from_results_str(results_file):
             axes_brams[index].set_ylabel("BRAMs", fontsize=fntsize)
             axes_brams[index].set_yticks(y_ticks_brams[index])
         elif index == 1:
-            axes_brams[index].set_yscale('log')
             axes_brams[index].set_yticks(y_ticks_brams[index])
         else:
-            axes_brams[index].set_yscale('log')
             axes_brams[index].set_yticks(y_ticks_brams[index])
             axes_brams[index].set_yticklabels(['']*len(y_ticks_brams[index]))
         axes_brams[index].grid(which='major', axis='y', linestyle='--')
