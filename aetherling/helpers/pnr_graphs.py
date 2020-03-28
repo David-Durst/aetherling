@@ -510,9 +510,9 @@ def plot_from_results_str(results_file):
         axis_dsps.tick_params(axis="both", labelsize=ticksize)
 
         if leftmost == True:
-            axis_slices.set_ylabel("Slices Ratio", fontsize=fntsize)
-            axis_brams.set_ylabel("BRAMs Ratio", fontsize=fntsize)
-            axis_dsps.set_ylabel("DSPs Ratio", fontsize=fntsize)
+            axis_slices.set_ylabel("Relative Slices", fontsize=fntsize)
+            axis_brams.set_ylabel("Relative BRAMs", fontsize=fntsize)
+            axis_dsps.set_ylabel("Relative DSPs", fontsize=fntsize)
         axis_slices.set_xlabel("", fontsize=fntsize);
         axis_brams.set_xlabel("", fontsize=fntsize);
         axis_dsps.set_xlabel(title.replace("_", " "), fontsize=fntsize);
@@ -572,7 +572,7 @@ def plot_from_results_str(results_file):
     #ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
     ax3.spines['right'].set_visible(False)
     ax3.spines['top'].set_visible(False)
-    ax3.set_ylabel("Slices Ratio", fontsize=fntsize)
+    ax3.set_ylabel("Relative Slices", fontsize=fntsize)
     ax3.set_yticks([0,2,4])
     hth_p1_slices_df.plot(kind='bar', y='values', x='apps',rot=0,
                    ax=ax3, legend=False, color=["g"],
