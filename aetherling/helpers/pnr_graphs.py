@@ -347,7 +347,7 @@ def plot_from_results_str(results_file):
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
                                                       ax=axes_brams[index], label="Scheduler Result", color=["g"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
-                                                      markersize=ms, linewidth=lw, clip_on=False, zorder=0
+                                                      markersize=ms, linewidth=lw, clip_on=False
                                                       )
         axes_brams[index].set_xlabel("", fontsize=fntsize)
         #print(res[systb['ae']][apptb[app_name[index]]])
@@ -387,7 +387,7 @@ def plot_from_results_str(results_file):
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="DSPs", x="Parallelism", legend=False,
                                                       ax=axes_dsps[index], label="Scheduler Result", color=["g"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
-                                                      markersize=ms, linewidth=lw, clip_on=False, zorder=0
+                                                      markersize=ms, linewidth=lw, clip_on=False
                                                       )
         axes_dsps[index].set_xlabel("Throughput (px/clk)", fontsize=fntsize)
         if index == 0:
@@ -472,6 +472,11 @@ def plot_from_results_str(results_file):
         axis_slices.set_xticklabels(['1','2','4','8'])
         axis_brams.set_xticklabels(['1','2','4','8'])
         axis_dsps.set_xticklabels(['1','2','4','8'])
+
+        axis_slices.tick_params(axis='both', which='major', pad=tick_padding)
+        axis_brams.tick_params(axis='both', which='major', pad=tick_padding)
+        axis_dsps.tick_params(axis='both', which='major', pad=tick_padding)
+
         axis_slices.set_ylim(bottom=0,top=10)
         axis_brams.set_ylim(bottom=0,top=4.5)
         axis_dsps.set_ylim(bottom=0,top=1)
@@ -570,6 +575,7 @@ def plot_from_results_str(results_file):
     hth_p1_slices_df.plot(kind='bar', y='values', x='apps',rot=0,
                    ax=ax3, legend=False, color=["g"],
                    fontsize=fntsize)
+    ax3.tick_params(axis='both', which='major', pad=tick_padding)
     ax3.set_xlabel("", fontsize=fntsize)
     #ax3_1.spines['right'].set_visible(False)
     #ax3_1.spines['top'].set_visible(False)
