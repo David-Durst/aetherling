@@ -530,9 +530,9 @@ def plot_from_results_str(results_file):
     plot_bar_comp(ax2_0_3, ax2_1_3, ax2_2_3, 'SHARPEN', "big_real_32_sharpen", rightmost=True)
 
     fig.align_ylabels()
-    plt.tight_layout(rect=[0,0,1,0.9])
+    plt.tight_layout(rect=[0,0,1,0.92])
     #plt.tight_layout()
-    plt.subplots_adjust(wspace=0, top=0.97)
+    plt.subplots_adjust(wspace=0, top=0.92)
     fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=titlesize)
     #plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
