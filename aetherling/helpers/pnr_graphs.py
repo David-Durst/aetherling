@@ -253,8 +253,12 @@ def plot_from_results_str(results_file):
 
     fig_paper_ae, axes_paper_ae = plt.subplots(nrows=3, ncols=4)
     fig_paper_ae.set_dpi(1000)
+    #orig_width = 24.0
+    #orig_height = 13.0
+    #new_width = 3.333
+    #new_height = orig_height * new_width / orig_width
     fig_paper_ae.set_size_inches(24, 13)
-    plt.subplots_adjust(wspace=0.3, top=0.97)
+    #plt.subplots_adjust(wspace=0.4, top=0.97)
     axes_slices = axes_paper_ae[0]
     axes_brams = axes_paper_ae[1]
     axes_dsps = axes_paper_ae[2]
@@ -263,7 +267,7 @@ def plot_from_results_str(results_file):
     y_bottom_slices = [1] + ([100] * (len(axes_slices)-1))
     y_top_slices = [1400] + ([14000] * (len(axes_slices)-1))
     y_ticks_slices = [[100,1000,10000]] * len(axes_slices)
-    y_bottom_brams = [0] + ([3] * (len(axes_slices)-1))
+    y_bottom_brams = [0] + ([4] * (len(axes_slices)-1))
     y_top_brams = [2.2] + ([40] * (len(axes_slices)-1))
     y_ticks_brams = [[0,1,2]] + ([[4,8,32]] * (len(axes_slices) -1))
     y_bottom_dsps = [0] + ([10] * (len(axes_slices)-1))
@@ -273,6 +277,7 @@ def plot_from_results_str(results_file):
     ticksize = 26
     ms = 18
     lw = 7
+    tick_padding=8
     for index in range(len(app_name)):
         print("plotting " + app_name[index])
         print(res[systb['ae']][apptb[app_name[index]]])
@@ -281,7 +286,7 @@ def plot_from_results_str(results_file):
         axes_slices[index].set_yscale('log')
         axes_slices[index].minorticks_off()
         axes_slices[index].set_ylim(bottom=y_bottom_slices[index], top=y_top_slices[index])
-        axes_slices[index].tick_params(axis='both', which='major')
+        axes_slices[index].tick_params(axis='both', which='major', pad=tick_padding)
         #axes_slices[index].set_ylim(bottom=50, top=600)
         axes_slices[index].set_xscale('log')
         axes_slices[index].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
@@ -323,7 +328,7 @@ def plot_from_results_str(results_file):
             axes_brams[index].set_yscale('log')
         axes_brams[index].minorticks_off()
         axes_brams[index].yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-        axes_brams[index].tick_params(axis='both', which='major', labelsize=ticksize)
+        axes_brams[index].tick_params(axis='both', which='major', pad=tick_padding)
         axes_brams[index].set_ylim(bottom=y_bottom_brams[index], top=y_top_brams[index])
         axes_brams[index].set_xscale('log')
         axes_brams[index].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
@@ -342,7 +347,7 @@ def plot_from_results_str(results_file):
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
                                                       ax=axes_brams[index], label="Scheduler Result", color=["g"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
-                                                      markersize=ms, linewidth=lw, clip_on=False
+                                                      markersize=ms, linewidth=lw, clip_on=False, zorder=0
                                                       )
         axes_brams[index].set_xlabel("", fontsize=fntsize)
         #print(res[systb['ae']][apptb[app_name[index]]])
@@ -363,7 +368,7 @@ def plot_from_results_str(results_file):
             axes_dsps[index].set_yscale('log')
         axes_dsps[index].minorticks_off()
         axes_dsps[index].yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: '{:g}'.format(y)))
-        axes_dsps[index].tick_params(axis='both', which='major', labelsize=ticksize)
+        axes_dsps[index].tick_params(axis='both', which='major', pad=tick_padding)
         axes_dsps[index].set_ylim(bottom=y_bottom_dsps[index], top=y_top_dsps[index])
         axes_dsps[index].set_xscale('log')
         axes_dsps[index].xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
@@ -382,7 +387,7 @@ def plot_from_results_str(results_file):
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="DSPs", x="Parallelism", legend=False,
                                                       ax=axes_dsps[index], label="Scheduler Result", color=["g"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
-                                                      markersize=ms, linewidth=lw, clip_on=False
+                                                      markersize=ms, linewidth=lw, clip_on=False, zorder=0
                                                       )
         axes_dsps[index].set_xlabel("Throughput (px/clk)", fontsize=fntsize)
         if index == 0:
@@ -396,6 +401,8 @@ def plot_from_results_str(results_file):
         axes_dsps[index].grid(which='major', axis='y', linestyle='--')
         axes_dsps[index].tick_params(axis="both", labelsize=ticksize)
         axes_dsps[index].xaxis.labelpad = 20
+    fig_paper_ae.align_ylabels()
+    plt.tight_layout()
     plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'), transparent=True, bbox_inches='tight')
 
     sp_maxes = []
@@ -459,9 +466,9 @@ def plot_from_results_str(results_file):
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_DSPs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_dsps, legend=False, color=["g"], width=0.8,
                                                    fontsize=fntsize)
-        axis_slices.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
-        axis_brams.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
-        axis_dsps.set_xticklabels([r'$1$',r'$2$',r'$4$',r'$8$'])
+        axis_slices.set_xticklabels(['1','2','4','8'])
+        axis_brams.set_xticklabels(['1','2','4','8'])
+        axis_dsps.set_xticklabels(['1','2','4','8'])
         axis_slices.set_ylim(bottom=0,top=10)
         axis_brams.set_ylim(bottom=0,top=4.5)
         axis_dsps.set_ylim(bottom=0,top=1)
@@ -493,8 +500,8 @@ def plot_from_results_str(results_file):
         axis_dsps.set_xlabel(title.replace("_", " "), fontsize=fntsize);
 
     plot_bar_comp(ax2_0_0, ax2_1_0, ax2_2_0, 'MAP', 'map', leftmost=True)
-    plot_bar_comp(ax2_0_1, ax2_1_1, ax2_2_1, 'CONV2D', "big_real_32_conv2d")
-    plot_bar_comp(ax2_0_2, ax2_1_2, ax2_2_2, 'CONV2D B2B', "big_real_32_conv2d_b2b")
+    plot_bar_comp(ax2_0_1, ax2_1_1, ax2_2_1, 'CONV', "big_real_32_conv2d")
+    plot_bar_comp(ax2_0_2, ax2_1_2, ax2_2_2, 'CONVB2B', "big_real_32_conv2d_b2b")
     plot_bar_comp(ax2_0_3, ax2_1_3, ax2_2_3, 'SHARPEN', "big_real_32_sharpen", rightmost=True)
 
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
