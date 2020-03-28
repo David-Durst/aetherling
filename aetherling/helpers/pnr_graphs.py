@@ -273,8 +273,8 @@ def plot_from_results_str(results_file):
     y_bottom_dsps = [0] + ([10] * (len(axes_slices)-1))
     y_top_dsps = [2.2] + ([710] * (len(axes_slices)-1))
     y_ticks_dsps = [[0,1,2]] + ([[10,100,500]] * (len(axes_slices)-1))
-    fntsize = 28
-    ticksize = 26
+    fntsize = 34
+    ticksize = 30
     ms = 18
     lw = 7
     tick_padding=8
@@ -441,31 +441,33 @@ def plot_from_results_str(results_file):
 
 
     fig, ((ax2_0_0, ax2_0_1, ax2_0_2, ax2_0_3), (ax2_1_0, ax2_1_1, ax2_1_2, ax2_1_3), (ax2_2_0, ax2_2_1, ax2_2_2, ax2_2_3)) = plt.subplots(nrows=3, ncols=4)
-    plt.subplots_adjust(wspace=0, top=0.97)
-    plt.rc('text', usetex=True)
-    plt.rcParams.update({'font.size': fntsize})
-    fig.set_figwidth(18)
-    fig.set_figheight(10)
+    #plt.rc('text', usetex=True)
+    #plt.rcParams.update({'font.size': fntsize})
+    fig.set_figwidth(24)
+    fig.set_figheight(16)
 
     def plot_bar_comp(axis_slices, axis_brams, axis_dsps, title, appname, leftmost=False, rightmost=False):
         joined_sp_ratios_list[apptb[appname]].fillna(0)
-        if leftmost:
-            axis_slices.set_yticks([0,1,2,4,6,8,10])
-            axis_brams.set_yticks([0,1,2,3,4])
-            axis_dsps.set_yticks([0.,0.2,0.4,0.6,0.8,1.0])
-        else:
-            axis_slices.set_yticks([])
-            axis_brams.set_yticks([])
-            axis_dsps.set_yticks([])
+        axis_slices.set_yticks([0, 2, 4, 6, 8, 10])
+        axis_brams.set_yticks([0, 1, 2, 3, 4])
+        axis_dsps.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0])
+        if not leftmost:
+            axis_slices.set_yticklabels(['']*6)
+            axis_slices.tick_params(axis='y',which='both',length=0)
+            axis_brams.set_yticklabels(['']*5)
+            axis_brams.tick_params(axis='y',which='both',length=0)
+            axis_dsps.set_yticklabels(['']*6)
+            axis_dsps.tick_params(axis='y',which='both',length=0)
+
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
                                               ax=axis_slices, legend=False, color=["g"], width=0.8,
-                                              fontsize=fntsize)
+                                              fontsize=fntsize, zorder=0)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_BRAMs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_brams, legend=False, color=["g"], width=0.8,
-                                                   fontsize=fntsize)
+                                                   fontsize=fntsize, zorder=0)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_DSPs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_dsps, legend=False, color=["g"], width=0.8,
-                                                   fontsize=fntsize)
+                                                   fontsize=fntsize, zorder=0)
         axis_slices.set_xticklabels(['1','2','4','8'])
         axis_brams.set_xticklabels(['1','2','4','8'])
         axis_dsps.set_xticklabels(['1','2','4','8'])
@@ -475,9 +477,9 @@ def plot_from_results_str(results_file):
         print("plotting " + str(appname) + " Aetherling vs Spatial")
         print(joined_sp_ratios_list[apptb[appname]])
 
-        axis_slices.spines['right'].set_visible(rightmost == False)
-        axis_brams.spines['right'].set_visible(rightmost == False)
-        axis_dsps.spines['right'].set_visible(rightmost == False)
+        axis_slices.spines['right'].set_visible(False)
+        axis_brams.spines['right'].set_visible(False)
+        axis_dsps.spines['right'].set_visible(False)
 
         axis_slices.spines['right'].set_linewidth(3)
         axis_brams.spines['right'].set_linewidth(3)
@@ -491,6 +493,17 @@ def plot_from_results_str(results_file):
         axis_brams.spines['top'].set_visible(False)
         axis_dsps.spines['top'].set_visible(False)
 
+        axis_slices.grid(which='major', axis='y', linestyle='--', zorder=100, alpha=0.5)
+        axis_slices.set_axisbelow(True)
+        axis_brams.grid(which='major', axis='y', linestyle='--', zorder=100, alpha=0.5)
+        axis_brams.set_axisbelow(True)
+        axis_dsps.grid(which='major', axis='y', linestyle='--', zorder=100, alpha=0.5)
+        axis_dsps.set_axisbelow(True)
+
+        axis_slices.tick_params(axis="both", labelsize=ticksize)
+        axis_brams.tick_params(axis="both", labelsize=ticksize)
+        axis_dsps.tick_params(axis="both", labelsize=ticksize)
+
         if leftmost == True:
             axis_slices.set_ylabel("Slices Ratio", fontsize=fntsize)
             axis_brams.set_ylabel("BRAMs Ratio", fontsize=fntsize)
@@ -499,11 +512,23 @@ def plot_from_results_str(results_file):
         axis_brams.set_xlabel("", fontsize=fntsize);
         axis_dsps.set_xlabel(title.replace("_", " "), fontsize=fntsize);
 
+        cur_xlim = axis_slices.get_xlim()
+        xlim_left = cur_xlim[0] if leftmost else cur_xlim[0] - 0.5
+        xlim_right = cur_xlim[1] if rightmost else cur_xlim[1] + 0.5
+        axis_slices.set_xlim([xlim_left, xlim_right])
+        axis_brams.set_xlim([xlim_left, xlim_right])
+        axis_dsps.set_xlim([xlim_left, xlim_right])
+
     plot_bar_comp(ax2_0_0, ax2_1_0, ax2_2_0, 'MAP', 'map', leftmost=True)
     plot_bar_comp(ax2_0_1, ax2_1_1, ax2_2_1, 'CONV', "big_real_32_conv2d")
     plot_bar_comp(ax2_0_2, ax2_1_2, ax2_2_2, 'CONVB2B', "big_real_32_conv2d_b2b")
     plot_bar_comp(ax2_0_3, ax2_1_3, ax2_2_3, 'SHARPEN', "big_real_32_sharpen", rightmost=True)
 
+    fig.align_ylabels()
+    plt.tight_layout()
+    plt.subplots_adjust(wspace=0, top=0.97)
+    fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=fntsize)
+    plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
 
     hth_p1_slices_values = []
