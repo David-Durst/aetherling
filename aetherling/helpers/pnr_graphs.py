@@ -257,7 +257,7 @@ def plot_from_results_str(results_file):
     #orig_height = 13.0
     #new_width = 3.333
     #new_height = orig_height * new_width / orig_width
-    fig_paper_ae.set_size_inches(24, 13)
+    fig_paper_ae.set_size_inches(24, 14.5)
     #plt.subplots_adjust(wspace=0.4, top=0.97)
     axes_slices = axes_paper_ae[0]
     axes_brams = axes_paper_ae[1]
@@ -273,6 +273,7 @@ def plot_from_results_str(results_file):
     y_bottom_dsps = [0] + ([10] * (len(axes_slices)-1))
     y_top_dsps = [2.2] + ([710] * (len(axes_slices)-1))
     y_ticks_dsps = [[0,1,2]] + ([[10,100,500]] * (len(axes_slices)-1))
+    titlesize = 50
     fntsize = 40
     ticksize = 30
     ms = 18
@@ -402,7 +403,8 @@ def plot_from_results_str(results_file):
         axes_dsps[index].tick_params(axis="both", labelsize=ticksize)
         axes_dsps[index].xaxis.labelpad = 20
     fig_paper_ae.align_ylabels()
-    plt.tight_layout()
+    fig_paper_ae.suptitle("Area of Aetherling Designs", fontsize=titlesize)
+    plt.tight_layout(rect=[0,0,1,0.92])
     plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'), transparent=True, bbox_inches='tight')
 
     sp_maxes = []
@@ -531,7 +533,7 @@ def plot_from_results_str(results_file):
     plt.tight_layout(rect=[0,0,1,0.9])
     #plt.tight_layout()
     plt.subplots_adjust(wspace=0, top=0.97)
-    fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=fntsize)
+    fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=titlesize)
     #plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
 
@@ -564,7 +566,7 @@ def plot_from_results_str(results_file):
     scaling_factor = 3.334/(7.0*0.7)
     fig.set_figwidth(24*scaling_factor)
     fig.set_figheight(10*scaling_factor)
-    fig.suptitle("Area of Halide-HLS Designs (Relative to Aetherling)", fontsize=fntsize)
+    fig.suptitle("Area of Halide-HLS Designs (Relative to Aetherling)", fontsize=titlesize)
     #plt.rc('text', usetex=True)
     #plt.rcParams.update({'font.size': fntsize})
     #ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
@@ -574,16 +576,17 @@ def plot_from_results_str(results_file):
     ax3.set_yticks([0,2,4])
     hth_p1_slices_df.plot(kind='bar', y='values', x='apps',rot=0,
                    ax=ax3, legend=False, color=["g"],
-                   fontsize=fntsize)
-    ax3.tick_params(axis='both', which='major', pad=tick_padding)
+                   fontsize=fntsize, zorder=3)
+    ax3.tick_params(axis='x', which='major', pad=2*tick_padding)
+    ax3.tick_params(axis='y', which='major', pad=tick_padding)
     ax3.set_xlabel("", fontsize=fntsize)
     #ax3_1.spines['right'].set_visible(False)
     #ax3_1.spines['top'].set_visible(False)
     #hth_p1_brams_df.plot(kind='bar', y='values', x='apps', rot=10,
     #                          ax=ax3_1, legend=False, color=["g"],
     #                          fontsize=fntsize)
-    ax3.grid(which='major', axis='y', linestyle='--')
-    plt.tight_layout(rect=[0,0,1,0.95])
+    ax3.grid(which='major', axis='y', linestyle='--', zorder=0)
+    plt.tight_layout(rect=[0,0,1,0.92])
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'), transparent=True)
 
     apps_to_print_sp = ['map', "big_real_32_conv2d", "big_real_32_conv2d_b2b", 'big_real_32_sharpen']
