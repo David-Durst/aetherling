@@ -450,11 +450,11 @@ def plot_from_results_str(results_file):
 
     def plot_bar_comp(axis_slices, axis_brams, axis_dsps, title, appname, leftmost=False, rightmost=False):
         joined_sp_ratios_list[apptb[appname]].fillna(0)
-        axis_slices.set_yticks([0, 2, 4, 6, 8, 10])
+        axis_slices.set_yticks([0, 2, 4, 6, 8])
         axis_brams.set_yticks([0, 1, 2, 3, 4])
         axis_dsps.set_yticks([0., 0.2, 0.4, 0.6, 0.8, 1.0])
         if not leftmost:
-            axis_slices.set_yticklabels(['']*6)
+            axis_slices.set_yticklabels(['']*5)
             axis_slices.tick_params(axis='y',which='both',length=0)
             axis_brams.set_yticklabels(['']*5)
             axis_brams.tick_params(axis='y',which='both',length=0)
@@ -479,9 +479,9 @@ def plot_from_results_str(results_file):
         axis_brams.tick_params(axis='both', which='major', pad=tick_padding)
         axis_dsps.tick_params(axis='both', which='major', pad=tick_padding)
 
-        axis_slices.set_ylim(bottom=0,top=10)
+        axis_slices.set_ylim(bottom=0,top=8.5)
         axis_brams.set_ylim(bottom=0,top=4.5)
-        axis_dsps.set_ylim(bottom=0,top=1)
+        axis_dsps.set_ylim(bottom=0,top=1.1)
         print("plotting " + str(appname) + " Aetherling vs Spatial")
         print(joined_sp_ratios_list[apptb[appname]])
 
@@ -530,11 +530,12 @@ def plot_from_results_str(results_file):
     plot_bar_comp(ax2_0_3, ax2_1_3, ax2_2_3, 'SHARPEN', "big_real_32_sharpen", rightmost=True)
 
     fig.align_ylabels()
-    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.tight_layout(rect=[0,0.065,1,0.92])
     #plt.tight_layout()
     plt.subplots_adjust(wspace=0, top=0.92)
     fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=titlesize)
     #plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
+    fig.text(0.5,0.04,"Throughput (px/clk)", ha='center', fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
 
     hth_p1_slices_values = []
@@ -565,7 +566,7 @@ def plot_from_results_str(results_file):
     # linewidth = 3.334 in
     scaling_factor = 3.334/(7.0*0.7)
     fig.set_figwidth(24*scaling_factor)
-    fig.set_figheight(10*scaling_factor)
+    fig.set_figheight(12*scaling_factor)
     fig.suptitle("Area of Halide-HLS Designs (Relative to Aetherling)", fontsize=titlesize)
     #plt.rc('text', usetex=True)
     #plt.rcParams.update({'font.size': fntsize})
@@ -586,7 +587,7 @@ def plot_from_results_str(results_file):
     #                          ax=ax3_1, legend=False, color=["g"],
     #                          fontsize=fntsize)
     ax3.grid(which='major', axis='y', linestyle='--', zorder=0)
-    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.tight_layout(rect=[0,0,1,0.91])
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'), transparent=True)
 
     apps_to_print_sp = ['map', "big_real_32_conv2d", "big_real_32_conv2d_b2b", 'big_real_32_sharpen']
