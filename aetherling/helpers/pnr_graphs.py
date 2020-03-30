@@ -79,7 +79,7 @@ def plot_from_results_str(results_file):
         ax1_0.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: '{:g}'.format(x)))
         ax1_0.set_xticks([1,2,5,10,20,40,200])
         res[systb['ae']][apptb['map']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                            ax=ax1_0, label="Scheduler Result", color=["g"],
+                                            ax=ax1_0, label="Scheduler Result", color=["#59A14F"],
                                             linestyle='-', marker='o', fontsize=fntsize,
                                             markersize=ms, linewidth=lw
                                             )
@@ -108,7 +108,7 @@ def plot_from_results_str(results_file):
         #ax1_1.set_xticklabels([r'$\frac{1}{3}$'])
         ax1_1.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
         res[systb['ae']][apptb['conv2d']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                               ax=ax1_1, label="Scheduler Result", color=["g"],
+                                               ax=ax1_1, label="Scheduler Result", color=["#59A14F"],
                                                linestyle='-', marker='o', fontsize=fntsize,
                                                markersize=ms, linewidth=lw
                                                )
@@ -135,7 +135,7 @@ def plot_from_results_str(results_file):
         #ax1_2.set_xticklabels([r'$\frac{1}{3}$'])
         ax1_2.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
         res[systb['ae']][apptb['conv2d_b2b']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                                   ax=ax1_2, label="Scheduler Result", color=["g"],
+                                                   ax=ax1_2, label="Scheduler Result", color=["#59A14F"],
                                                    linestyle='-', marker='o', fontsize=fntsize,
                                                    markersize=ms, linewidth=lw, clip_on=False
                                                    )
@@ -162,7 +162,7 @@ def plot_from_results_str(results_file):
         #ax1_3.set_xticklabels([r'$\frac{1}{3}$'])
         ax1_3.set_xticklabels([r'$\frac{1}{9}$',r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
         res[systb['ae']][apptb['sharpen']].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                                ax=ax1_3, label="Scheduler Result", color=["g"],
+                                                ax=ax1_3, label="Scheduler Result", color=["#59A14F"],
                                                 linestyle='-', marker='o', fontsize=fntsize,
                                                 markersize=ms, linewidth=lw, clip_on=False
                                                 )
@@ -193,7 +193,7 @@ def plot_from_results_str(results_file):
             axes_slices[index].set_xticks([1/3,1,2,4,8,16])
             axes_slices[index].set_xticklabels([r'$1/3$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
             res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                                       ax=axes_slices[index], label="Scheduler Result", color=["g"],
+                                                       ax=axes_slices[index], label="Scheduler Result", color=["#59A14F"],
                                                        linestyle='-', marker='o', fontsize=fntsize,
                                                        markersize=ms, linewidth=lw
                                                        )
@@ -214,7 +214,7 @@ def plot_from_results_str(results_file):
             axes_brams[index].set_xticks([1/3,1,2,4,8,16])
             axes_brams[index].set_xticklabels([r'$\frac{1}{3}$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
             res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
-                                                       ax=axes_brams[index], label="Scheduler Result", color=["g"],
+                                                       ax=axes_brams[index], label="Scheduler Result", color=["#59A14F"],
                                                        linestyle='-', marker='o', fontsize=fntsize,
                                                        markersize=ms, linewidth=lw
                                                        )
@@ -236,7 +236,7 @@ def plot_from_results_str(results_file):
             axes_dsps[index].set_xticks([1/3,1,2,4,8,16])
             axes_dsps[index].set_xticklabels([r'$1/3$',r'$1$',r'$2$',r'$4$',r'$8$',r'$16$'])
             res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="DSPs", x="Parallelism", legend=False,
-                                                          ax=axes_dsps[index], label="Scheduler Result", color=["g"],
+                                                          ax=axes_dsps[index], label="Scheduler Result", color=["#59A14F"],
                                                           linestyle='-', marker='o', fontsize=fntsize,
                                                           markersize=ms, linewidth=lw
                                                           )
@@ -305,7 +305,7 @@ def plot_from_results_str(results_file):
             axes_slices[index].set_xticks([1/3,1,2,4,8,16])
             axes_slices[index].set_xticklabels(['1/3','1','2','4','8','16'])
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="Slices", x="Parallelism", legend=False,
-                                                      ax=axes_slices[index], label="Scheduler Result", color=["g"],
+                                                      ax=axes_slices[index], label="Scheduler Result", color=["#59A14F"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
                                                       markersize=ms, linewidth=lw, clip_on=False
                                                       )
@@ -346,7 +346,7 @@ def plot_from_results_str(results_file):
             axes_brams[index].set_xticks([1/3,1,2,4,8,16])
             axes_brams[index].set_xticklabels(['1/3','1','2','4','8','16'])
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
-                                                      ax=axes_brams[index], label="Scheduler Result", color=["g"],
+                                                      ax=axes_brams[index], label="Scheduler Result", color=["#59A14F"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
                                                       markersize=ms, linewidth=lw, clip_on=False
                                                       )
@@ -386,7 +386,7 @@ def plot_from_results_str(results_file):
             axes_dsps[index].set_xticks([1/3,1,2,4,8,16])
             axes_dsps[index].set_xticklabels(['1/3','1','2','4','8','16'])
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="DSPs", x="Parallelism", legend=False,
-                                                      ax=axes_dsps[index], label="Scheduler Result", color=["g"],
+                                                      ax=axes_dsps[index], label="Scheduler Result", color=["#59A14F"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
                                                       markersize=ms, linewidth=lw, clip_on=False
                                                       )
@@ -462,14 +462,14 @@ def plot_from_results_str(results_file):
             axis_dsps.tick_params(axis='y',which='both',length=0)
 
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_Slices_Ratio", x="Parallelism", rot=0,
-                                              ax=axis_slices, legend=False, color=["g"], width=0.8,
+                                              ax=axis_slices, legend=False, color=["#59A14F"], width=0.8,
                                               fontsize=fntsize, zorder=3)
         axis_slices.axhline(y=1,color='r',zorder=0)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_BRAMs_Ratio", x="Parallelism", rot=0,
-                                                   ax=axis_brams, legend=False, color=["g"], width=0.8,
+                                                   ax=axis_brams, legend=False, color=["#59A14F"], width=0.8,
                                                    fontsize=fntsize, zorder=3)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_DSPs_Ratio", x="Parallelism", rot=0,
-                                                   ax=axis_dsps, legend=False, color=["g"], width=0.8,
+                                                   ax=axis_dsps, legend=False, color=["#59A14F"], width=0.8,
                                                    fontsize=fntsize, zorder=3)
         axis_slices.set_xticklabels(['1','2','4','8'])
         axis_brams.set_xticklabels(['1','2','4','8'])
@@ -576,7 +576,7 @@ def plot_from_results_str(results_file):
     ax3.set_ylabel("Relative Slices", fontsize=fntsize)
     ax3.set_yticks([0,2,4])
     hth_p1_slices_df.plot(kind='bar', y='values', x='apps',rot=0,
-                   ax=ax3, legend=False, color=["g"],
+                   ax=ax3, legend=False, color=["#59A14F"],
                    fontsize=fntsize, zorder=3)
     ax3.tick_params(axis='x', which='major', pad=2*tick_padding)
     ax3.tick_params(axis='y', which='major', pad=tick_padding)
@@ -584,7 +584,7 @@ def plot_from_results_str(results_file):
     #ax3_1.spines['right'].set_visible(False)
     #ax3_1.spines['top'].set_visible(False)
     #hth_p1_brams_df.plot(kind='bar', y='values', x='apps', rot=10,
-    #                          ax=ax3_1, legend=False, color=["g"],
+    #                          ax=ax3_1, legend=False, color=["#59A14F"],
     #                          fontsize=fntsize)
     ax3.grid(which='major', axis='y', linestyle='--', zorder=0)
     plt.tight_layout(rect=[0,0,1,0.91])
@@ -674,7 +674,7 @@ def fix_parallelism(results_pd, length):
 def get_output_columns(results_pd):
     results_pd['LUTs'] = results_pd['TotalLUTs']
     # https://forums.xilinx.com/t5/Design-Entry/RAMB36-vs-RAMB18/td-p/150442 - this is old link, ignore, here for history
-    # p. 11 of - https://www.xilinx.com/support/documentation/user_guides/ug473_7Series_Memory_Resources.pdf 
+    # p. 11 of - https://www.xilinx.com/support/documentation/user_guides/ug473_7Series_Memory_Resources.pdf
     results_pd['BRAMs'] = results_pd['BRAMTiles']
     results_pd['DSPs'] = results_pd['DSP48Blocks']
     results_pd['Flip Flops'] = results_pd['FFs']
