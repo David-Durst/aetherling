@@ -403,7 +403,7 @@ def plot_from_results_str(results_file):
         axes_dsps[index].tick_params(axis="both", labelsize=ticksize)
         axes_dsps[index].xaxis.labelpad = 20
     fig_paper_ae.align_ylabels()
-    fig_paper_ae.suptitle("Area of Aetherling Designs", fontsize=titlesize)
+    fig_paper_ae.suptitle("Resources Consumed by Aetherling Designs", fontsize=titlesize)
     plt.tight_layout(rect=[0,0,1,0.92])
     plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'), transparent=True, bbox_inches='tight')
 
@@ -533,7 +533,7 @@ def plot_from_results_str(results_file):
     plt.tight_layout(rect=[0,0.065,1,0.92])
     #plt.tight_layout()
     plt.subplots_adjust(wspace=0, top=0.92)
-    fig.suptitle("Area of Spatial Designs (Relative to Aetherling)", fontsize=titlesize)
+    fig.suptitle("Resources Consumed by Spatial Designs (Relative to Aetherling)", fontsize=titlesize)
     #plt.xlabel("Throughput (px/clk)", fontsize=fntsize)
     fig.text(0.5,0.04,"Throughput (px/clk)", ha='center', fontsize=fntsize)
     plt.savefig(os.path.join(figs_dir, 'ae_versus_sp.pdf'), transparent=True)
@@ -566,8 +566,8 @@ def plot_from_results_str(results_file):
     # linewidth = 3.334 in
     scaling_factor = 3.334/(7.0*0.7)
     fig.set_figwidth(24*scaling_factor)
-    fig.set_figheight(12*scaling_factor)
-    fig.suptitle("Area of Halide-HLS Designs (Relative to Aetherling)", fontsize=titlesize)
+    fig.set_figheight(14.2*scaling_factor)
+    fig.suptitle("Resources Consumed by Halide-HLS Designs \n (Relative to Aetherling)", fontsize=titlesize)
     #plt.rc('text', usetex=True)
     #plt.rcParams.update({'font.size': fntsize})
     #ax3.set_title("Halide-HLS/Aetherling Ratio of Area (Slices)")
@@ -587,7 +587,7 @@ def plot_from_results_str(results_file):
     #                          ax=ax3_1, legend=False, color=["#59A14F"],
     #                          fontsize=fntsize)
     ax3.grid(which='major', axis='y', linestyle='--', zorder=0)
-    plt.tight_layout(rect=[0,0,1,0.91])
+    plt.tight_layout(rect=[0,0,1,0.86])
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'), transparent=True)
 
     apps_to_print_sp = ['map', "big_real_32_conv2d", "big_real_32_conv2d_b2b", 'big_real_32_sharpen']
