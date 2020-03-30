@@ -267,7 +267,7 @@ def plot_from_results_str(results_file):
     y_bottom_slices = [1] + ([100] * (len(axes_slices)-1))
     y_top_slices = [1400] + ([14000] * (len(axes_slices)-1))
     y_ticks_slices = [[100,1000,10000]] * len(axes_slices)
-    y_bottom_brams = [0] + ([4] * (len(axes_slices)-1))
+    y_bottom_brams = [0] + ([3] * (len(axes_slices)-1))
     y_top_brams = [2.2] + ([40] * (len(axes_slices)-1))
     y_ticks_brams = [[0,1,2]] + ([[4,8,32]] * (len(axes_slices) -1))
     y_bottom_dsps = [0] + ([10] * (len(axes_slices)-1))
@@ -313,11 +313,8 @@ def plot_from_results_str(results_file):
         if index == 0:
             axes_slices[index].set_ylabel("Slices", fontsize=fntsize)
             axes_slices[index].set_yticks([1,10,1000])
-        elif index == 1:
-            axes_slices[index].set_yticks(y_ticks_slices[index])
         else:
             axes_slices[index].set_yticks(y_ticks_slices[index])
-            axes_slices[index].set_yticklabels([''] * len(y_ticks_slices[index]))
         axes_slices[index].grid(which='major', axis='y', linestyle='--')
         axes_slices[index].tick_params(axis="both", labelsize=ticksize)
         axes_slices[index].set_title(paper_titles[index], fontsize=fntsize)
@@ -355,11 +352,8 @@ def plot_from_results_str(results_file):
         if index == 0:
             axes_brams[index].set_ylabel("BRAMs", fontsize=fntsize)
             axes_brams[index].set_yticks(y_ticks_brams[index])
-        elif index == 1:
-            axes_brams[index].set_yticks(y_ticks_brams[index])
         else:
             axes_brams[index].set_yticks(y_ticks_brams[index])
-            axes_brams[index].set_yticklabels(['']*len(y_ticks_brams[index]))
         axes_brams[index].grid(which='major', axis='y', linestyle='--')
         axes_brams[index].tick_params(axis="both", labelsize=ticksize)
         #axes_brams[index].set_xlabel(x_label, fontsize=fntsize);
@@ -394,11 +388,8 @@ def plot_from_results_str(results_file):
         if index == 0:
             axes_dsps[index].set_ylabel("DSPs", fontsize=fntsize)
             axes_dsps[index].set_yticks(y_ticks_dsps[index])
-        elif index == 1:
-            axes_dsps[index].set_yticks(y_ticks_dsps[index])
         else:
             axes_dsps[index].set_yticks(y_ticks_dsps[index])
-            axes_dsps[index].set_yticklabels(['']*len(y_ticks_dsps[index]))
         axes_dsps[index].grid(which='major', axis='y', linestyle='--')
         axes_dsps[index].tick_params(axis="both", labelsize=ticksize)
         axes_dsps[index].xaxis.labelpad = 20
@@ -468,9 +459,11 @@ def plot_from_results_str(results_file):
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_BRAMs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_brams, legend=False, color=["#59A14F"], width=0.8,
                                                    fontsize=fntsize, zorder=3)
+        axis_brams.axhline(y=1,color='r',zorder=0)
         joined_sp_ratios_list[apptb[appname]].plot(kind='bar', y="AE_SP_DSPs_Ratio", x="Parallelism", rot=0,
                                                    ax=axis_dsps, legend=False, color=["#59A14F"], width=0.8,
                                                    fontsize=fntsize, zorder=3)
+        axis_dsps.axhline(y=1,color='r',zorder=0)
         axis_slices.set_xticklabels(['1','2','4','8'])
         axis_brams.set_xticklabels(['1','2','4','8'])
         axis_dsps.set_xticklabels(['1','2','4','8'])
@@ -574,7 +567,7 @@ def plot_from_results_str(results_file):
     ax3.spines['right'].set_visible(False)
     ax3.spines['top'].set_visible(False)
     ax3.set_ylabel("Relative Slices", fontsize=fntsize)
-    ax3.set_yticks([0,2,4])
+    ax3.set_yticks([1,2,3,4])
     hth_p1_slices_df.plot(kind='bar', y='values', x='apps',rot=0,
                    ax=ax3, legend=False, color=["#59A14F"],
                    fontsize=fntsize, zorder=3)
@@ -586,7 +579,8 @@ def plot_from_results_str(results_file):
     #hth_p1_brams_df.plot(kind='bar', y='values', x='apps', rot=10,
     #                          ax=ax3_1, legend=False, color=["#59A14F"],
     #                          fontsize=fntsize)
-    ax3.grid(which='major', axis='y', linestyle='--', zorder=0)
+    ax3.grid(which='major', axis='y', linestyle='--', zorder=0, alpha=0.5)
+    ax3.axhline(y=1, color='r', zorder=1)
     plt.tight_layout(rect=[0,0,1,0.86])
     plt.savefig(os.path.join(figs_dir, 'ae_versus_hth.pdf'), transparent=True)
 
