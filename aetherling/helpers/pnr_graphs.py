@@ -7,7 +7,7 @@ import matplotlib.ticker as ticker
 from matplotlib import rcParams
 import matplotlib.colors as mcolors
 
-pd.set_option('display.max_columns', 20)
+pd.set_option('display.max_columns', 30)
 
 
 def plot_from_results_str(results_file):
@@ -22,17 +22,18 @@ def plot_from_results_str(results_file):
     big_real_applications = ["big_real_conv2d", "big_real_conv2d_b2b", "big_real_sharpen"]
     big_real_16_applications = ["big_real_16_conv2d", "big_real_16_conv2d_b2b", "big_real_16_sharpen"]
     big_real_32_applications = ["big_real_32_conv2d", "big_real_32_conv2d_b2b", "big_real_32_sharpen"]
+    other_big_apps = ["demosaic"]
     real_applications = ["conv2d_real", "conv2d_real_b2b", "sharpen_real"]
     all_big_apps = real_applications + \
                    big_applications + big_16_applications + big_32_applications + \
-                   big_real_applications + big_real_16_applications + big_real_32_applications
+                   big_real_applications + big_real_16_applications + big_real_32_applications + other_big_apps
     #applications = ["map", "conv2d", "conv2d_b2b", "conv2d_b2b_3x3_repeat", "pyramid", "sharpen", "camera"] + all_big_apps
     applications = ["map", "conv2d", "conv2d_b2b", "sharpen"] + all_big_apps
     applications_paper_just_ae = ["map"] + big_real_32_applications
     big_apptb = {name:idx+4 for (idx, name) in enumerate(all_big_apps)}
     apptb = {"map": 0, "conv2d": 1, "conv2d_b2b": 2, "sharpen": 3}
     apptb.update(big_apptb)
-    application_lengths = [200, 16, 16, 16] + ([1920*1080] * 21)
+    application_lengths = [200, 16, 16, 16] + ([1920*1080] * 22)
     per_system_per_application_results = []
     for i, system in enumerate(systems):
         per_system_results = []
@@ -251,19 +252,20 @@ def plot_from_results_str(results_file):
         plt.savefig(os.path.join(figs_dir, 'ae_results_big.pdf'))
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
 
-    fig_paper_ae, axes_paper_ae = plt.subplots(nrows=3, ncols=4)
+    fig_paper_ae, axes_paper_ae = plt.subplots(nrows=3, ncols=5)
     fig_paper_ae.set_dpi(1000)
     #orig_width = 24.0
     #orig_height = 13.0
     #new_width = 3.333
     #new_height = orig_height * new_width / orig_width
-    fig_paper_ae.set_size_inches(24, 14.5)
+    width_scaling_new_app = 6/4.0
+    fig_paper_ae.set_size_inches(28, 25)
     #plt.subplots_adjust(wspace=0.4, top=0.97)
     axes_slices = axes_paper_ae[0]
     axes_brams = axes_paper_ae[1]
     axes_dsps = axes_paper_ae[2]
-    app_name = ["map"] + big_real_32_applications
-    paper_titles = ["MAP", "CONV", "CONVB2B", "SHARPEN"]
+    app_name = ["map"] + big_real_32_applications + other_big_apps
+    paper_titles = ["MAP", "CONV", "CONVB2B", "SHARPEN", "DEMOSAIC"]
     y_bottom_slices = [1] + ([100] * (len(axes_slices)-1))
     y_top_slices = [1400] + ([14000] * (len(axes_slices)-1))
     y_ticks_slices = [[100,1000,10000]] * len(axes_slices)
@@ -395,7 +397,7 @@ def plot_from_results_str(results_file):
         axes_dsps[index].xaxis.labelpad = 20
     fig_paper_ae.align_ylabels()
     fig_paper_ae.suptitle("Resources Consumed by Aetherling Designs", fontsize=titlesize)
-    plt.tight_layout(rect=[0,0,1,0.92])
+    plt.tight_layout()
     plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'), transparent=True, bbox_inches='tight')
 
     sp_maxes = []
