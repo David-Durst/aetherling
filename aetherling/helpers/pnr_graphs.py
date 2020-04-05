@@ -22,7 +22,7 @@ def plot_from_results_str(results_file):
     big_real_applications = ["big_real_conv2d", "big_real_conv2d_b2b", "big_real_sharpen"]
     big_real_16_applications = ["big_real_16_conv2d", "big_real_16_conv2d_b2b", "big_real_16_sharpen"]
     big_real_32_applications = ["big_real_32_conv2d", "big_real_32_conv2d_b2b", "big_real_32_sharpen"]
-    other_big_apps = ["demosaic"]
+    other_big_apps = ["camera"]
     real_applications = ["conv2d_real", "conv2d_real_b2b", "sharpen_real"]
     all_big_apps = real_applications + \
                    big_applications + big_16_applications + big_32_applications + \
@@ -252,20 +252,20 @@ def plot_from_results_str(results_file):
         plt.savefig(os.path.join(figs_dir, 'ae_results_big.pdf'))
     figs_dir = os.path.join(os.path.dirname(results_file), 'figs')
 
-    fig_paper_ae, axes_paper_ae = plt.subplots(nrows=3, ncols=5)
+    fig_paper_ae, axes_paper_ae = plt.subplots(nrows=3, ncols=5, figsize=(34.28,18))
     fig_paper_ae.set_dpi(1000)
     #orig_width = 24.0
     #orig_height = 13.0
     #new_width = 3.333
     #new_height = orig_height * new_width / orig_width
     width_scaling_new_app = 6/4.0
-    fig_paper_ae.set_size_inches(28, 25)
+    #fig_paper_ae.set_size_inches(28, 25)
     #plt.subplots_adjust(wspace=0.4, top=0.97)
     axes_slices = axes_paper_ae[0]
     axes_brams = axes_paper_ae[1]
     axes_dsps = axes_paper_ae[2]
     app_name = ["map"] + big_real_32_applications + other_big_apps
-    paper_titles = ["MAP", "CONV", "CONVB2B", "SHARPEN", "DEMOSAIC"]
+    paper_titles = ["MAP", "CONV", "CONVB2B", "SHARPEN", "MINI-CAMERA"]
     y_bottom_slices = [1] + ([100] * (len(axes_slices)-1))
     y_top_slices = [1400] + ([14000] * (len(axes_slices)-1))
     y_ticks_slices = [[100,1000,10000]] * len(axes_slices)
@@ -297,21 +297,21 @@ def plot_from_results_str(results_file):
         axes_slices[index].minorticks_off()
         axes_slices[index].spines['right'].set_visible(False)
         axes_slices[index].spines['top'].set_visible(False)
-        if index == 0:
-            axes_slices[index].set_xticks([1,2, 5, 10, 40, 200])
-            axes_slices[index].set_xticklabels(['1','2','5','10','40','200'])
-        elif index == 2:
-            axes_slices[index].set_xticks([1 / 3, 1, 2, 4, 8])
-            axes_slices[index].set_xticklabels(['1/3', '1', '2', '4', '8'])
-        else:
-            axes_slices[index].set_xticks([1/3,1,2,4,8,16])
-            axes_slices[index].set_xticklabels(['1/3','1','2','4','8','16'])
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="Slices", x="Parallelism", legend=False,
                                                       ax=axes_slices[index], label="Scheduler Result", color=["#59A14F"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
                                                       markersize=ms, linewidth=lw, clip_on=False
                                                       )
         axes_slices[index].set_xlabel("", fontsize=fntsize)
+        if index == 0:
+            axes_slices[index].set_xticks([1,2, 5, 10, 40, 200])
+            axes_slices[index].set_xticklabels(['1','2','5','10','40','200'])
+        elif index == 4:
+            axes_slices[index].set_xticks([1 / 4, 1, 2, 4, 8, 16])
+            axes_slices[index].set_xticklabels(['1/4', '1', '2', '4', '8', '16'])
+        else:
+            axes_slices[index].set_xticks([1/3,1,2,4,8,16])
+            axes_slices[index].set_xticklabels(['1/3','1','2','4','8','16'])
         if index == 0:
             axes_slices[index].set_ylabel("Slices", fontsize=fntsize)
             axes_slices[index].set_yticks([1,10,1000])
@@ -335,21 +335,21 @@ def plot_from_results_str(results_file):
         axes_brams[index].minorticks_off()
         axes_brams[index].spines['right'].set_visible(False)
         axes_brams[index].spines['top'].set_visible(False)
-        if index == 0:
-            axes_brams[index].set_xticks([1,2, 5, 10, 40, 200])
-            axes_brams[index].set_xticklabels(['1','2','5','10','40','200'])
-        elif index == 2:
-            axes_brams[index].set_xticks([1 / 3, 1, 2, 4, 8])
-            axes_brams[index].set_xticklabels(['1/3', '1', '2', '4', '8'])
-        else:
-            axes_brams[index].set_xticks([1/3,1,2,4,8,16])
-            axes_brams[index].set_xticklabels(['1/3','1','2','4','8','16'])
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="BRAMs", x="Parallelism", legend=False,
                                                       ax=axes_brams[index], label="Scheduler Result", color=["#59A14F"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
                                                       markersize=ms, linewidth=lw, clip_on=False
                                                       )
         axes_brams[index].set_xlabel("", fontsize=fntsize)
+        if index == 0:
+            axes_brams[index].set_xticks([1,2, 5, 10, 40, 200])
+            axes_brams[index].set_xticklabels(['1','2','5','10','40','200'])
+        elif index == 4:
+            axes_brams[index].set_xticks([1 / 4, 1, 2, 4, 8, 16])
+            axes_brams[index].set_xticklabels(['1/4', '1', '2', '4', '8', '16'])
+        else:
+            axes_brams[index].set_xticks([1/3,1,2,4,8,16])
+            axes_brams[index].set_xticklabels(['1/3','1','2','4','8','16'])
         #print(res[systb['ae']][apptb[app_name[index]]])
         if index == 0:
             axes_brams[index].set_ylabel("BRAMs", fontsize=fntsize)
@@ -372,21 +372,24 @@ def plot_from_results_str(results_file):
         axes_dsps[index].minorticks_off()
         axes_dsps[index].spines['right'].set_visible(False)
         axes_dsps[index].spines['top'].set_visible(False)
-        if index == 0:
-            axes_dsps[index].set_xticks([1,2, 5, 10, 40, 200])
-            axes_dsps[index].set_xticklabels(['1','2','5','10','40','200'])
-        elif index == 2:
-            axes_dsps[index].set_xticks([1 / 3, 1, 2, 4, 8])
-            axes_dsps[index].set_xticklabels(['1/3', '1', '2', '4', '8'])
-        else:
-            axes_dsps[index].set_xticks([1/3,1,2,4,8,16])
-            axes_dsps[index].set_xticklabels(['1/3','1','2','4','8','16'])
         res[systb['ae']][apptb[app_name[index]]].plot(kind='line', y="DSPs", x="Parallelism", legend=False,
                                                       ax=axes_dsps[index], label="Scheduler Result", color=["#59A14F"],
                                                       linestyle='-', marker='o', fontsize=fntsize,
                                                       markersize=ms, linewidth=lw, clip_on=False
                                                       )
-        axes_dsps[index].set_xlabel("Throughput (px/clk)", fontsize=fntsize)
+        if index == 0:
+            axes_dsps[index].set_xticks([1,2, 5, 10, 40, 200])
+            axes_dsps[index].set_xticklabels(['1','2','5','10','40','200'])
+        elif index == 4:
+            axes_dsps[index].set_xticks([1 / 4, 1, 2, 4, 8, 16])
+            axes_dsps[index].set_xticklabels(['1/4', '1', '2', '4', '8', '16'])
+        else:
+            axes_dsps[index].set_xticks([1/3,1,2,4,8,16])
+            axes_dsps[index].set_xticklabels(['1/3','1','2','4','8','16'])
+        if index == 2:
+            axes_dsps[index].set_xlabel("Throughput (px/clk)", fontsize=fntsize)
+        else:
+            axes_dsps[index].set_xlabel("", fontsize=fntsize)
         if index == 0:
             axes_dsps[index].set_ylabel("DSPs", fontsize=fntsize)
             axes_dsps[index].set_yticks(y_ticks_dsps[index])
@@ -397,8 +400,11 @@ def plot_from_results_str(results_file):
         axes_dsps[index].xaxis.labelpad = 20
     fig_paper_ae.align_ylabels()
     fig_paper_ae.suptitle("Resources Consumed by Aetherling Designs", fontsize=titlesize)
-    plt.tight_layout()
-    plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'), transparent=True, bbox_inches='tight')
+    #plt.subplots_adjust(right = 1, left=0, top=1, bottom = 0, wspace=0.33)
+    plt.subplots_adjust(wspace=0.33)
+    #plt.tight_layout(rect=[0,0,1,0.92])
+    plt.margins(0,0)
+    plt.savefig(os.path.join(figs_dir, 'ae_results.pdf'), transparent=True)
 
     sp_maxes = []
     sp_mins = []
