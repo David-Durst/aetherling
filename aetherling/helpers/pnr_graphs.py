@@ -265,7 +265,7 @@ def plot_from_results_str(results_file):
     axes_brams = axes_paper_ae[1]
     axes_dsps = axes_paper_ae[2]
     app_name = ["map"] + big_real_32_applications + other_big_apps
-    paper_titles = ["MAP", "CONV", "CONVB2B", "SHARPEN", "MINI-CAMERA"]
+    paper_titles = ["MAP", "CONV", "CONVB2B", "SHARPEN", "CAMERA"]
     y_bottom_slices = [1] + ([100] * (len(axes_slices)-1))
     y_top_slices = [1400] + ([14000] * (len(axes_slices)-1))
     y_ticks_slices = [[100,1000,10000]] * len(axes_slices)
