@@ -1,0 +1,32 @@
+body {
+    background-color: #f9f9f9;
+}
+
+h1 {
+    font-size: 4vw
+}
+
+#header-and-content {
+    margin-top: 10px;
+}
+
+#content {
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+#header-body {
+    margin-top: 10px;
+}
+
+#contact-me-post {
+    margin-top: 10px;
+}
+
+#footer {
+    margin-bottom: 10px;
+}
+
+.content-section {
+    margin-top: 30px;
+}
