@@ -3,7 +3,11 @@ body {
 }
 
 h1 {
-    font-size: 600%
+    font-size: 600%;
+}
+
+h5 {
+    display: inline;
 }
 
 #header-and-content {
@@ -25,6 +29,10 @@ h1 {
 
 #footer {
     margin-bottom: 10px;
+}
+
+#conference-section {
+    margin-top: 20px;
 }
 
 .content-section {
